@@ -27,9 +27,9 @@ JWT_EXPIRY = timedelta(days=1000)
 
 
 # DB
-DB_HOST_CREDS = f"{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 5432)}"
-DB_USER_CREDS = f"{os.getenv("DB_USER", "postgres")}:{quote(os.getenv("PASSWORD"))}"
-DB_NAME = os.getenv("DB_NAME")
+DB_HOST_CREDS = f"{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 5132)}"
+DB_USER_CREDS = f"{os.getenv("DB_USER", "postgres")}:{quote(os.getenv("PASSWORD", "password"))}"
+DB_NAME = os.getenv("DB_NAME", "ai_chat_mod")
 DB_ENGINE = create_async_engine(
     f"postgres+asyncpg://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
 )
