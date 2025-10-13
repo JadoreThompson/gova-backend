@@ -1,5 +1,5 @@
 [project]
-name = "fastapi-template"
+name = "ai-chat-moderation"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
