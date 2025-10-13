@@ -10,8 +10,12 @@ PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 load_dotenv(os.path.join(BASE_PATH, ".env"))
 
 
-with open(os.path.join(PROMPTS_PATH, "system-prompt.txt")) as f:
-    SYSTEM_PROMPT = f.read()
+with open(os.path.join(PROMPTS_PATH, "topic-system-prompt.txt")) as f:
+    TOPIC_PROMPT = f.read()
+with open(os.path.join(PROMPTS_PATH, "score-system-prompt.txt")) as f:
+    SCORE_PROMPT = f.read()
+with open(os.path.join(PROMPTS_PATH, "final-prompt.txt")) as f:
+    FINAL_PROMPT = f.read()
 
 
 # LLM
