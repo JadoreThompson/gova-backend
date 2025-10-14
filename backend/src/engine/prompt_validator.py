@@ -1,17 +1,18 @@
 import asyncio
+from json import JSONDecodeError
 from aiohttp import ClientSession, ClientError
 from pydantic import ValidationError
 
+from engine.enums import MaliciousState
 from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_NAME, SECURITY_SYSTEM_PROMPT
-from utils.llm import parse_to_dict
-from .models import PromptValidation
+from utils.llm import parse_to_json
 
 
 class PromptValidator:
     @classmethod
     async def validate_prompt(
         cls, prompt: str, sess: ClientSession | None = None, max_attempts: int = 3
-    ) -> bool:
+    ) -> MaliciousState:
         """
         Validates that the incoming prompt isn't performing any prompt injection
         or malicious actions, with retry logic for transient failures.
@@ -34,7 +35,6 @@ class PromptValidator:
         attempt = 0
         try:
             while attempt < max_attempts:
-                attempt += 1
                 try:
                     body = {
                         "model": LLM_MODEL_NAME,
@@ -44,19 +44,25 @@ class PromptValidator:
                         ],
                     }
 
-                    rsp = await sess.post("/chat/completions", json=body)
-                    rsp.raise_for_status()
+                    rsp = await sess.post("chat/completions", json=body)
+                    # rsp.raise_for_status()
                     data = await rsp.json()
 
                     content = data["choices"][0]["message"]["content"]
-                    obj = PromptValidation(**parse_to_dict(content))
-                    return obj
+                    parsed = parse_to_json(content)
 
-                except (ClientError, asyncio.TimeoutError, ValidationError) as e:
-                    if attempt >= max_attempts:
-                        return PromptValidation(malicious=3)
+                    return (
+                        MaliciousState.MALICIOUS
+                        if parsed["malicious"]
+                        else MaliciousState.NOT_MALICIOUS
+                    )
 
-            return PromptValidation(malicious=3)
+                except (ClientError, asyncio.TimeoutError, ValidationError, JSONDecodeError):
+                    pass
+                finally:
+                    attempt += 1
+
+            return MaliciousState.UNKNOWN
 
         finally:
             if is_local:

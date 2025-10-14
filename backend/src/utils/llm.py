@@ -1,13 +1,13 @@
 from json import loads
 
 
-def parse_to_dict(value: str) -> dict:
+def parse_to_json(value: str) -> dict | list:
     s = "```json"
-    py_ind = value.index(s)
-    value = value[py_ind + len(s) :]
+    ind = value.index(s)
+    value = value[ind + len(s) :]
 
     s = "```"
-    quote_ind = value.index(s)
-    value = value[:quote_ind]
+    ind = value.index(s)
+    value = value[:ind]
 
     return loads(value)

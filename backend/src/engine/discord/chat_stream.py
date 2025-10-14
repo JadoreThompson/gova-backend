@@ -3,11 +3,11 @@ from typing import AsyncIterator
 
 import discord
 
-from engine.chat_stream import ChatStream
+from engine.base_chat_stream import BaseChatStream
 from .context import DiscordChatContext, DiscordServer
 
 
-class DiscordChatStream(ChatStream):
+class DiscordChatStream(BaseChatStream):
     def __init__(self, token: str, guild_id: int) -> None:
         self._token = token
         self._guild_id = guild_id
@@ -41,13 +41,13 @@ class DiscordChatStream(ChatStream):
 
         while True:
             item = await self._msg_queue.get()
-            msg = DiscordChatContext(
+            ctx = DiscordChatContext(
                 message=item.content,
                 server=DiscordServer(name=item.guild.name, id=item.guild.id),
                 channel=item.channel.name,
                 user_id=item.author.id,
             )
-            yield msg
+            yield ctx
 
     def __del__(self):
         if self._task:

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from engine.models import ChatContext
+from engine.models import MessageContext
 from core.enums import ChatPlatformType
 
 
@@ -9,7 +9,7 @@ class DiscordServer(BaseModel):
     id: int
 
 
-class DiscordChatContext(ChatContext):
+class DiscordChatContext(MessageContext):
     platform: ChatPlatformType = ChatPlatformType.DISCORD
     server: DiscordServer  # The server the message ws sent in
     channel: str  # The channel the message was sent in

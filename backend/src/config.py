@@ -40,8 +40,8 @@ JWT_EXPIRY = timedelta(days=1000)
 # LLM
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_AGENT_ID = os.getenv("LLM_AGENT_ID")
-LLM_BASE_URL = "https://api/mistral.ai/v1"
-LLM_MODEL_NAME = "mstral-tiny"
+LLM_BASE_URL = "https://api.mistral.ai/v1/"
+LLM_MODEL_NAME = "mistral-tiny"
 
 
 # Prompts

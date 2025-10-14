@@ -3,8 +3,7 @@ from enum import Enum
 from json import loads
 from uuid import UUID
 
-from pydantic import BaseModel, Field
-from core.enums import ActionType
+from pydantic import BaseModel
 
 
 class CustomBaseModel(BaseModel):
