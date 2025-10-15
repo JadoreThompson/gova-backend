@@ -3,8 +3,8 @@ from fastapi import Request
 from config import COOKIE_ALIAS
 from utils.db import smaker
 from server.exc import JWTError
-from server.typing import JWTPayload
 from server.services import JWTService
+from server.typing import JWTPayload
 
 
 async def depends_db_sess():

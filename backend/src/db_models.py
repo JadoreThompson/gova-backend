@@ -40,11 +40,15 @@ class Guidelines(Base):
     __tablename__ = "guidelines"
 
     guideline_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), nullable=False, default=get_uuid
+        SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
     )
+    name: Mapped[str] = mapped_column(String, nullable=False)
     user_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     text: Mapped[str] = mapped_column(String, nullable=False)
     breach_types: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=get_datetime
+    )
 
 
 class Moderators(Base):
@@ -78,7 +82,7 @@ class ModeratorDeployments(Base):
     __tablename__ = "moderator_deployments"
 
     deployment_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), nullable=False, default=get_uuid
+        SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
     )
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False

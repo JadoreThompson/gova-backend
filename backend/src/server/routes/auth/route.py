@@ -7,11 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db_models import Users
 from server.dependencies import depends_db_sess
 from server.services import JWTService
-from .controller import fetch_discord_access_token
+from .controllers import fetch_discord_access_token
 from .models import UserCreate, UserLogin
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register")

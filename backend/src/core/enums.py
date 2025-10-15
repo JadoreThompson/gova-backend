@@ -5,7 +5,7 @@ class ChatPlatformType(Enum):
     DISCORD = "discord"
 
 
-class ModeratorState(Enum):
+class ModeratorDeploymentState(Enum):
     OFFLINE = "offline"
     PENDING = "pending"
     ONLINE = "online"
