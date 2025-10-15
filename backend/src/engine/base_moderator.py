@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from aiohttp import ClientSession
@@ -14,10 +15,13 @@ from utils.llm import parse_to_json
 class BaseChatModerator:
     _embedding_model: SentenceTransformer | None = None
 
-    def __init__(self, moderator_id: UUID) -> None:
+    def __init__(
+        self, moderator_id: UUID, logger: logging.Logger | None = None
+    ) -> None:
         self._moderator_id = moderator_id
+        self._logger = logger
         self._http_sess: ClientSession | None = None
-        self._breach_types: list[str] | None = None
+        self._topics: list[str] | None = None
         self._guidelines: str | None = None
 
     def _load_embedding_model(self):
@@ -36,7 +40,7 @@ class BaseChatModerator:
     async def _fetch_guidelines(self) -> tuple[str, list[str]]:
         async with get_db_sess() as db_sess:
             res = await db_sess.execute(
-                select(Guidelines.text, Guidelines.breach_types).where(
+                select(Guidelines.text, Guidelines.topcis).where(
                     Guidelines.guideline_id
                     == select(Moderators.guideline_id).where(
                         Moderators.moderator_id == self._moderator_id
@@ -65,10 +69,10 @@ class BaseChatModerator:
                 "platform": ctx.platform.value,
                 "content": ctx.content,
                 "embedding": embedding,
-                "breach_type": breach.breach_type,
-                "breach_score": breach.breach_score,
+                "topic": teval.topic,
+                "topic_score": teval.topic_score,
             }
-            for breach in eval.breaches
+            for teval in eval.topic_evaluations
         ]
 
         if not records:
@@ -84,11 +88,11 @@ class BaseChatModerator:
             res = await db_sess.scalars(
                 select(MessagesEvaluations).where(
                     MessagesEvaluations.embedding.l2_distance(embedding) < 0.5,
-                    MessagesEvaluations.breach_type.in_(self._breach_types),
+                    MessagesEvaluations.topic.in_(self._topics),
                 )
             )
 
-            return tuple((r.breach_type, r.breach_score) for r in res.yield_per(1000))
+            return tuple((r.topic, r.topic_score) for r in res.yield_per(1000))
 
     async def __aenter__(self):
         self._http_sess = ClientSession(

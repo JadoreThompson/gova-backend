@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from uuid import UUID
 
 from aiohttp import ClientError
@@ -8,7 +9,7 @@ from config import FINAL_PROMPT, SCORE_SYSTEM_PROMPT
 from engine.base_moderator import BaseChatModerator
 from engine.discord.actions import BanAction, DiscordActionType, MuteAction
 from engine.enums import MaliciousState
-from engine.models import MessageBreach, MessageContext, MessageEvaluation
+from engine.models import TopicEvaluation, MessageContext, MessageEvaluation
 from engine.prompt_validator import PromptValidator
 from .stream import DiscordStream
 
@@ -16,7 +17,9 @@ from .stream import DiscordStream
 class DiscordModerator(BaseChatModerator):
 
     def __init__(self, moderator_id: UUID, stream: DiscordStream):
-        super().__init__(moderator_id)
+        super().__init__(
+            moderator_id, logging.getLogger(f"discord-moderator-{self._moderator_id}")
+        )
         self._stream = stream
 
     async def moderate(self) -> None:
@@ -24,7 +27,6 @@ class DiscordModerator(BaseChatModerator):
 
         async for ctx in self._stream:
             eval = await self._evaluate(ctx)
-            print("Eval", eval)
             if not eval:
                 continue
 
@@ -35,15 +37,11 @@ class DiscordModerator(BaseChatModerator):
     ) -> MessageEvaluation:
         mstate = await PromptValidator.validate_prompt(ctx.content)
         if mstate == MaliciousState.MALICIOUS:
-            print("It's malicious", mstate)
+            self._logger.critical(f'Malicious content "{ctx.content}"')
             return
 
         if not self._guidelines:
-            data = await self._fetch_guidelines()
-            if not data:
-                print("No guidelines")
-                return
-            self._guidelines, self._breach_types = data
+            self._guidelines, self._topics = await self._fetch_guidelines()
 
         attempt = 0
         while attempt < max_attempts:
@@ -53,17 +51,14 @@ class DiscordModerator(BaseChatModerator):
                 if similars:
                     topic_scores = await self._handle_similars(ctx, similars)
                 else:
-                    # Fetching topic scores
-                    topic_scores = await self._fetch_topic_scores(
-                        ctx, self._breach_types
-                    )
+                    topic_scores = await self._fetch_topic_scores(ctx, self._topics)
 
                 msgs.append(topic_scores)
 
                 # Final Output
                 prompt = FINAL_PROMPT.format(
                     guidelines=self._guidelines,
-                    topics=self._breach_types,
+                    topics=self._topics,
                     topic_scores=topic_scores,
                     actions=DiscordActionType._value2member_map_.keys(),
                     message=ctx.content,
@@ -79,10 +74,10 @@ class DiscordModerator(BaseChatModerator):
 
                 eval = MessageEvaluation(
                     **data,
-                    breaches=[
-                        MessageBreach(breach_type=key, breach_score=val)
+                    topic_evaluations=[
+                        TopicEvaluation(topic=key, topic_score=val)
                         for key, val in topic_scores.items()
-                    ]
+                    ],
                 )
                 msgs.append(data)
 
@@ -99,7 +94,7 @@ class DiscordModerator(BaseChatModerator):
 
     async def _fetch_topic_scores(self, ctx: MessageContext, topics: list[str]):
         sys_prompt = SCORE_SYSTEM_PROMPT.format(
-            guidelines=self._guidelines, topics=self._breach_types
+            guidelines=self._guidelines, topics=topics
         )
         topic_scores: dict[str, float] = await self._fetch_llm_response(
             [
@@ -131,7 +126,7 @@ class DiscordModerator(BaseChatModerator):
         for k, (score, _) in items:
             topic_scores[k] = score
 
-        remaining = set(self._breach_types).difference(set(topic_scores.keys()))
+        remaining = set(self._topics).difference(set(topic_scores.keys()))
         if remaining:
             rem_scores = await self._fetch_topic_scores(ctx, list(remaining))
             for k, v in rem_scores:

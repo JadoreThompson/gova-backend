@@ -21,4 +21,4 @@ class GuidelineUpdate(GuidelineBase):
 class GuidelineResponse(GuidelineBase):
     guideline_id: UUID
     created_at: datetime
-    breach_types: list[str]
+    topics: list[str]

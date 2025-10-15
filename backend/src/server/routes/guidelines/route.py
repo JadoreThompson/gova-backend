@@ -9,7 +9,7 @@ from db_models import Guidelines
 from server.dependencies import depends_db_sess, depends_jwt
 from server.models import PaginatedResponse
 from server.typing import JWTPayload
-from .controllers import get_breach_types
+from .controllers import get_topics
 from .models import GuidelineCreate, GuidelineUpdate, GuidelineResponse
 
 
@@ -22,12 +22,10 @@ async def create_guideline(
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    breach_types = await get_breach_types("Guidelines:\n" + body.text)
+    topics = await get_topics("Guidelines:\n" + body.text)
     res = await db_sess.scalar(
         insert(Guidelines)
-        .values(
-            user_id=jwt.sub, name=body.name, text=body.text, breach_types=breach_types
-        )
+        .values(user_id=jwt.sub, name=body.name, text=body.text, topics=topics)
         .returning(Guidelines)
     )
 
@@ -38,7 +36,7 @@ async def create_guideline(
         guideline_id=res.guideline_id,
         name=res.name,
         text=res.text,
-        breach_types=res.breach_types,
+        topics=res.topics,
         created_at=res.created_at,
     )
 
@@ -70,7 +68,7 @@ async def list_guidelines(
                 guideline_id=g.guideline_id,
                 name=g.name,
                 text=g.text,
-                breach_types=g.breach_types,
+                topics=g.topics,
                 created_at=g.created_at,
             )
             for g in rows[:PAGE_SIZE]
@@ -97,7 +95,7 @@ async def get_guideline(
         guideline_id=res.guideline_id,
         name=res.name,
         text=res.text,
-        breach_types=res.breach_types,
+        topics=res.topics,
         created_at=res.created_at,
     )
 
@@ -129,7 +127,7 @@ async def update_guideline(
         guideline_id=updated.guideline_id,
         name=updated.name,
         text=updated.text,
-        breach_types=updated.breach_types,
+        topics=updated.topics,
         created_at=updated.created_at,
     )
     await db_sess.commit()

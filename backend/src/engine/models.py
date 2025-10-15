@@ -10,12 +10,12 @@ class MessageContext(CustomBaseModel):
     content: str
 
 
-class MessageBreach(BaseModel):
-    breach_type: str
-    breach_score: float
+class TopicEvaluation(BaseModel):
+    topic: str
+    topic_score: float
 
 
 class MessageEvaluation(CustomBaseModel):
     evaluation_score: float
-    breaches: list[MessageBreach]
+    topic_evaluations: list[TopicEvaluation]
     action: DiscordAction | None

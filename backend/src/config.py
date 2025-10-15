@@ -46,7 +46,7 @@ LLM_MODEL_NAME = "mistral-tiny"
 
 # Prompts
 with open(os.path.join(PROMPTS_PATH, "topic-system-prompt.txt")) as f:
-    BREACH_TYPES_SYSTEM_PROMPT = f.read()
+    TOPICS_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "score-system-prompt.txt")) as f:
     SCORE_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "security-system-prompt.txt")) as f:
@@ -66,14 +66,14 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 logging.basicConfig(
     filename="app.log",
     filemode="a",
-    format="%(asctime)s - [%(levelname)s] - %(module)s - %(message)s",
+    format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s",
 )
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 handler = logging.StreamHandler(sys.stdout)
 handler.setFormatter(
-    logging.Formatter("%(asctime)s - [%(levelname)s] - %(module)s - %(message)s")
+    logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s - %(message)s")
 )
 logger.addHandler(handler)
 
