@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ChatPlatformType(Enum):
+class MessagePlatformType(Enum):
     DISCORD = "discord"
 
 

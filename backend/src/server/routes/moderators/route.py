@@ -26,13 +26,16 @@ async def create_moderator(
     jwt: JWTPayload = Depends(depends_jwt),
     db: AsyncSession = Depends(depends_db_sess),
 ):
-    result = await db.scalar(
+    mod = await db.scalar(
         insert(Moderators)
         .values(user_id=jwt.sub, name=body.name, guideline_id=body.guideline_id)
         .returning(Moderators)
     )
     rsp_body = ModeratorResponse(
-        name=body.name, guideline_id=body.guideline_id, created_at=result.created_at
+        moderator_id=mod.moderator_id,
+        name=body.name,
+        guideline_id=body.guideline_id,
+        created_at=mod.created_at,
     )
     await db.commit()
     return rsp_body
@@ -58,7 +61,10 @@ async def list_moderators(
         has_next=n > PAGE_SIZE,
         data=[
             ModeratorResponse(
-                name=m.name, guidline_id=m.guideline_id, created_at=m.created_at
+                moderator_id=m.moderator_id,
+                name=m.name,
+                guidline_id=m.guideline_id,
+                created_at=m.created_at,
             )
             for m in mods[:PAGE_SIZE]
         ],
@@ -79,7 +85,10 @@ async def get_moderator(
     if not mod:
         raise HTTPException(status_code=404, detail="Moderator not found")
     return ModeratorResponse(
-        name=mod.name, guideline_id=mod.guideline_id, created_at=mod.created_at
+        moderator_id=mod.moderator_id,
+        name=mod.name,
+        guideline_id=mod.guideline_id,
+        created_at=mod.created_at,
     )
 
 
@@ -126,6 +135,7 @@ async def update_moderator(
 
     await db_sess.commit()
     return ModeratorResponse(
+        moderator_id=updated.moderator_id,
         name=updated.name,
         guideline_id=updated.guideline_id,
         created_at=updated.created_at,

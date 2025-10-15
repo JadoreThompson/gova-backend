@@ -46,7 +46,7 @@ LLM_MODEL_NAME = "mistral-tiny"
 
 # Prompts
 with open(os.path.join(PROMPTS_PATH, "topic-system-prompt.txt")) as f:
-    TOPIC_SYSTEM_PROMPT = f.read()
+    BREACH_TYPES_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "score-system-prompt.txt")) as f:
     SCORE_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "security-system-prompt.txt")) as f:
@@ -76,3 +76,6 @@ handler.setFormatter(
     logging.Formatter("%(asctime)s - [%(levelname)s] - %(module)s - %(message)s")
 )
 logger.addHandler(handler)
+
+
+PAGE_SIZE = 10

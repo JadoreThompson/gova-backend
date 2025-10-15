@@ -1,6 +1,9 @@
 Your task is to extract the topics from the guidelines. Your response must be 
-a list of strings of which each are a topic to adhere to in the guidelines.
-Here's an example
+a list of strings of where each strng is a single word distinct topic.
+I'm now going to show you an examle of some guidelines and the output. The format
+of the output is for you to copy.
+
+Here's the example:
 
 Guidelines:
 1. Be respectful.

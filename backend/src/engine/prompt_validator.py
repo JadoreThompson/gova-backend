@@ -46,7 +46,7 @@ class PromptValidator:
                     }
 
                     rsp = await sess.post("chat/completions", json=body)
-                    # rsp.raise_for_status()
+                    rsp.raise_for_status()
                     data = await rsp.json()
 
                     content = data["choices"][0]["message"]["content"]

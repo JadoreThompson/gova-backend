@@ -22,7 +22,7 @@ async def create_guideline(
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    breach_types = get_breach_types(body.text)
+    breach_types = await get_breach_types("Guidelines:\n" + body.text)
     res = await db_sess.scalar(
         insert(Guidelines)
         .values(
@@ -35,11 +35,13 @@ async def create_guideline(
         raise HTTPException(status_code=500, detail="Failed to create guideline")
 
     rsp_body = GuidelineResponse(
+        guideline_id=res.guideline_id,
         name=res.name,
         text=res.text,
         breach_types=res.breach_types,
         created_at=res.created_at,
     )
+
     await db_sess.commit()
     return rsp_body
 
@@ -65,6 +67,7 @@ async def list_guidelines(
         has_next=n > PAGE_SIZE,
         data=[
             GuidelineResponse(
+                guideline_id=g.guideline_id,
                 name=g.name,
                 text=g.text,
                 breach_types=g.breach_types,
@@ -91,6 +94,7 @@ async def get_guideline(
         raise HTTPException(status_code=404, detail="Guideline not found")
 
     return GuidelineResponse(
+        guideline_id=res.guideline_id,
         name=res.name,
         text=res.text,
         breach_types=res.breach_types,
@@ -122,6 +126,7 @@ async def update_guideline(
         raise HTTPException(status_code=404, detail="Guideline not found")
 
     rsp_body = GuidelineResponse(
+        guideline_id=updated.guideline_id,
         name=updated.name,
         text=updated.text,
         breach_types=updated.breach_types,

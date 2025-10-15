@@ -69,9 +69,6 @@ class Moderators(Base):
     )
 
     # Relationships
-    messages: Mapped[list["MessagesEvaluations"]] = relationship(
-        back_populates="moderator", cascade="all, delete-orphan"
-    )
     deployments: Mapped[list["ModeratorDeployments"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
@@ -108,7 +105,7 @@ class MessagesEvaluations(Base):
     moderator_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     platform: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(1536))
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024))
     breach_type: Mapped[str] = mapped_column(String, nullable=False)
     breach_score: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

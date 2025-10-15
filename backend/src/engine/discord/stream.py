@@ -3,11 +3,11 @@ from typing import AsyncIterator
 
 import discord
 
-from engine.base_chat_stream import BaseChatStream
-from .context import DiscordChatContext, DiscordServer
+from backend.src.engine.base_stream import BaseChatStream
+from .context import DiscordMessageContext, DiscordServer
 
 
-class DiscordChatStream(BaseChatStream):
+class DiscordStream(BaseChatStream):
     def __init__(self, token: str, guild_id: int) -> None:
         self._token = token
         self._guild_id = guild_id
@@ -27,7 +27,7 @@ class DiscordChatStream(BaseChatStream):
 
         @self._client.event
         async def on_message(msg: discord.Message):
-            if msg.guild.id != self._guild_id or msg.author == self._client.user:
+            if msg.guild.id != self._guild_id:
                 return
 
             self._msg_queue.put_nowait(msg)
@@ -35,14 +35,14 @@ class DiscordChatStream(BaseChatStream):
             if msg.content.startswith("$hello"):
                 await msg.channel.send("Hello!")
 
-    async def __aiter__(self) -> AsyncIterator[DiscordChatContext]:
+    async def __aiter__(self) -> AsyncIterator[DiscordMessageContext]:
         self._build_client()
         self._task = asyncio.create_task(self._client.start(self._token))
 
         while True:
             item = await self._msg_queue.get()
-            ctx = DiscordChatContext(
-                message=item.content,
+            ctx = DiscordMessageContext(
+                content=item.content,
                 server=DiscordServer(name=item.guild.name, id=item.guild.id),
                 channel=item.channel.name,
                 user_id=item.author.id,

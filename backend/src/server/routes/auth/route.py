@@ -1,4 +1,5 @@
 import json
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select, and_
@@ -26,9 +27,10 @@ async def register(body: UserCreate, db_sess: AsyncSession = Depends(depends_db_
         insert(Users).values(**body.model_dump()).returning(Users)
     )
     new_user = result.scalar_one()
-    await db_sess.commit()
 
-    return JWTService.set_cookie(new_user)
+    rsp = JWTService.set_cookie(new_user)
+    await db_sess.commit()
+    return rsp
 
 
 @router.post("/login")

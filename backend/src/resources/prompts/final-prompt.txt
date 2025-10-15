@@ -10,16 +10,15 @@ Output format:
 {{"evaluation_score": float, "action": Action | null}}
 ```
 
-The evaluation score is a 2dp float way 0 means if fully aligns
+The evaluation score is a 2dp float where 0 means it fully aligns
 with the guidelines and 1 being it severely opposes the guidelines.
 
-Attached below are the guidelines for the community, the topics evaluated which
-stem from the guidelines. The scores for each topic and the message
+Attached below are the guidelines for the community and the topics evaluated 
+which stem from the guidelines. The scores for each topic and the message
 which was scored.
 
 Along with available actions and their dictionary formats. Using all information 
-come to your best judgement. You should be balanced with your evaluation. Not
-being hasty to perform any actions.
+come to your best judgement.
 
 Guidlines:
 {guidelines}
@@ -32,7 +31,6 @@ Message:
 
 Topic Scores:
 {topic_scores}
-
 
 Actions:
 {actions}
