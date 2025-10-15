@@ -2,11 +2,11 @@ from datetime import datetime
 from uuid import uuid4, UUID
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import UUID as SaUUID, String, DateTime, ForeignKey
+from sqlalchemy import UUID as SaUUID, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from core.enums import ModeratorState
+from core.enums import ModeratorDeploymentState
 from utils.db import get_datetime
 
 
@@ -31,38 +31,20 @@ class Users(Base):
     )
 
     # Relationship
-    projects: Mapped[list["Projects"]] = relationship(
+    moderators: Mapped[list["Moderators"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
 
-class Projects(Base):
-    __tablename__ = "projects"
+class Guidelines(Base):
+    __tablename__ = "guidelines"
 
-    project_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), primary_key=True, default=get_uuid
+    guideline_id: Mapped[UUID] = mapped_column(
+        SaUUID(as_uuid=True), nullable=False, default=get_uuid
     )
-    user_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
-    )
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    guidelines: Mapped[str] = mapped_column(String, nullable=True)
-    topics: Mapped[list[str]] = mapped_column(JSONB, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=get_datetime,
-        onupdate=get_datetime,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=get_datetime
-    )
-
-    # Relationship
-    user: Mapped["Users"] = relationship(back_populates="projects")
-    moderators: Mapped[list["Moderators"]] = relationship(
-        back_populates="project", cascade="all, delete-orphan"
-    )
+    user_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False)
+    breach_types: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
 
 
 class Moderators(Base):
@@ -71,52 +53,62 @@ class Moderators(Base):
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
-    project_id: Mapped[UUID] = mapped_column(
+    user_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
-    platform: Mapped[str] = mapped_column(String, nullable=False)
-    state: Mapped[str] = mapped_column(
-        String, nullable=False, default=ModeratorState.OFFLINE.value
-    )
-    deployed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
+    guideline_id: Mapped[str] = mapped_column(
+        SaUUID(as_uuid=True), ForeignKey("guidelines.guideline_id"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
 
     # Relationships
-    messages: Mapped[list["Messages"]] = relationship(
+    messages: Mapped[list["MessagesEvaluations"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
-    project: Mapped["Projects"] = relationship(back_populates="moderators")
+    deployments: Mapped[list["ModeratorDeployments"]] = relationship(
+        back_populates="moderator", cascade="all, delete-orphan"
+    )
+    user: Mapped["Users"] = relationship(back_populates="moderators")
 
 
-class Messages(Base):
+class ModeratorDeployments(Base):
+    __tablename__ = "moderator_deployments"
+
+    deployment_id: Mapped[UUID] = mapped_column(
+        SaUUID(as_uuid=True), nullable=False, default=get_uuid
+    )
+    moderator_id: Mapped[UUID] = mapped_column(
+        SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
+    )
+    platform: Mapped[str] = mapped_column(String, nullable=False)
+    state: Mapped[str] = mapped_column(
+        String, nullable=False, default=ModeratorDeploymentState.OFFLINE.value
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=get_datetime
+    )
+
+    # Relationships
+    moderator: Mapped[list["Moderators"]] = relationship(back_populates="deployments")
+
+
+class MessagesEvaluations(Base):
     __tablename__ = "messages"
 
     message_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
-    project_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), ForeignKey("projects.project_id"), nullable=False
-    )
-    moderator_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=True
-    )
-
+    moderator_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     platform: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
-
     embedding: Mapped[list[float]] = mapped_column(Vector(1536))
-
-    evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False)
-
+    breach_type: Mapped[str] = mapped_column(String, nullable=False)
+    breach_score: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
 
     # Relationships
-    project: Mapped["Projects"] = relationship(backref="messages")
-    moderator: Mapped["Moderators"] = relationship(back_populates="messages")
