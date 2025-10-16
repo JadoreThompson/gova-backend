@@ -100,7 +100,7 @@ async def deploy_moderator(
     return rsp_body
 
 
-@router.get("/")
+@router.get("/", response_model=PaginatedResponse[ModeratorResponse])
 async def list_moderators(
     page: int = Query(ge=1),
     jwt: JWTPayload = Depends(depends_jwt),
@@ -112,8 +112,10 @@ async def list_moderators(
         .offset((page - 1) * 10)
         .limit(PAGE_SIZE + 1)
     )
+    
     mods = res.all()
     n = len(res)
+
     return PaginatedResponse[ModeratorResponse](
         page=page,
         size=min(n, PAGE_SIZE),
