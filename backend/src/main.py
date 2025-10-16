@@ -3,14 +3,13 @@ from uuid import uuid4
 
 import uvicorn
 
-from config import DISCORD_BOT_TOKEN
-
 
 def main():
     uvicorn.run("server.app:app", host="localhost", port=8000, reload=True)
 
 
 async def test():
+    # from config import DISCORD_BOT_TOKEN
     # from engine.discord.moderator import DiscordModerator
     # from engine.discord.stream import DiscordStream
 

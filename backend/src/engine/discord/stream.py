@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import AsyncIterator
 
 import discord
@@ -7,14 +8,18 @@ from engine.base_stream import BaseChatStream
 from .context import DiscordMessageContext, DiscordServer
 
 
+logger = logging.getLogger("discord-stream")
+
+
 class DiscordStream(BaseChatStream):
-    def __init__(self, token: str, guild_id: int) -> None:
+    def __init__(self, token: str, guild_id: int, allowed_channels: list[int]) -> None:
+        super().__init__()
         self._token = token
         self._guild_id = guild_id
+        self._allowed_channels = set(allowed_channels)
         self._client: discord.Client | None = None
         self._msg_queue: asyncio.Queue[discord.Message] = asyncio.Queue()
         self._task: asyncio.Task | None = None
-        super().__init__()
 
     def _build_client(self) -> None:
         intents = discord.Intents.default()
@@ -23,11 +28,14 @@ class DiscordStream(BaseChatStream):
 
         @self._client.event
         async def on_ready():
-            print(f"We have logged in as {self._client.user}")
+            logger.info(f"Logged in as {self._client.user}")
 
         @self._client.event
         async def on_message(msg: discord.Message):
-            if msg.guild.id != self._guild_id:
+            if (
+                msg.guild.id != self._guild_id
+                or msg.channel.id not in self._allowed_channels
+            ):
                 return
 
             self._msg_queue.put_nowait(msg)

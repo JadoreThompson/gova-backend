@@ -35,7 +35,6 @@ class DeploymentListener:
     def listen(self) -> None:
         for m in self._kafka_consumer:
             try:
-                print(m)
                 event = DeploymentEvent(**loads(m.value.decode()))
                 if not self._ev:
                     self._handle_event(event)
@@ -59,8 +58,10 @@ class DeploymentListener:
             mid, conf = res.first()
 
         config = DiscordConfig(**conf)
-        stream = DiscordStream(DISCORD_BOT_TOKEN, config.guild_id)
-        mod = DiscordModerator(moderator_id=mid, stream=stream, config=config)
+        stream = DiscordStream(
+            DISCORD_BOT_TOKEN, config.guild_id, config.allowed_channels.copy()
+        )
+        mod = DiscordModerator(mid, stream, config)
         self._ev = threading.Event()
         self._th = threading.Thread(
             target=self._target,

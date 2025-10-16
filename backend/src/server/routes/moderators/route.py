@@ -81,8 +81,6 @@ async def deploy_moderator(
         .returning(ModeratorDeployments)
     )
 
-    print(vars(dep))
-
     rsp_body = ModeratorDeploymentResponse(
         deployment_id=dep.deployment_id,
         moderator_id=moderator_id,

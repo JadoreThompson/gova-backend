@@ -1,12 +1,12 @@
 import asyncio
-from json import JSONDecodeError
 import logging
+from json import JSONDecodeError
 
 from aiohttp import ClientSession, ClientError
 from pydantic import ValidationError
 
-from engine.enums import MaliciousState
 from config import LLM_API_KEY, LLM_BASE_URL, SECURITY_SYSTEM_PROMPT
+from engine.enums import MaliciousState
 from utils.llm import fetch_response, parse_to_json
 
 logger = logging.getLogger("prompt_validator")
@@ -62,8 +62,11 @@ class PromptValidator:
                     asyncio.TimeoutError,
                     ValidationError,
                     JSONDecodeError,
-                ):
-                    pass
+                    ValueError,
+                ) as e:
+                    logger.info(
+                        f"Attempt {attempt + 1} failed. Error -> {type(e)} - {str(e)}"
+                    )
                 finally:
                     attempt += 1
 

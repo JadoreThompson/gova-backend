@@ -11,7 +11,6 @@ from engine.base_moderator import BaseModerator
 from engine.models import TopicEvaluation, MessageContext, MessageEvaluation
 from engine.enums import MaliciousState
 from engine.prompt_validator import PromptValidator
-from .actions import BanAction, DiscordActionType, MuteAction
 from .config import DiscordConfig
 from .stream import DiscordStream
 
@@ -32,12 +31,11 @@ class DiscordModerator(BaseModerator):
         self._load_embedding_model()
 
         async for ctx in self._stream:
-            eval = await self._evaluate(ctx)
-            print("Eval", eval)
-            if not eval:
+            evaluation = await self._evaluate(ctx)
+            if not evaluation:
                 continue
 
-            await self._save_evaluation(eval, ctx)
+            await self._save_evaluation(evaluation, ctx)
 
     async def _evaluate(
         self, ctx: MessageContext, max_attempts: int = 3
@@ -83,7 +81,7 @@ class DiscordModerator(BaseModerator):
                     [{"role": "user", "content": prompt}]
                 )
 
-                eval = MessageEvaluation(
+                evaluation = MessageEvaluation(
                     **data,
                     topic_evaluations=[
                         TopicEvaluation(topic=key, topic_score=val)
@@ -92,14 +90,14 @@ class DiscordModerator(BaseModerator):
                 )
                 msgs.append(data)
 
-                return eval
+                return evaluation
             except (
                 ClientError,
                 asyncio.TimeoutError,
                 json.JSONDecodeError,
                 ValueError,
             ) as e:
-                print(type(e), str(e))
+                self._logger.info(f"Attempt {attempt + 1} failed. Error -> {type(e)} - {str(e)}")
             finally:
                 attempt += 1
 
