@@ -1,3 +1,4 @@
+from discord import Message as DiscordMessage
 from pydantic import BaseModel
 
 from engine.models import MessageContext
@@ -10,7 +11,15 @@ class DiscordServer(BaseModel):
 
 
 class DiscordMessageContext(MessageContext):
+    model_config = {"arbitrary_types_allowed": True}
+    
     platform: MessagePlatformType = MessagePlatformType.DISCORD
-    server: DiscordServer  # The server the message ws sent in
-    channel: str  # The channel the message was sent in
-    user_id: int  # The user who sent the message
+    msg: DiscordMessage
+
+    def to_serialisable_dict(self):
+        self.msg = None
+        d = super().to_serialisable_dict()
+        d.pop("msg")
+        print(d)
+        return d
+

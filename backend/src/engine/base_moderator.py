@@ -7,11 +7,16 @@ from aiohttp import ClientSession
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import insert, select, update
 
-from backend.src.core.enums import ActionStatus
-from backend.src.engine.base_action import BaseAction
 from config import LLM_API_KEY, LLM_BASE_URL, SCORE_SYSTEM_PROMPT
-from core.models import CustomBaseModel
-from db_models import Guidelines, MessagesEvaluations, ModeratorLogs, Moderators
+from core.enums import ActionStatus, ModeratorDeploymentStatus
+from engine.base_action import BaseAction
+from db_models import (
+    Guidelines,
+    MessagesEvaluations,
+    ModeratorDeployments,
+    ModeratorLogs,
+    Moderators,
+)
 from engine.models import MessageContext, MessageEvaluation
 from utils.db import get_db_sess
 from utils.llm import fetch_response, parse_to_json
@@ -21,8 +26,12 @@ class BaseModerator:
     _embedding_model: SentenceTransformer | None = None
 
     def __init__(
-        self, moderator_id: UUID, logger: logging.Logger | None = None
+        self,
+        deployment_id: UUID,
+        moderator_id: UUID,
+        logger: logging.Logger | None = None,
     ) -> None:
+        self._deployment_id = deployment_id
         self._moderator_id = moderator_id
         self._logger = logger
         self._http_sess: ClientSession | None = None
@@ -59,7 +68,8 @@ class BaseModerator:
     async def _log_action(self, action: BaseAction) -> UUID:
         async with get_db_sess() as db_sess:
             res = await db_sess.scalar(
-                insert(ModeratorLogs).values(
+                insert(ModeratorLogs)
+                .values(
                     action_type=action.type,
                     params=action.to_serialisable_dict(),
                     status=(
@@ -72,14 +82,17 @@ class BaseModerator:
             )
 
             await db_sess.commit()
-        
+
         return res
-    
+
     async def _update_action_status(self, log_id: UUID, status: ActionStatus) -> None:
         async with get_db_sess() as db_sess:
-            await db_sess.execute(update(ModeratorLogs).values(status=status.value).where(ModeratorLogs.log_id == log_id))
+            await db_sess.execute(
+                update(ModeratorLogs)
+                .values(status=status.value)
+                .where(ModeratorLogs.log_id == log_id)
+            )
             await db_sess.commit()
-
 
     async def _save_evaluation(
         self, eval: MessageEvaluation, ctx: MessageContext
@@ -167,12 +180,23 @@ class BaseModerator:
 
         return topic_scores
 
+    async def _update_status(self, status: ModeratorDeploymentStatus) -> None:
+        async with get_db_sess() as db_sess:
+            await db_sess.execute(
+                update(ModeratorDeployments)
+                .values(state=status.value)
+                .where(ModeratorDeployments.deployment_id == self._deployment_id)
+            )
+            await db_sess.commit()
+
     async def __aenter__(self):
         self._http_sess = ClientSession(
             base_url=LLM_BASE_URL, headers={"Authorization": f"Bearer {LLM_API_KEY}"}
         )
+        await self._update_status(ModeratorDeploymentStatus.ONLINE)
         return self
 
     async def __aexit__(self, exc_type, exc_value, tcb) -> None:
         await self._http_sess.close()
         self._http_sess = None
+        await self._update_status(ModeratorDeploymentStatus.OFFLINE)

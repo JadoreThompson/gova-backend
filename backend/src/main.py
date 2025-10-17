@@ -1,5 +1,4 @@
 import asyncio
-from uuid import uuid4
 
 import uvicorn
 
@@ -9,15 +8,26 @@ def main():
 
 
 async def test():
-    # from config import DISCORD_BOT_TOKEN
-    # from engine.discord.moderator import DiscordModerator
-    # from engine.discord.stream import DiscordStream
+    from config import DISCORD_BOT_TOKEN
+    from engine.discord.actions import BanActionDefinition
+    from engine.discord.config import DiscordConfig
+    from engine.discord.moderator import DiscordModerator
 
-    # stream = DiscordStream(DISCORD_BOT_TOKEN, 1334317047995432980)
-    # mod = DiscordModerator("51387d42-f73a-4fbf-b9bf-c633afc3345d", stream)
-    # async with mod:
-    #     await mod.moderate()
+    mod = DiscordModerator(
+        "61897ee1-c58d-48e8-98a4-51e67dab2cc0",
+        "51387d42-f73a-4fbf-b9bf-c633afc3345d",
+        DISCORD_BOT_TOKEN,
+        DiscordConfig(
+            guild_id=1334317047995432980,
+            allowed_channels=[1334317050629460114],
+            allowed_actions=[BanActionDefinition(requires_approval=False)],
+        ),
+    )
+    async with mod:
+        await mod.moderate()
 
+
+async def test1():
     from engine.deployment_listener import DeploymentListener
 
     listener = DeploymentListener()
@@ -28,7 +38,11 @@ if __name__ == "__main__":
     import sys
 
     arg = sys.argv[1]
-    if arg == "1":
-        asyncio.run(test())
-    else:
-        main()
+    
+    try:
+        if arg == "1":
+            asyncio.run(test())
+        else:
+            main()
+    except KeyboardInterrupt:
+        sys.exit(1)

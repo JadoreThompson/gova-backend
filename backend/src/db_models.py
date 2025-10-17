@@ -89,7 +89,7 @@ class ModeratorDeployments(Base):
     )
     platform: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    conf: Mapped[dict] = mapped_column(JSONB, nullable=False) # The platform's config obj
     state: Mapped[str] = mapped_column(
         String, nullable=False, default=ModeratorDeploymentStatus.OFFLINE.value
     )
@@ -98,7 +98,7 @@ class ModeratorDeployments(Base):
     )
 
     # Relationships
-    moderator: Mapped[list["Moderators"]] = relationship(back_populates="deployments")
+    moderator: Mapped["Moderators"] = relationship(back_populates="deployments")
 
 
 class ModeratorLogs(Base):
@@ -118,7 +118,7 @@ class ModeratorLogs(Base):
     )
 
     # Relationships
-    moderator = relationship(back_populates="logs")
+    moderator: Mapped["Moderators"] = relationship(back_populates="logs")
 
 
 class MessagesEvaluations(Base):

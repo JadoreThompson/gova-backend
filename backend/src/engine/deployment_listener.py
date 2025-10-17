@@ -3,14 +3,8 @@ import threading
 from json import JSONDecodeError, loads
 
 from pydantic import ValidationError
-from sqlalchemy import select
 
-from db_models import ModeratorDeployments
-from engine.base_moderator import BaseModerator
-from engine.discord.config import DiscordConfig
-from engine.discord.moderator import DiscordModerator
 from kafka import KafkaConsumer
-
 from config import (
     DISCORD_BOT_TOKEN,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
@@ -18,8 +12,8 @@ from config import (
     KAFKA_PORT,
 )
 from core.events import DeploymentEvent
-from engine.discord.stream import DiscordStream
-from utils.db import get_db_sess_sync
+from engine.base_moderator import BaseModerator
+from engine.discord.moderator import DiscordModerator
 
 
 class DeploymentListener:
@@ -49,25 +43,15 @@ class DeploymentListener:
             self._th = None
 
     def _handle_event(self, event: DeploymentEvent) -> None:
-        with get_db_sess_sync() as db_sess:
-            res = db_sess.execute(
-                select(
-                    ModeratorDeployments.moderator_id, ModeratorDeployments.conf
-                ).where(ModeratorDeployments.deployment_id == event.deployment_id)
-            )
-            mid, conf = res.first()
-
-        config = DiscordConfig(**conf)
-        stream = DiscordStream(
-            DISCORD_BOT_TOKEN, config.guild_id, config.allowed_channels.copy()
+        mod = DiscordModerator(
+            event.deployment_id, event.moderator_id, DISCORD_BOT_TOKEN, event.conf
         )
-        mod = DiscordModerator(mid, stream, config)
         self._ev = threading.Event()
         self._th = threading.Thread(
             target=self._target,
             args=(mod,),
             daemon=True,
-            name="moderator-deployment-thread",
+            name=f"moderator-deployment-thread-{event.deployment_id}",
         )
         self._th.start()
 
