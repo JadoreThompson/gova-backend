@@ -1,5 +1,5 @@
+import DeploymentStatusCircle from "@/components/deployment-status-circle";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -10,7 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MessagePlatformType, ModeratorDeploymentState } from "@/openapi";
-import { ChevronLeft, ChevronRight, Loader2, SettingsIcon } from "lucide-react";
+import dayjs from 'dayjs';
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
 
 // Mocking Tanstack Query structure for the hook
@@ -181,28 +182,6 @@ function useDeploymentsQuery(params: {
 }
 // --- END MOCK HOOK IMPLEMENTATION ---
 
-// --- Helper Components ---
-
-/** Renders a stylized badge based on the deployment state. */
-const StatusBadge: FC<{ state: ModeratorDeploymentState }> = ({ state }) => {
-  const customVariantClass = useMemo(() => {
-    switch (state) {
-      case ModeratorDeploymentState.online:
-        return "bg-green-100 text-green-800 border-green-300 hover:bg-green-200";
-      case ModeratorDeploymentState.pending:
-        return "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200";
-      case ModeratorDeploymentState.offline:
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200";
-    }
-  }, [state]);
-
-  return (
-    <Badge variant="outline" className={`capitalize ${customVariantClass}`}>
-      {state}
-    </Badge>
-  );
-};
 
 /** Renders the pagination controls for the table. */
 interface TablePaginationProps {
@@ -217,34 +196,43 @@ const TablePagination: FC<TablePaginationProps> = ({
   hasNext,
   isFetching,
   setPage,
-}) => (
-  <div className="flex items-center justify-between space-x-2 px-2 py-4">
-    <div className="text-muted-foreground text-sm">
-      Showing page {page} of{" "}
-      {Math.ceil(MOCK_DEPLOYMENTS_LIST.length / MOCK_PAGE_SIZE)}
-    </div>
-    <div className="flex space-x-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setPage(page - 1)}
-        disabled={page <= 1 || isFetching}
-      >
-        <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setPage(page + 1)}
-        disabled={!hasNext || isFetching}
-      >
-        Next <ChevronRight className="ml-1 h-4 w-4" />
-      </Button>
-    </div>
-  </div>
-);
+}) => {
+  const nextDisabled = !hasNext || isFetching;
+  const prevDisabled = page <= 1 || isFetching;
 
-// --- Main Page Component ---
+  return (
+    <div className="flex items-center justify-between space-x-2 px-2 py-4">
+      <div className="text-muted-foreground text-sm">
+        Showing page {page} of{" "}
+        {Math.ceil(MOCK_DEPLOYMENTS_LIST.length / MOCK_PAGE_SIZE)}
+      </div>
+      <div className="flex space-x-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="!bg-transparent shadow-none"
+          onClick={() => setPage(page - 1)}
+          disabled={prevDisabled}
+        >
+          <ChevronLeft
+            className={`mr-1 h-4 w-4 ${nextDisabled ? "text-muted-foreground" : "text-primary"}`}
+          />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="!bg-transparent"
+          onClick={() => setPage(page + 1)}
+          disabled={nextDisabled}
+        >
+          <ChevronRight
+            className={`ml-1 h-4 w-4 ${nextDisabled ? "text-muted-foreground" : "text-primary"}`}
+          />
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const DeploymentsPage: FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -254,17 +242,23 @@ const DeploymentsPage: FC = () => {
   const { data, isLoading, isError, isFetching } = useDeploymentsQuery({
     page: currentPage,
   });
-
+  
   const deployments = data?.data || [];
   const hasNext = data?.has_next || false;
-
+  
   const handleSetPage = (page: number) => {
-    // Ensure page doesn't go below 1
     setCurrentPage(Math.max(1, page));
   };
 
-  // --- Render States ---
+  const getPlatformImageSrc = (value: MessagePlatformType) => {
+    switch (value) {
+      case "discord":
+        return "/src/assets/discord.png";
+      }
+    };
 
+  const formatDate = (value: string) => dayjs(value).format("YY-MM-DD")
+    
   if (isError) {
     return (
       <DashboardLayout>
@@ -284,27 +278,21 @@ const DeploymentsPage: FC = () => {
         {/* <Button>Deploy New</Button> */}
       </div>
 
-      <div className=" border bg-white shadow-lg dark:bg-gray-800">
+      <div className="border bg-transparent shadow-lg">
         <Table>
-          <TableHeader className="bg-gray-50 dark:bg-gray-700">
+          <TableHeader className="bg-gray-50 dark:bg-neutral-800">
             <TableRow>
-              <TableHead className="w-[250px] font-bold text-gray-700 dark:text-gray-200">
+              <TableHead className="w-200 font-bold text-gray-700 dark:text-gray-200">
                 Name
               </TableHead>
-              <TableHead className="font-bold text-gray-700 dark:text-gray-200">
+              <TableHead className="w-3 font-bold text-gray-700 dark:text-gray-200">
                 Platform
               </TableHead>
               <TableHead className="font-bold text-gray-700 dark:text-gray-200">
                 Status
               </TableHead>
-              <TableHead className="font-bold text-gray-700 dark:text-gray-200">
-                Config
-              </TableHead>
-              <TableHead className="font-bold text-gray-700 dark:text-gray-200">
-                Date Created
-              </TableHead>
               <TableHead className="text-right font-bold text-gray-700 dark:text-gray-200">
-                Actions
+                Date Created
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -340,41 +328,18 @@ const DeploymentsPage: FC = () => {
                   {deployment.name || "Unnamed Deployment"}
                 </TableCell>
                 <TableCell className="text-muted-foreground capitalize">
-                  {deployment.platform}
+                  <img
+                    src={getPlatformImageSrc(deployment.platform)}
+                    alt=""
+                    className="h-5 w-5"
+                  />
                 </TableCell>
                 <TableCell>
-                  <StatusBadge state={deployment.state} />
-                  {isFetching && (
-                    <span className="ml-2 flex items-center text-xs text-blue-500">
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    </span>
-                  )}
+                  <DeploymentStatusCircle status={deployment.state} />
                 </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="View Configuration"
-                    className="text-gray-500 hover:text-blue-600"
-                  >
-                    <SettingsIcon className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-                <TableCell className="text-sm text-gray-500 dark:text-gray-400">
-                  {/* {format(
-                    new Date(deployment.created_at),
-                    "MMM dd, yyyy HH:mm",
-                  )} */}
-                  {deployment.created_at}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    Details
-                  </Button>
+                <TableCell className="text-right text-sm text-gray-500 dark:text-gray-400">
+                  {/* {deployment.created_at} */}
+                  {formatDate(deployment.created_at)}
                 </TableCell>
               </TableRow>
             ))}
