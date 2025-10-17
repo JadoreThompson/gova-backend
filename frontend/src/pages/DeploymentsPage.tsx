@@ -1,6 +1,12 @@
 import DeploymentStatusCircle from "@/components/deployment-status-circle";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -10,9 +16,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MessagePlatformType, ModeratorDeploymentState } from "@/openapi";
-import dayjs from 'dayjs';
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import dayjs from "dayjs";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CirclePlus,
+  Loader2,
+  Search,
+} from "lucide-react";
 import { type FC, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 // Mocking Tanstack Query structure for the hook
 // In a real project, this dependency would be imported: import { useQuery } from "@tanstack/react-query";
@@ -182,7 +195,6 @@ function useDeploymentsQuery(params: {
 }
 // --- END MOCK HOOK IMPLEMENTATION ---
 
-
 /** Renders the pagination controls for the table. */
 interface TablePaginationProps {
   page: number;
@@ -234,7 +246,115 @@ const TablePagination: FC<TablePaginationProps> = ({
   );
 };
 
+const DeploymentsFilters = () => {
+  const [search, setSearch] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    ModeratorDeploymentState[]
+  >([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<
+    MessagePlatformType[]
+  >([]);
+
+  const statusOptions: ModeratorDeploymentState[] = [
+    ModeratorDeploymentState.offline,
+    ModeratorDeploymentState.pending,
+    ModeratorDeploymentState.online,
+  ];
+
+  const platformOptions: MessagePlatformType[] = [
+    MessagePlatformType.discord,
+    // Add others if needed, e.g., MessagePlatformType.slack, etc.
+  ];
+
+  const toggleStatus = (value: ModeratorDeploymentState) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value],
+    );
+  };
+
+  const togglePlatform = (value: MessagePlatformType) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(value) ? prev.filter((p) => p !== value) : [...prev, value],
+    );
+  };
+
+  return (
+    <div className="mb-6 flex h-7 w-full gap-1">
+      {/* Search Input */}
+      <div className="bg-secondary flex h-full w-fit items-center justify-center gap-1 rounded-sm border p-1">
+        <Search size={15} />
+        <Input
+          type="text"
+          name="prefix"
+          id="prefix"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search..."
+          className="!focus:ring-0 h-full w-60 border-none !bg-transparent !ring-0 !shadow-none"
+        />
+      </div>
+
+      {/* Status Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <span className="bg-muted flex w-24 cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-600 text-sm font-semibold">
+            <CirclePlus size={15} />
+            Status
+          </span>
+        </PopoverTrigger>
+        <PopoverContent className="w-40 p-2">
+          <div className="flex flex-col gap-2">
+            {statusOptions.map((status) => (
+              <label
+                key={status}
+                className="text-foreground flex h-6 cursor-pointer items-center gap-2 p-1 text-sm"
+              >
+                <Input
+                  type="checkbox"
+                  checked={selectedStatuses.includes(status)}
+                  onInput={() => toggleStatus(status)}
+                  className="w-5"
+                />
+                <span className="capitalize">{status}</span>
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Platform Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <span className="bg-muted flex w-28 cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-600 text-sm font-semibold">
+            <CirclePlus size={15} />
+            Platform
+          </span>
+        </PopoverTrigger>
+        <PopoverContent className="w-40 p-2">
+          <div className="flex flex-col gap-2">
+            {platformOptions.map((platform) => (
+              <label
+                key={platform}
+                className="h-7 text-foreground flex cursor-pointer items-center justify-start gap-2 p-1 text-sm"
+              >
+                <Input
+                  type="checkbox"
+                  checked={selectedPlatforms.includes(platform)}
+                  onInput={() => togglePlatform(platform)}
+                  className="w-5"
+                />
+                <span className="capitalize">{platform}</span>
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 const DeploymentsPage: FC = () => {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
 
   // NOTE: In a real environment, replace this mock hook with:
@@ -242,10 +362,10 @@ const DeploymentsPage: FC = () => {
   const { data, isLoading, isError, isFetching } = useDeploymentsQuery({
     page: currentPage,
   });
-  
+
   const deployments = data?.data || [];
   const hasNext = data?.has_next || false;
-  
+
   const handleSetPage = (page: number) => {
     setCurrentPage(Math.max(1, page));
   };
@@ -254,11 +374,11 @@ const DeploymentsPage: FC = () => {
     switch (value) {
       case "discord":
         return "/src/assets/discord.png";
-      }
-    };
+    }
+  };
 
-  const formatDate = (value: string) => dayjs(value).format("YY-MM-DD")
-    
+  const formatDate = (value: string) => dayjs(value).format("YY-MM-DD");
+
   if (isError) {
     return (
       <DashboardLayout>
@@ -278,6 +398,7 @@ const DeploymentsPage: FC = () => {
         {/* <Button>Deploy New</Button> */}
       </div>
 
+      <DeploymentsFilters />
       <div className="border bg-transparent shadow-lg">
         <Table>
           <TableHeader className="bg-gray-50 dark:bg-neutral-800">
@@ -322,6 +443,7 @@ const DeploymentsPage: FC = () => {
             {deployments.map((deployment: DeploymentResponse) => (
               <TableRow
                 key={deployment.deployment_id}
+                onClick={() => navigate(`/deployment/${deployment.deployment_id}`)}
                 className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <TableCell className="font-medium text-gray-900 dark:text-gray-100">
