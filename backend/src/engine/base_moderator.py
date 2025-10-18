@@ -1,13 +1,13 @@
-import json
 import logging
 from abc import abstractmethod
+from enum import Enum
 from uuid import UUID
 
 from aiohttp import ClientSession
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import insert, select, update
 
-from config import LLM_API_KEY, LLM_BASE_URL, SCORE_SYSTEM_PROMPT
+from config import LLM_API_KEY, LLM_BASE_URL, SCORE_PROMPT_TEMPLATE, SCORE_SYSTEM_PROMPT
 from core.enums import ActionStatus, ModeratorDeploymentStatus
 from db_models import (
     Guidelines,
@@ -20,7 +20,7 @@ from engine.base_action import BaseAction
 from engine.models import MessageContext, MessageEvaluation
 from engine.task_pool import TaskPool
 from utils.db import get_db_sess
-from utils.llm import fetch_response
+from utils.llm import fetch_response, parse_to_json
 
 
 class BaseModerator:
@@ -48,7 +48,6 @@ class BaseModerator:
             return
         self._embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
 
-
     async def _fetch_guidelines(self) -> tuple[str, list[str]]:
         async with get_db_sess() as db_sess:
             res = await db_sess.execute(
@@ -67,12 +66,17 @@ class BaseModerator:
             res = await db_sess.scalar(
                 insert(ModeratorLogs)
                 .values(
-                    action_type=action.type,
-                    params=action.to_serialisable_dict(),
+                    moderator_id=self._moderator_id,
+                    action_type=(
+                        action.type.value
+                        if isinstance(action.type, Enum)
+                        else action.type
+                    ),
+                    action_params=action.to_serialisable_dict(),
                     status=(
-                        ActionStatus.AWAITING_APPROVAL
+                        ActionStatus.AWAITING_APPROVAL.value
                         if action.requires_approval
-                        else ActionStatus.PENDING
+                        else ActionStatus.PENDING.value
                     ),
                 )
                 .returning(ModeratorLogs.log_id)
@@ -123,22 +127,26 @@ class BaseModerator:
             await db_sess.execute(insert(MessagesEvaluations), records)
             await db_sess.commit()
 
-    async def _fetch_topic_scores(self, ctx: MessageContext, topics: list[str]):
-        sys_prompt = SCORE_SYSTEM_PROMPT.format(
-            guidelines=self._guidelines, topics=topics
+    async def _fetch_topic_scores(
+        self, ctx: MessageContext, topics: list[str]
+    ) -> dict[str, float]:
+        prompt = SCORE_PROMPT_TEMPLATE.format(
+            guidelines=self._guidelines,
+            topics=topics,
+            message=ctx.content,
+            context=ctx.to_serialisable_dict(),
         )
-        topic_scores: dict[str, float] = await fetch_response(
+        data: dict[str, float] = await fetch_response(
             [
-                {"role": "system", "content": sys_prompt},
-                {
-                    "role": "user",
-                    "content": json.dumps(ctx.to_serialisable_dict()),
-                },
+                {"role": "system", "content": SCORE_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
             ]
         )
-        return topic_scores
+        return parse_to_json(data["choices"][0]["message"]["content"])
 
-    async def _fetch_similar(self, text: str, distance: float = 0.5) -> tuple[tuple[str, float], ...]:
+    async def _fetch_similar(
+        self, text: str, distance: float = 0.5
+    ) -> tuple[tuple[str, float], ...]:
         embedding = self._embedding_model.encode([text])[0]
         async with get_db_sess() as db_sess:
             res = await db_sess.scalars(

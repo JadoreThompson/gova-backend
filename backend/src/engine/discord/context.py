@@ -1,8 +1,7 @@
-from discord import Message as DiscordMessage
 from pydantic import BaseModel
 
-from engine.models import MessageContext
 from core.enums import MessagePlatformType
+from engine.models import MessageContext
 
 
 class DiscordServer(BaseModel):
@@ -10,16 +9,14 @@ class DiscordServer(BaseModel):
     id: int
 
 
+class DiscordContext(BaseModel):
+    """A replacement for discord.Message"""
+
+    user_id: int
+    channel_id: int
+    guild_id: int
+
+
 class DiscordMessageContext(MessageContext):
-    model_config = {"arbitrary_types_allowed": True}
-    
     platform: MessagePlatformType = MessagePlatformType.DISCORD
-    msg: DiscordMessage
-
-    def to_serialisable_dict(self):
-        self.msg = None
-        d = super().to_serialisable_dict()
-        d.pop("msg")
-        print(d)
-        return d
-
+    discord: DiscordContext

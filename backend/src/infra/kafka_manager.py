@@ -7,7 +7,7 @@ class KafkaManager:
     _producer: AIOKafkaProducer | None = None
 
     @classmethod
-    async def start(cls):
+    async def start(cls) -> None:
         if not cls._producer:
             cls._producer = AIOKafkaProducer(
                 bootstrap_servers=f"{KAFKA_HOST}:{KAFKA_PORT}"
@@ -15,10 +15,18 @@ class KafkaManager:
             await cls._producer.start()
 
     @classmethod
-    async def stop(cls):
+    async def stop(cls) -> None:
         if cls._producer:
             await cls._producer.stop()
 
     @classmethod
-    def get_producer(cls):
+    def get_producer(cls) -> AIOKafkaProducer | None:
         return cls._producer
+
+
+async def func():
+    await KafkaManager.start()
+    prod = await KafkaManager.get_producer()
+
+# import asyncio
+# asyncio.run(func())

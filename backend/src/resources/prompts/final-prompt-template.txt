@@ -1,0 +1,17 @@
+Guidelines:
+{guidelines}
+
+Topics:
+{topics}
+
+Topic Scores:
+{topic_scores}
+
+Message:
+{message}
+
+Action Formats:
+{action_formats}
+
+Context:
+{context}

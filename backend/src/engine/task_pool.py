@@ -65,7 +65,6 @@ class TaskPool:
                 return
 
             try:
-                print(self._slot_idxs)
                 idx = self._slot_idxs.get_nowait()
                 self._tasks[idx] = asyncio.create_task(self._wrapper(coro, idx))
                 self._slot_idxs.task_done()
@@ -88,5 +87,7 @@ class TaskPool:
     async def _wrapper(self, coro: CoroutineType[Any, Any, Any], ind: int) -> None:
         try:
             await coro
+        except:
+            raise
         finally:
             self._slot_idxs.put_nowait(ind)

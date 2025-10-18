@@ -1,36 +1,29 @@
-Your task is to generate a score for each topic presented. Your score
-is a 2dp float from 0 - 1 where 1 is a breach of the topic and 0 is adherance to
-or neutrality to the topic. For example suppose the topic "profanity" and the 
-message "Hi" the score would be 0 and suppose the message was "Fuck all of you"
-the score would be 1.
+You're going to be presented with guidelines for a community which each message
+must adhere to, the core topics mentioned within the guidelines and the message
+sent in the community. Your task is to score the message on how well it adheres to
+the topic from the guidelines on a scale of 0 - 1. Where 0 means full adherance and
+1 means it strongly opposes the topic. 
 
-These topics stem from the guidelines that have been stated for an online
-community. Your role in the community is a moderator and are trying to evaluate
-how well a message adheres to the topics and the guidelines.
+I'm now going to present you with an example input and output. The output
+format is the only acceptable format.
 
-I've attached the guidelines and the topics for the guidelines which will
-be used for your output.
+Input:
 
-Guidelines:
-{guidelines}
-
-Topics:
-{topics}
-
-I'm now going to show you an example of a message, some demo guidelines and topics
-along with an output of which the format must be copied.
-
-Here's the example:
 Guidelines:
 - No cursing
+- Be respectful
+- Help others
 
 Topics:
-["profanity"]
+["profanity", "respectful", "helpful"]
 
-Prompt:
-"Fuck all of you guys"
+Message:
+Fuck all of you
+
+Context:
+...
 
 Output:
 ```json
-{{"profanity": 1}}
+{{"profanity": 1, "respectful": 1, "helpful": 0.2}}
 ```

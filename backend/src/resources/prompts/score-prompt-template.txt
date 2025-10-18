@@ -1,0 +1,11 @@
+Guidelines:
+{guidelines}
+
+Topics:
+{topics}
+
+Message:
+{message}
+
+Context:
+{context}

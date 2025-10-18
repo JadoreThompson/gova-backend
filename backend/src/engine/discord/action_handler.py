@@ -4,10 +4,10 @@ from logging import Logger
 import discord
 
 from engine.base_action import BaseAction
+from engine.base_action_handler import BaseActionHandler
 from engine.discord.actions import BanAction, DiscordActionType, MuteAction
 from engine.discord.context import DiscordMessageContext
 from engine.exc import UnkownActionExc
-from engine.base_action_handler import BaseActionHandler
 
 
 class DiscordActionHandler(BaseActionHandler):
@@ -33,29 +33,18 @@ class DiscordActionHandler(BaseActionHandler):
         Ban a user from a Discord guild.
         """
         try:
-            guild = ctx.msg.guild
+            guild = await self._fetch_guild(ctx.discord.guild_id)
+            member = await self._fetch_member(action.user_id, guild)
 
-            member = guild.get_member(action.user_id)
-            if member is None:
-                try:
-                    user = await self._client.fetch_user(action.user_id)
-                except discord.NotFound:
-                    self.logger.error(
-                        f"Failed to ban user {action.user_id}. User not found on Discord."
-                    )
-                    return False
-            else:
-                user = member
-
-            await guild.ban(user, reason=action.reason)
+            await guild.ban(member, reason=action.reason)
             self.logger.info(
-                f"Banned user {user} from guild '{guild.name}'. Reason: {action.reason}"
+                f"Banned user {member} from guild '{guild.name}'. Reason: {action.reason}"
             )
             return True
 
         except discord.Forbidden:
             self.logger.error(
-                f"Insufficient permissions to ban user {action.user_id}. Guild: {ctx.msg.guild.name}"
+                f"Insufficient permissions to ban user {action.user_id}. Guild: {guild.name}"
             )
         except discord.HTTPException as e:
             self.logger.error(f"Ban failed due to HTTP exception: {e}")
@@ -72,14 +61,8 @@ class DiscordActionHandler(BaseActionHandler):
         Temporarily mute a user in a Discord guild using Discord's timeout feature.
         """
         try:
-            guild = ctx.msg.guild
-            member = guild.get_member(action.user_id)
-
-            if member is None:
-                self.logger.error(
-                    f"Failed to mute user {action.user_id}. User not found in guild {guild.name}."
-                )
-                return False
+            guild = await self._fetch_guild(ctx.discord.guild_id)
+            member = await self._fetch_member(action.user_id, guild)
 
             duration_seconds = action.duration / 1000
             timeout_until = timedelta(seconds=duration_seconds)
@@ -97,3 +80,29 @@ class DiscordActionHandler(BaseActionHandler):
         except Exception as e:
             self.logger.exception(f"Unexpected error muting user {action.user_id}: {e}")
         return False
+
+    async def _fetch_guild(self, guild_id: int) -> discord.Guild | None:
+        guild = self._client.get_guild(guild_id)
+        if guild:
+            return guild
+
+        try:
+            guild = await self._client.fetch_guild(guild_id)
+        except discord.NotFound:
+            self.logger.error(f"Failed to find sever {guild_id}.")
+            return
+
+    async def _fetch_member(
+        self, user_id: int, guild: discord.Guild
+    ) -> discord.Member | None:
+        member = guild.get_member(user_id)
+        if member:
+            return member
+
+        try:
+            return await guild.fetch_member(user_id)
+        except discord.NotFound:
+            self.logger.error(
+                f"Failed to find user {user_id}. User not found on Discord."
+            )
+            return

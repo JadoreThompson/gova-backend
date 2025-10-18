@@ -9,7 +9,7 @@ def main():
 
 async def test():
     from config import DISCORD_BOT_TOKEN
-    from engine.discord.actions import BanActionDefinition
+    from engine.discord.actions import BanActionDefinition, MuteActionDefinition
     from engine.discord.config import DiscordConfig
     from engine.discord.moderator import DiscordModerator
 
@@ -20,7 +20,7 @@ async def test():
         DiscordConfig(
             guild_id=1334317047995432980,
             allowed_channels=[1334317050629460114],
-            allowed_actions=[BanActionDefinition(requires_approval=False)],
+            allowed_actions=[MuteActionDefinition(requires_approval=False)],
         ),
     )
     async with mod:
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     import sys
 
     arg = sys.argv[1]
-    
+
     try:
         if arg == "1":
             asyncio.run(test())

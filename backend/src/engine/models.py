@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from core.enums import MessagePlatformType
 from core.models import CustomBaseModel
-from engine.base_action import BaseAction
+from engine.discord.actions import DiscordAction
 
 
 class MessageContext(CustomBaseModel):
@@ -18,4 +18,4 @@ class TopicEvaluation(BaseModel):
 class MessageEvaluation(CustomBaseModel):
     evaluation_score: float
     topic_evaluations: list[TopicEvaluation]
-    action: BaseAction | None
+    action: DiscordAction | None

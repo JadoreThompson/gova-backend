@@ -51,18 +51,22 @@ JWT_EXPIRY = timedelta(days=1000)
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_AGENT_ID = os.getenv("LLM_AGENT_ID")
 LLM_BASE_URL = "https://api.mistral.ai/v1/"
-LLM_MODEL_NAME = "mistral-tiny"
+LLM_MODEL_NAME = "open-mixtral-8x22b"
 
 
 # Prompts
+with open(os.path.join(PROMPTS_PATH, "security-system-prompt.txt")) as f:
+    SECURITY_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "topic-system-prompt.txt")) as f:
     TOPICS_SYSTEM_PROMPT = f.read()
 with open(os.path.join(PROMPTS_PATH, "score-system-prompt.txt")) as f:
     SCORE_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "security-system-prompt.txt")) as f:
-    SECURITY_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "final-prompt.txt")) as f:
-    FINAL_PROMPT = f.read()
+with open(os.path.join(PROMPTS_PATH, "score-prompt-template.txt")) as f:
+    SCORE_PROMPT_TEMPLATE = f.read()
+with open(os.path.join(PROMPTS_PATH, "final-system-prompt.txt")) as f:
+    FINAL_SYSTEM_PROMPT = f.read()
+with open(os.path.join(PROMPTS_PATH, "final-prompt-template.txt")) as f:
+    FINAL_PROMPT_TEMPLATE = f.read()
 
 
 # Discord

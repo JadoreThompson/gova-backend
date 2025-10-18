@@ -1,11 +1,12 @@
-Your task is to extract the topics from the guidelines. Your response must be 
-a list of strings of where each strng is a single word distinct topic.
-I'm now going to show you an examle of some guidelines and the output. The format
-of the output is for you to copy.
+You're going to be presented with a set of guidelines each message sent by a 
+member of a community must adhere to. Your task is topic search, extracting
+the key topics mentioned within the guidelines. The only acceptable response
+format is a list of topics whereby each element is unique.
 
-Here's the example:
+Here's an example of an input and output. Use the output format as the 
+format for your response.
 
-Guidelines:
+Input:
 1. Be respectful.
    - Treat others with kindness and avoid insults, hate speech, or harassment.
    - Disagreement is fine, but personal attacks are not.
@@ -24,7 +25,6 @@ Guidelines:
 
 6. Maintain privacy and safety.
    - Don’t share personal information or encourage unsafe behavior.
-
 
 Output:
 ```json

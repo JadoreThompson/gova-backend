@@ -1,22 +1,24 @@
 import asyncio
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
 import discord
 from aiohttp import ClientError
 
 import engine.discord.actions as actions_module
+from config import FINAL_PROMPT_TEMPLATE, FINAL_SYSTEM_PROMPT
 from core.enums import ActionStatus
-from config import FINAL_PROMPT
 from engine.base_moderator import BaseModerator
+from engine.discord.actions import BanAction, DiscordAction, DiscordActionType, MuteAction
 from engine.discord.action_handler import DiscordActionHandler
 from engine.discord.context import DiscordMessageContext
 from engine.enums import MaliciousState
 from engine.models import TopicEvaluation, MessageEvaluation
 from engine.prompt_validator import PromptValidator
 from engine.task_pool import TaskPool
-from utils.llm import fetch_response
+from utils.llm import fetch_response, parse_to_json
 from .config import DiscordConfig
 from .stream import DiscordStream
 
@@ -65,12 +67,13 @@ class DiscordModerator(BaseModerator):
         evaluation = await self._evaluate(ctx)
         if not evaluation:
             return
-        
+
         await self._save_evaluation(evaluation, ctx)
 
         if evaluation.action:
             action = evaluation.action
-            log_id = await self._log_action()
+            self._logger.info(f"Performing action '{action.type}'")
+            log_id = await self._log_action(action)
 
             if action.requires_approval:
                 await self._update_action_status(log_id, ActionStatus.AWAITING_APPROVAL)
@@ -81,7 +84,7 @@ class DiscordModerator(BaseModerator):
 
     async def _evaluate(
         self, ctx: DiscordMessageContext, max_attempts: int = 3
-    ) -> MessageEvaluation:
+    ) -> MessageEvaluation | None:
         self._logger.info("Validating prompt")
         mal_state = await PromptValidator.validate_prompt(ctx.content)
         if mal_state == MaliciousState.MALICIOUS:
@@ -93,17 +96,16 @@ class DiscordModerator(BaseModerator):
             self._guidelines, self._topics = await self._fetch_guidelines()
 
         self._logger.info("Building actions list.")
-        allowed_actions = tuple(a.type.value for a in self._config.allowed_actions)
         action_formats = []
-        for a in allowed_actions:
-            ac = actions_module.__dict__.get(a)
+        for a in self._config.allowed_actions:
+            name = a.__class__.__name__.replace("Definition", "")
+            ac = actions_module.__dict__.get(name)
             if ac:
                 action_formats.append(ac.model_json_schema())
 
         self._logger.info("Fetching eval.")
         attempt = 0
         while attempt < max_attempts:
-            msgs = []
             try:
                 similars = await self._fetch_similar(ctx.content)
                 if similars:
@@ -111,30 +113,39 @@ class DiscordModerator(BaseModerator):
                 else:
                     topic_scores = await self._fetch_topic_scores(ctx, self._topics)
 
-                msgs.append(topic_scores)
-
                 # Final Output
-                prompt = FINAL_PROMPT.format(
+                prompt = FINAL_PROMPT_TEMPLATE.format(
                     guidelines=self._guidelines,
                     topics=self._topics,
                     topic_scores=topic_scores,
-                    actions=allowed_actions,
                     message=ctx.content,
                     action_formats=action_formats,
                     context=ctx.to_serialisable_dict(),
                 )
-                data = await fetch_response(
-                    [{"role": "user", "content": prompt}]
+
+                content = await fetch_response(
+                    [
+                        {"role": "system", "content": FINAL_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ]
                 )
+                data = parse_to_json(content['choices'][0]['message']['content'])
+                
+                action_data = data.get("action")
+                if action_data:
+                    action_data['requires_approval'] = False
+                    action = self._build_action(action_data)
+                else:
+                    action = None
 
                 evaluation = MessageEvaluation(
-                    **data,
+                    evaluation_score=data['evaluation_score'],
+                    action=action,
                     topic_evaluations=[
                         TopicEvaluation(topic=key, topic_score=val)
                         for key, val in topic_scores.items()
                     ],
                 )
-                msgs.append(data)
 
                 return evaluation
             except (
@@ -146,9 +157,20 @@ class DiscordModerator(BaseModerator):
                 self._logger.info(
                     f"Attempt {attempt + 1} failed. Error -> {type(e)} - {str(e)}"
                 )
-                import traceback; traceback.print_exc()
+                import traceback
+
+                traceback.print_exc()
             finally:
                 attempt += 1
+
+    def _build_action(self, data: dict[str, Any]) -> DiscordAction:
+        typ = data.get('type')
+        
+        if typ == DiscordActionType.BAN:
+            return BanAction(**data)
+        if typ == DiscordActionType.MUTE:
+            return MuteAction(**data)
+        raise NotImplemented(f"Action type '{typ}' not implemented.")
 
     def __del__(self):
         if self._client_task:
