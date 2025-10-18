@@ -14,5 +14,5 @@ async def get_topics(text: str) -> list[str]:
             {"role": "user", "content": text},
         ]
     )
-    btypes = parse_to_json(data["choices"][0]["message"]["content"])
-    return btypes
+    topics = parse_to_json(data["choices"][0]["message"]["content"])
+    return topics

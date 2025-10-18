@@ -135,7 +135,7 @@ async def list_moderators(
     )
 
 
-@router.get("/{moderator_id}")
+@router.get("/{moderator_id}", response_model=ModeratorResponse)
 async def get_moderator(
     moderator_id: UUID,
     jwt: JWTPayload = Depends(depends_jwt),
@@ -156,7 +156,7 @@ async def get_moderator(
     )
 
 
-@router.put("/{moderator_id}")
+@router.put("/{moderator_id}", response_model=ModeratorResponse)
 async def update_moderator(
     moderator_id: UUID,
     body: ModeratorUpdate,

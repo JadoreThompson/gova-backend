@@ -1,10 +1,10 @@
-You're going to be presented with a set of guidelines each message sent by a 
-member of a community must adhere to. Your task is topic search, extracting
-the key topics mentioned within the guidelines. The only acceptable response
+You're going to be presented with a set of guidelines which each message sent by a 
+member of a community must adhere to. Your task, for each input, is topic search,
+extracting the key topics mentioned within the guidelines. The only acceptable response
 format is a list of topics whereby each element is unique.
 
-Here's an example of an input and output. Use the output format as the 
-format for your response.
+Here's an example of an input and output. The output format shown is the
+only acceptable format. Ensure you output has  the json markdown annotation.
 
 Input:
 1. Be respectful.

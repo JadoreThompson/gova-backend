@@ -19,5 +19,5 @@ class BaseActionDefinition(CustomBaseModel):
     parameters. Used in the platforms config for defining
     the allowed actions.
     """
-    type: Enum
+    type: Any # Enum
     requires_approval: bool

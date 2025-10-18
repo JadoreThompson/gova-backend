@@ -47,15 +47,21 @@ async def create_guideline(
 @router.get("/", response_model=PaginatedResponse[GuidelineResponse])
 async def list_guidelines(
     page: int = Query(ge=1),
+    search: str | None = None,
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    result = await db_sess.scalars(
+    query = (
         select(Guidelines)
         .where(Guidelines.user_id == jwt.sub)
+        .order_by(Guidelines.created_at.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
     )
+    if search:
+        query = query.where(Guidelines.name.like(f"%{search}%"))
+
+    result = await db_sess.scalars(query)
     rows = result.all()
     n = len(rows)
 
