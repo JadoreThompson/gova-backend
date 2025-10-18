@@ -1,9 +1,12 @@
+import type { ListGuidelinesGuidelinesGetParams } from "@/openapi";
+
 export const queryKeys = {
   // Global / General
   auth: () => ["auth"] as const,
 
   // Guidelines
-  guidelines: (params?: unknown) => ["guidelines", params] as const,
+  guidelines: (params?: ListGuidelinesGuidelinesGetParams) =>
+    ["guidelines", params] as const,
   guideline: (guidelineId: string) =>
     [...queryKeys.guidelines(), guidelineId] as const,
 

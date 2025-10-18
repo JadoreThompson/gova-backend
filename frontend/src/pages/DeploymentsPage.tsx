@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MessagePlatformType, ModeratorDeploymentState } from "@/openapi";
+import { MessagePlatformType, ModeratorDeploymentStatus } from "@/openapi";
 import dayjs from "dayjs";
 import {
   ChevronLeft,
@@ -54,7 +54,7 @@ export interface DeploymentResponse {
   platform: MessagePlatformType;
   name: string;
   conf: unknown;
-  state: ModeratorDeploymentState;
+  state: ModeratorDeploymentStatus;
   created_at: string;
 }
 
@@ -79,7 +79,7 @@ const mockDiscordConfig = {
 
 const createMockDeployment = (
   id: number,
-  state: ModeratorDeploymentState,
+  state: ModeratorDeploymentStatus,
   name: string,
 ): DeploymentResponse => ({
   deployment_id: `dep-${id.toString().padStart(3, "0")}`,
@@ -92,37 +92,53 @@ const createMockDeployment = (
 });
 
 const MOCK_DEPLOYMENTS_LIST: DeploymentResponse[] = [
-  createMockDeployment(1, ModeratorDeploymentState.online, "Discord Bot V1.2"),
-  createMockDeployment(2, ModeratorDeploymentState.online, "Community Mod 2.0"),
-  createMockDeployment(3, ModeratorDeploymentState.offline, "Archive 2023"),
+  createMockDeployment(1, ModeratorDeploymentStatus.online, "Discord Bot V1.2"),
+  createMockDeployment(
+    2,
+    ModeratorDeploymentStatus.online,
+    "Community Mod 2.0",
+  ),
+  createMockDeployment(3, ModeratorDeploymentStatus.offline, "Archive 2023"),
   createMockDeployment(
     4,
-    ModeratorDeploymentState.pending,
+    ModeratorDeploymentStatus.pending,
     "Test Deployment 4",
   ),
-  createMockDeployment(5, ModeratorDeploymentState.online, "Main Server Mod"),
-  createMockDeployment(6, ModeratorDeploymentState.offline, "Debug Instance X"),
+  createMockDeployment(5, ModeratorDeploymentStatus.online, "Main Server Mod"),
+  createMockDeployment(
+    6,
+    ModeratorDeploymentStatus.offline,
+    "Debug Instance X",
+  ),
   createMockDeployment(
     7,
-    ModeratorDeploymentState.online,
+    ModeratorDeploymentStatus.online,
     "High Traffic Guard",
   ),
-  createMockDeployment(8, ModeratorDeploymentState.pending, "Scheduled Update"),
-  createMockDeployment(9, ModeratorDeploymentState.online, "Discord Bot V1.3"),
-  createMockDeployment(10, ModeratorDeploymentState.offline, "Stale Instance"),
-  createMockDeployment(11, ModeratorDeploymentState.online, "Backup Moderator"),
+  createMockDeployment(
+    8,
+    ModeratorDeploymentStatus.pending,
+    "Scheduled Update",
+  ),
+  createMockDeployment(9, ModeratorDeploymentStatus.online, "Discord Bot V1.3"),
+  createMockDeployment(10, ModeratorDeploymentStatus.offline, "Stale Instance"),
+  createMockDeployment(
+    11,
+    ModeratorDeploymentStatus.online,
+    "Backup Moderator",
+  ),
   createMockDeployment(
     12,
-    ModeratorDeploymentState.pending,
+    ModeratorDeploymentStatus.pending,
     "New Feature Rollout",
   ),
   createMockDeployment(
     13,
-    ModeratorDeploymentState.online,
+    ModeratorDeploymentStatus.online,
     "Beta Channel Monitor",
   ),
-  createMockDeployment(14, ModeratorDeploymentState.offline, "Legacy System"),
-  createMockDeployment(15, ModeratorDeploymentState.online, "Deployment 15"),
+  createMockDeployment(14, ModeratorDeploymentStatus.offline, "Legacy System"),
+  createMockDeployment(15, ModeratorDeploymentStatus.online, "Deployment 15"),
 ];
 
 const MOCK_PAGE_SIZE = 5;
@@ -249,16 +265,16 @@ const TablePagination: FC<TablePaginationProps> = ({
 const DeploymentsFilters = () => {
   const [search, setSearch] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<
-    ModeratorDeploymentState[]
+    ModeratorDeploymentStatus[]
   >([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<
     MessagePlatformType[]
   >([]);
 
-  const statusOptions: ModeratorDeploymentState[] = [
-    ModeratorDeploymentState.offline,
-    ModeratorDeploymentState.pending,
-    ModeratorDeploymentState.online,
+  const statusOptions: ModeratorDeploymentStatus[] = [
+    ModeratorDeploymentStatus.offline,
+    ModeratorDeploymentStatus.pending,
+    ModeratorDeploymentStatus.online,
   ];
 
   const platformOptions: MessagePlatformType[] = [
@@ -266,7 +282,7 @@ const DeploymentsFilters = () => {
     // Add others if needed, e.g., MessagePlatformType.slack, etc.
   ];
 
-  const toggleStatus = (value: ModeratorDeploymentState) => {
+  const toggleStatus = (value: ModeratorDeploymentStatus) => {
     setSelectedStatuses((prev) =>
       prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value],
     );
@@ -290,7 +306,7 @@ const DeploymentsFilters = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search..."
-          className="!focus:ring-0 h-full w-60 border-none !bg-transparent !ring-0 !shadow-none"
+          className="!focus:ring-0 h-full w-60 border-none !bg-transparent !shadow-none !ring-0"
         />
       </div>
 
@@ -335,7 +351,7 @@ const DeploymentsFilters = () => {
             {platformOptions.map((platform) => (
               <label
                 key={platform}
-                className="h-7 text-foreground flex cursor-pointer items-center justify-start gap-2 p-1 text-sm"
+                className="text-foreground flex h-7 cursor-pointer items-center justify-start gap-2 p-1 text-sm"
               >
                 <Input
                   type="checkbox"
@@ -443,7 +459,9 @@ const DeploymentsPage: FC = () => {
             {deployments.map((deployment: DeploymentResponse) => (
               <TableRow
                 key={deployment.deployment_id}
-                onClick={() => navigate(`/deployment/${deployment.deployment_id}`)}
+                onClick={() =>
+                  navigate(`/deployment/${deployment.deployment_id}`)
+                }
                 className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <TableCell className="font-medium text-gray-900 dark:text-gray-100">

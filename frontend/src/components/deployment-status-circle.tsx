@@ -1,11 +1,11 @@
-import  { cn } from "@/lib/utils";
-import type { ModeratorDeploymentState } from "@/openapi";
+import { cn } from "@/lib/utils";
+import type { ModeratorDeploymentStatus } from "@/openapi";
 import type { FC } from "react";
 
-const DeploymentStatusCircle: FC<{ status: ModeratorDeploymentState }> = ({
+const DeploymentStatusCircle: FC<{ status: ModeratorDeploymentStatus }> = ({
   status,
 }) => {
-  const getColorClass = (value: ModeratorDeploymentState) => {
+  const getColorClass = (value: ModeratorDeploymentStatus) => {
     switch (value) {
       case "online":
         return {

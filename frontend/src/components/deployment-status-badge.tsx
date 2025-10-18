@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
-import type { ModeratorDeploymentState } from "@/openapi";
+import type { ModeratorDeploymentStatus } from "@/openapi";
 import type { FC } from "react";
 
-const DeploymentStatusBadge: FC<{ status: ModeratorDeploymentState }> = ({
+const DeploymentStatusBadge: FC<{ status: ModeratorDeploymentStatus }> = ({
   status,
 }) => {
-  const getClassName = (value: ModeratorDeploymentState) => {
+  const getClassName = (value: ModeratorDeploymentStatus) => {
     switch (value) {
       case "offline":
         return `

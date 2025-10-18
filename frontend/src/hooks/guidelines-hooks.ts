@@ -13,7 +13,7 @@ import {
   type ListGuidelinesGuidelinesGetParams,
   type PaginatedResponseGuidelineResponse,
 } from "@/openapi";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 export function useGuidelinesQuery(params: ListGuidelinesGuidelinesGetParams) {
   return useQuery<PaginatedResponseGuidelineResponse>({
@@ -23,29 +23,6 @@ export function useGuidelinesQuery(params: ListGuidelinesGuidelinesGetParams) {
   });
 }
 
-export function useInfiniteGuidelinesQuery(
-  params?: Omit<ListGuidelinesGuidelinesGetParams, "page">,
-) {
-  const baseKey = queryKeys.guidelines(params);
-
-  return useInfiniteQuery<PaginatedResponseGuidelineResponse>({
-    queryKey: baseKey,
-    queryFn: async ({ pageParam = 1 }) =>
-      handleApi(
-        await listGuidelinesGuidelinesGet({
-          ...params,
-          page: pageParam as number,
-        }),
-      ),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      if (lastPage.has_next) {
-        return lastPage.page + 1;
-      }
-      return undefined;
-    },
-  });
-}
 
 export function useGuidelineQuery(guidelineId?: string) {
   return useQuery<GuidelineResponse>({

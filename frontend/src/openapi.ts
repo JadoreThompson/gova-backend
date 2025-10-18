@@ -5,13 +5,23 @@
  * OpenAPI spec version: 0.1.0
  */
 import { customFetch } from "./lib/custom-fetch";
+/**
+ * The client facing model(s) which allow prefilling
+parameters. Used in the platforms config for defining
+the allowed actions.
+ */
+export interface BaseActionDefinition {
+  type: unknown;
+  requires_approval: boolean;
+}
+
 export interface DeploymentResponse {
   deployment_id: string;
   moderator_id: string;
   platform: MessagePlatformType;
   name: string;
-  conf: DiscordConfigOutput;
-  state: ModeratorDeploymentState;
+  conf: DiscordConfig;
+  status: ModeratorDeploymentStatus;
   created_at: string;
 }
 
@@ -26,30 +36,10 @@ export interface DeploymentUpdate {
   conf?: DeploymentUpdateConf;
 }
 
-export interface DiscordAction {
-  type: DiscordActionType;
-  reason: string;
-}
-
-export type DiscordActionType =
-  (typeof DiscordActionType)[keyof typeof DiscordActionType];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DiscordActionType = {
-  ban: "ban",
-  mute: "mute",
-} as const;
-
-export interface DiscordConfigInput {
+export interface DiscordConfig {
   guild_id: number;
   allowed_channels: number[];
-  allowed_actions: DiscordAction[];
-}
-
-export interface DiscordConfigOutput {
-  guild_id: number;
-  allowed_channels: number[];
-  allowed_actions: DiscordAction[];
+  allowed_actions: BaseActionDefinition[];
 }
 
 export interface GuidelineCreate {
@@ -105,16 +95,16 @@ export interface ModeratorDeploymentResponse {
   deployment_id: string;
   moderator_id: string;
   platform: MessagePlatformType;
-  conf: DiscordConfigOutput;
-  state: ModeratorDeploymentState;
+  conf: DiscordConfig;
+  status: ModeratorDeploymentStatus;
   created_at: string;
 }
 
-export type ModeratorDeploymentState =
-  (typeof ModeratorDeploymentState)[keyof typeof ModeratorDeploymentState];
+export type ModeratorDeploymentStatus =
+  (typeof ModeratorDeploymentStatus)[keyof typeof ModeratorDeploymentStatus];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const ModeratorDeploymentState = {
+export const ModeratorDeploymentStatus = {
   offline: "offline",
   pending: "pending",
   online: "online",
@@ -148,6 +138,13 @@ export interface PaginatedResponseGuidelineResponse {
   size: number;
   has_next: boolean;
   data: GuidelineResponse[];
+}
+
+export interface PaginatedResponseModeratorResponse {
+  page: number;
+  size: number;
+  has_next: boolean;
+  data: ModeratorResponse[];
 }
 
 export interface UserCreate {
@@ -184,6 +181,7 @@ export type ListGuidelinesGuidelinesGetParams = {
    * @minimum 1
    */
   page: number;
+  search?: string | null;
 };
 
 export type ListModeratorsModeratorsGetParams = {
@@ -820,7 +818,7 @@ export const createModeratorModeratorsPost = async (
  * @summary List Moderators
  */
 export type listModeratorsModeratorsGetResponse200 = {
-  data: unknown;
+  data: PaginatedResponseModeratorResponse;
   status: 200;
 };
 
@@ -925,7 +923,7 @@ export const deployModeratorModeratorsDeployModeratorIdPost = async (
  * @summary Get Moderator
  */
 export type getModeratorModeratorsModeratorIdGetResponse200 = {
-  data: unknown;
+  data: ModeratorResponse;
   status: 200;
 };
 
@@ -970,7 +968,7 @@ export const getModeratorModeratorsModeratorIdGet = async (
  * @summary Update Moderator
  */
 export type updateModeratorModeratorsModeratorIdPutResponse200 = {
-  data: unknown;
+  data: ModeratorResponse;
   status: 200;
 };
 
