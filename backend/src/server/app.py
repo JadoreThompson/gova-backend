@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from infra.kafka_manager import KafkaManager
 from server.routes.auth.route import router as auth_router
@@ -13,8 +14,15 @@ async def lifespan(app: FastAPI):
     await KafkaManager.stop()
 
 
-
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
 
 app.include_router(auth_router)
 app.include_router(deployments_router)
