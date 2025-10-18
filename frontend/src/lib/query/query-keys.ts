@@ -1,7 +1,7 @@
 import type { ListGuidelinesGuidelinesGetParams } from "@/openapi";
 
 export const queryKeys = {
-  // Global / General
+  // Auth
   auth: () => ["auth"] as const,
 
   // Guidelines

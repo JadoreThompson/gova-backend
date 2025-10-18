@@ -270,7 +270,7 @@ const GuidelinesPage: FC = () => {
         <h4 className="text-xl font-semibold">Guidelines</h4>
       </div>
 
-      <div className="mb-6 flex h-10 w-full items-center justify-between">
+      <div className="mb-6 flex h-8 w-full items-center justify-between">
         <Button
           variant="outline"
           className="h-full text-sm"
