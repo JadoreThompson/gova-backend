@@ -138,12 +138,12 @@ class BaseModerator:
         )
         return topic_scores
 
-    async def _fetch_similar(self, text: str) -> tuple[tuple[str, float], ...]:
+    async def _fetch_similar(self, text: str, distance: float = 0.5) -> tuple[tuple[str, float], ...]:
         embedding = self._embedding_model.encode([text])[0]
         async with get_db_sess() as db_sess:
             res = await db_sess.scalars(
                 select(MessagesEvaluations).where(
-                    MessagesEvaluations.embedding.l2_distance(embedding) < 0.5,
+                    MessagesEvaluations.embedding.l2_distance(embedding) < distance,
                     MessagesEvaluations.topic.in_(self._topics),
                 )
             )
