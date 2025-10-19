@@ -24,6 +24,7 @@ class ModeratorUpdate(ModeratorBase):
 class ModeratorResponse(ModeratorBase):
     moderator_id: UUID
     created_at: datetime
+    deployment_platforms: list[MessagePlatformType]
 
 
 class ModeratorDeploymentCreate(CustomBaseModel):

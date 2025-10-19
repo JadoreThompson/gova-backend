@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 
 from aiokafka import AIOKafkaProducer
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, insert, update, delete
+from sqlalchemy import func, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
@@ -109,9 +109,20 @@ async def list_moderators(
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    res = await db_sess.scalars(
-        select(Moderators)
+    res = await db_sess.execute(
+        select(
+            Moderators,
+            func.array_agg(func.distinct(ModeratorDeployments.platform)).label(
+                "platforms"
+            ),
+        )
+        .join(
+            ModeratorDeployments,
+            ModeratorDeployments.moderator_id == Moderators.moderator_id,
+            isouter=True,
+        )
         .where(Moderators.user_id == jwt.sub)
+        .group_by(Moderators.moderator_id)
         .order_by(Moderators.created_at.desc())
         .offset((page - 1) * 10)
         .limit(PAGE_SIZE + 1)
@@ -130,8 +141,9 @@ async def list_moderators(
                 guideline_id=m.guideline_id,
                 name=m.name,
                 created_at=m.created_at,
+                deployment_platforms=deployment_plats,
             )
-            for m in mods[:PAGE_SIZE]
+            for m, deployment_plats in mods[:PAGE_SIZE]
         ],
     )
 
