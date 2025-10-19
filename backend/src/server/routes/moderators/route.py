@@ -64,7 +64,7 @@ async def create_moderator(
     return rsp_body
 
 
-@router.post("/deploy/{moderator_id}", response_model=DeploymentResponse)
+@router.post("/{moderator_id}/deploy", response_model=DeploymentResponse)
 async def deploy_moderator(
     moderator_id: UUID,
     body: DeploymentCreate,
