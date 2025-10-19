@@ -50,6 +50,9 @@ class Guidelines(Base):
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
 
+    # Relationships
+    moderators: Mapped[list['Moderators']] = relationship(back_populates="guideline")
+
 
 class Moderators(Base):
     __tablename__ = "moderators"
@@ -76,6 +79,7 @@ class Moderators(Base):
     logs: Mapped[list["ModeratorLogs"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
+    guideline: Mapped['Guidelines']  = relationship(back_populates="moderators")
 
 
 class ModeratorDeployments(Base):

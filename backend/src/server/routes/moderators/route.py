@@ -112,12 +112,13 @@ async def list_moderators(
     res = await db_sess.scalars(
         select(Moderators)
         .where(Moderators.user_id == jwt.sub)
+        .order_by(Moderators.created_at.desc())
         .offset((page - 1) * 10)
         .limit(PAGE_SIZE + 1)
     )
 
     mods = res.all()
-    n = len(res)
+    n = len(mods)
 
     return PaginatedResponse[ModeratorResponse](
         page=page,
@@ -126,8 +127,8 @@ async def list_moderators(
         data=[
             ModeratorResponse(
                 moderator_id=m.moderator_id,
+                guideline_id=m.guideline_id,
                 name=m.name,
-                guidline_id=m.guideline_id,
                 created_at=m.created_at,
             )
             for m in mods[:PAGE_SIZE]
