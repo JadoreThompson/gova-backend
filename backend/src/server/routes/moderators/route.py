@@ -105,11 +105,12 @@ async def deploy_moderator(
 
 @router.get("/", response_model=PaginatedResponse[ModeratorResponse])
 async def list_moderators(
+    name: str | None = None,
     page: int = Query(ge=1),
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    res = await db_sess.execute(
+    query = (
         select(
             Moderators,
             func.array_agg(func.distinct(ModeratorDeployments.platform)).label(
@@ -122,7 +123,13 @@ async def list_moderators(
             isouter=True,
         )
         .where(Moderators.user_id == jwt.sub)
-        .group_by(Moderators.moderator_id)
+    )
+
+    if name:
+        query = query.where(Moderators.name.like(f"%{name}%"))
+
+    res = await db_sess.execute(
+        query.group_by(Moderators.moderator_id)
         .order_by(Moderators.created_at.desc())
         .offset((page - 1) * 10)
         .limit(PAGE_SIZE + 1)
