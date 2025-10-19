@@ -5,6 +5,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import PAGE_SIZE
+from core.enums import MessagePlatformType, ModeratorDeploymentStatus
 from db_models import ModeratorDeployments, Moderators
 from server.dependencies import depends_db_sess, depends_jwt
 from server.models import PaginatedResponse
@@ -15,20 +16,33 @@ from .models import DeploymentUpdate, DeploymentResponse
 router = APIRouter(prefix="/deployments", tags=["Moderator Deployments"])
 
 
-
 @router.get("/", response_model=PaginatedResponse[DeploymentResponse])
 async def list_deployments(
     page: int = Query(ge=1),
+    name: str | None = None,
+    status: list[ModeratorDeploymentStatus] | None = None,
+    platform: list[MessagePlatformType] | None = None,
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    res = await db_sess.scalars(
+    query = (
         select(ModeratorDeployments)
         .join(Moderators, ModeratorDeployments.moderator_id == Moderators.moderator_id)
         .where(Moderators.user_id == jwt.sub)
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
     )
+
+    if name:
+        query = query.where(ModeratorDeployments.name.like(f"%{name}%"))
+    if status is not None:
+        query = query.where(ModeratorDeployments.state.in_([s.value for s in status]))
+    if platform is not None:
+        query = query.where(
+            ModeratorDeployments.platform.in_([p.value for p in platform])
+        )
+
+    res = await db_sess.scalars(query)
 
     deployments = res.all()
     n = len(deployments)
@@ -61,7 +75,10 @@ async def get_deployment(
     dep = await db_sess.scalar(
         select(ModeratorDeployments)
         .join(Moderators, ModeratorDeployments.moderator_id == Moderators.moderator_id)
-        .where(ModeratorDeployments.deployment_id == deployment_id, Moderators.user_id == jwt.sub)
+        .where(
+            ModeratorDeployments.deployment_id == deployment_id,
+            Moderators.user_id == jwt.sub,
+        )
     )
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment not found")
@@ -100,7 +117,9 @@ async def update_deployment(
         .returning(ModeratorDeployments)
     )
     if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found or unauthorized.")
+        raise HTTPException(
+            status_code=404, detail="Deployment not found or unauthorized."
+        )
 
     # TODO: Emit event to kafka channel
 
@@ -135,7 +154,9 @@ async def delete_deployment(
     )
 
     if not res:
-        raise HTTPException(status_code=404, detail="Deployment not found or unauthorized.")
+        raise HTTPException(
+            status_code=404, detail="Deployment not found or unauthorized."
+        )
 
     await db_sess.commit()
     return {"message": "Deployment deleted successfully"}
