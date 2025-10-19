@@ -2,26 +2,24 @@ import { queryClient } from "@/lib/query/query-client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { handleApi } from "@/lib/utils/base";
 import {
-    createModeratorModeratorsPost,
-    deleteModeratorModeratorsModeratorIdDelete,
-    deployModeratorModeratorsDeployModeratorIdPost,
-    getModeratorModeratorsModeratorIdGet,
-    listModeratorsModeratorsGet,
-    updateModeratorModeratorsModeratorIdPut,
-    type ListModeratorsModeratorsGetParams,
-    type ModeratorCreate,
-    type ModeratorDeploymentCreate,
-    type ModeratorDeploymentResponse,
-    type ModeratorResponse,
-    type ModeratorUpdate,
+  createModeratorModeratorsPost,
+  deleteModeratorModeratorsModeratorIdDelete,
+  deployModeratorModeratorsDeployModeratorIdPost,
+  getModeratorModeratorsModeratorIdGet,
+  listModeratorsModeratorsGet,
+  updateModeratorModeratorsModeratorIdPut,
+  type ListModeratorsModeratorsGetParams,
+  type ModeratorCreate,
+  type ModeratorDeploymentCreate,
+  type ModeratorDeploymentResponse,
+  type ModeratorResponse,
+  type ModeratorUpdate,
+  type PaginatedResponseModeratorResponse,
 } from "@/openapi";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-type ListModeratorsSuccessData = unknown;
-type GetModeratorSuccessData = unknown;
-
 export function useModeratorsQuery(params: ListModeratorsModeratorsGetParams) {
-  return useQuery<ListModeratorsSuccessData>({
+  return useQuery<PaginatedResponseModeratorResponse>({
     queryKey: queryKeys.moderators(params),
     queryFn: async () => handleApi(await listModeratorsModeratorsGet(params)),
     enabled: !!params.page,
@@ -29,14 +27,13 @@ export function useModeratorsQuery(params: ListModeratorsModeratorsGetParams) {
 }
 
 export function useModeratorQuery(moderatorId?: string) {
-  return useQuery<GetModeratorSuccessData>({
-    queryKey: queryKeys.moderator(moderatorId || "placeholder"),
+  return useQuery<ModeratorResponse>({
+    queryKey: queryKeys.moderator(moderatorId!),
     queryFn: async () =>
       handleApi(await getModeratorModeratorsModeratorIdGet(moderatorId!)),
     enabled: !!moderatorId,
   });
 }
-
 
 export function useCreateModeratorMutation() {
   return useMutation<ModeratorResponse, Error, ModeratorCreate>({

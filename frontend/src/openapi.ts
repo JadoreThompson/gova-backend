@@ -15,6 +15,19 @@ export interface BaseActionDefinition {
   requires_approval: boolean;
 }
 
+export type BodyListDeploymentsDeploymentsGetStatus =
+  | ModeratorDeploymentStatus[]
+  | null;
+
+export type BodyListDeploymentsDeploymentsGetPlatform =
+  | MessagePlatformType[]
+  | null;
+
+export interface BodyListDeploymentsDeploymentsGet {
+  status?: BodyListDeploymentsDeploymentsGetStatus;
+  platform?: BodyListDeploymentsDeploymentsGetPlatform;
+}
+
 export interface DeploymentResponse {
   deployment_id: string;
   moderator_id: string;
@@ -115,6 +128,7 @@ export interface ModeratorResponse {
   guideline_id: string;
   moderator_id: string;
   created_at: string;
+  deployment_platforms: MessagePlatformType[];
 }
 
 export type ModeratorUpdateName = string | null;
@@ -174,6 +188,7 @@ export type ListDeploymentsDeploymentsGetParams = {
    * @minimum 1
    */
   page: number;
+  name?: string | null;
 };
 
 export type ListGuidelinesGuidelinesGetParams = {
@@ -185,6 +200,7 @@ export type ListGuidelinesGuidelinesGetParams = {
 };
 
 export type ListModeratorsModeratorsGetParams = {
+  name?: string | null;
   /**
    * @minimum 1
    */
@@ -379,6 +395,7 @@ export const getListDeploymentsDeploymentsGetUrl = (
 };
 
 export const listDeploymentsDeploymentsGet = async (
+  bodyListDeploymentsDeploymentsGet: BodyListDeploymentsDeploymentsGet,
   params: ListDeploymentsDeploymentsGetParams,
   options?: RequestInit,
 ): Promise<listDeploymentsDeploymentsGetResponse> => {
@@ -387,6 +404,8 @@ export const listDeploymentsDeploymentsGet = async (
     {
       ...options,
       method: "GET",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(bodyListDeploymentsDeploymentsGet),
     },
   );
 };

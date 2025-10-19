@@ -1,4 +1,7 @@
-import type { ListGuidelinesGuidelinesGetParams } from "@/openapi";
+import type {
+  ListGuidelinesGuidelinesGetParams,
+  ListModeratorsModeratorsGetParams,
+} from "@/openapi";
 
 export const queryKeys = {
   // Auth
@@ -11,7 +14,8 @@ export const queryKeys = {
     [...queryKeys.guidelines(), guidelineId] as const,
 
   // Moderators
-  moderators: (params?: unknown) => ["moderators", params] as const,
+  moderators: (params?: ListModeratorsModeratorsGetParams) =>
+    ["moderators", params] as const,
   moderator: (moderatorId: string) =>
     [...queryKeys.moderators(), moderatorId] as const,
 

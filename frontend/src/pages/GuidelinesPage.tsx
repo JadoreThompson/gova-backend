@@ -18,6 +18,7 @@ import {
   useCreateGuidelineMutation,
   useGuidelinesQuery,
 } from "@/hooks/guidelines-hooks";
+import { formatDate } from "@/lib/utils/utils";
 import dayjs from "dayjs";
 import { ArrowDown, ArrowUp, Minus, PlusCircle, Search, X } from "lucide-react";
 import { useState, type FC } from "react";
@@ -105,7 +106,7 @@ const GuidelinesTable: FC<
             >
               <TableCell className="font-medium">{g.name}</TableCell>
               <TableCell className="text-muted-foreground text-sm">
-                {dayjs(g.created_at).format("YYYY-MM-DD HH:mm")}
+                {formatDate(g.created_at)}{" "}
               </TableCell>
               <TableCell className="flex flex-wrap gap-1 py-3">
                 {g.topics.slice(0, 3).map((topic) => (

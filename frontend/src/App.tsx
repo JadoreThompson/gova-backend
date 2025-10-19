@@ -3,6 +3,7 @@ import DeploymentPage from "./pages/DeploymentPage";
 import DeploymentsPage from "./pages/DeploymentsPage";
 import GuidelinesPage from "./pages/GuidelinesPage";
 import HomePage from "./pages/HomePage";
+import ModeratorPage from "./pages/ModeratorPage";
 import ModeratorsPage from "./pages/ModeratorsPage";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           />
           <Route path="/guidelines" element={<GuidelinesPage />} />
           <Route path="/moderators" element={<ModeratorsPage />} />
+          <Route path="/moderators/:moderatorId" element={<ModeratorPage />} />
         </Routes>
       </BrowserRouter>
     </>

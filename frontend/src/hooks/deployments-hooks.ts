@@ -2,49 +2,26 @@ import { queryClient } from "@/lib/query/query-client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { handleApi } from "@/lib/utils/base";
 import {
-    deleteDeploymentDeploymentsDeploymentIdDelete,
-    getDeploymentDeploymentsDeploymentIdGet,
-    listDeploymentsDeploymentsGet,
-    updateDeploymentDeploymentsDeploymentIdPut,
-    type DeploymentResponse,
-    type DeploymentUpdate,
-    type ListDeploymentsDeploymentsGetParams,
-    type PaginatedResponseDeploymentResponse,
+  deleteDeploymentDeploymentsDeploymentIdDelete,
+  getDeploymentDeploymentsDeploymentIdGet,
+  listDeploymentsDeploymentsGet,
+  updateDeploymentDeploymentsDeploymentIdPut,
+  type BodyListDeploymentsDeploymentsGet,
+  type DeploymentResponse,
+  type DeploymentUpdate,
+  type ListDeploymentsDeploymentsGetParams,
+  type PaginatedResponseDeploymentResponse,
 } from "@/openapi";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 export function useDeploymentsQuery(
-  params: ListDeploymentsDeploymentsGetParams,
+  params: ListDeploymentsDeploymentsGetParams &
+    BodyListDeploymentsDeploymentsGet,
 ) {
   return useQuery<PaginatedResponseDeploymentResponse>({
     queryKey: queryKeys.deployments(params),
-    queryFn: async () => handleApi(await listDeploymentsDeploymentsGet(params)),
+    queryFn: async () => handleApi(await listDeploymentsDeploymentsGet({status: params.status, platform: params.platform}, params)),
     enabled: !!params.page,
-  });
-}
-
-export function useInfiniteDeploymentsQuery(
-  params?: Omit<ListDeploymentsDeploymentsGetParams, "page">,
-) {
-  const baseKey = queryKeys.deployments(params);
-
-  return useInfiniteQuery<PaginatedResponseDeploymentResponse>({
-    queryKey: baseKey,
-    queryFn: async ({ pageParam = 1 }) =>
-      handleApi(
-        await listDeploymentsDeploymentsGet({
-          ...params,
-          page: pageParam as number,
-        }),
-      ),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      if (lastPage.has_next) {
-        return lastPage.page + 1;
-      }
-      return undefined;
-    },
   });
 }
 
