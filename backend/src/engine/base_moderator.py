@@ -1,13 +1,24 @@
+import asyncio
+import json
 import logging
 from abc import abstractmethod
 from enum import Enum
+from json import JSONDecodeError
 from uuid import UUID
 
 from aiohttp import ClientSession
+from aiokafka import AIOKafkaConsumer
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import insert, select, update
 
-from config import LLM_API_KEY, LLM_BASE_URL, SCORE_PROMPT_TEMPLATE, SCORE_SYSTEM_PROMPT
+from config import (
+    KAFKA_BOOTSTRAP_SERVER,
+    KAFKA_DEPLOYMENT_EVENTS_TOPIC,
+    LLM_API_KEY,
+    LLM_BASE_URL,
+    SCORE_PROMPT_TEMPLATE,
+    SCORE_SYSTEM_PROMPT,
+)
 from core.enums import ActionStatus, ModeratorDeploymentStatus
 from db_models import (
     Guidelines,
@@ -40,9 +51,47 @@ class BaseModerator:
         self._topics: list[str] | None = None
         self._guidelines: str | None = None
         self._task_pool = TaskPool()
+        self._moderate_task: asyncio.Task | None = None
 
     @abstractmethod
     async def moderate(self) -> None: ...
+
+    async def run(self) -> None:
+        if self._moderate_task:
+            raise RuntimeError("Moderator is already running.")
+
+        try:
+            self._moderate_task = asyncio.create_task(self.moderate())
+            await self._listen_to_events()
+        except asyncio.CancelledError:
+            pass
+
+    async def _listen_to_events(self) -> None:
+        self._consumer = AIOKafkaConsumer(
+            KAFKA_DEPLOYMENT_EVENTS_TOPIC,
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
+            auto_offset_reset="latest",
+        )
+
+        await self._consumer.start()
+
+        try:
+            async for m in self._consumer:
+                try:
+                    data = json.loads(m.value.decode())
+                    
+                    if (
+                        data.get("type") == "stop"
+                        and data.get("deployment_id") == str(self._deployment_id)
+                    ):
+                        self._moderate_task.cancel()
+                        await self._moderate_task
+                except JSONDecodeError:
+                    pass
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await self._consumer.stop()
 
     def _load_embedding_model(self) -> None:
         if self._embedding_model:
@@ -110,7 +159,6 @@ class BaseModerator:
         """
         embedding = self._embedding_model.encode([ctx.content])[0]
 
-
         async with get_db_sess() as db_sess:
             message_id = await db_sess.scalar(
                 insert(Messages)
@@ -122,7 +170,7 @@ class BaseModerator:
                 )
                 .returning(Messages.message_id)
             )
-            
+
             records = [
                 {
                     "message_id": message_id,
@@ -206,6 +254,7 @@ class BaseModerator:
         self._http_sess = ClientSession(
             base_url=LLM_BASE_URL, headers={"Authorization": f"Bearer {LLM_API_KEY}"}
         )
+        self._load_embedding_model()
         await self._update_status(ModeratorDeploymentStatus.ONLINE)
         return self
 

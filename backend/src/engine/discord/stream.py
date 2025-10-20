@@ -4,6 +4,7 @@ from typing import AsyncIterator, Literal
 
 import discord
 
+from config import DISCORD_BOT_TOKEN
 from engine.base_stream import BaseChatStream
 from .context import DiscordMessageContext, DiscordContext
 
@@ -14,22 +15,21 @@ logger = logging.getLogger("discord-stream")
 class DiscordStream(BaseChatStream):
     def __init__(
         self,
-        client: discord.Client,
         guild_id: int,
         allowed_channels: list[int | Literal["*"]],
     ) -> None:
         super().__init__()
-        self._client: discord.Client = client
         self._guild_id = guild_id
         self._allowed_channels = set(allowed_channels)
         self._allowed_all_channels = allowed_channels[0] == "*"
         self._msg_queue: asyncio.Queue[discord.Message] = asyncio.Queue()
+        self._task: asyncio.Task | None = None
 
     @property
     def client(self) -> discord.Client | None:
         return self._client
 
-    def append_events(self) -> None:
+    def register_events(self) -> None:
         @self._client.event
         async def on_ready():
             logger.info(f"Logged in as {self._client.user}")
@@ -50,15 +50,34 @@ class DiscordStream(BaseChatStream):
             if msg.content.startswith("$hello"):
                 await msg.channel.send("Hello!")
 
+    async def _start_client(self) -> None:
+        intents = discord.Intents.default()
+        intents.message_content = True
+
+        self._client = discord.Client(intents=intents)
+        self.register_events()
+        self._task = asyncio.create_task(self._client.start(token=DISCORD_BOT_TOKEN))
+
     async def __aiter__(self) -> AsyncIterator[DiscordMessageContext]:
-        while True:
-            item = await self._msg_queue.get()
-            ctx = DiscordMessageContext(
-                discord=DiscordContext(
-                    user_id=item.author.id,
-                    channel_id=item.channel.id,
-                    guild_id=item.guild.id,
-                ),
-                content=item.content,
-            )
-            yield ctx
+        await self._start_client()
+
+        try:
+            while True:
+                item = await self._msg_queue.get()
+                ctx = DiscordMessageContext(
+                    discord=DiscordContext(
+                        user_id=item.author.id,
+                        channel_id=item.channel.id,
+                        guild_id=item.guild.id,
+                    ),
+                    content=item.content,
+                )
+                yield ctx
+        finally:
+            if self._task and not self._task.done():
+                self._task.cancel()
+                await self._task
+                await self._client.close()
+
+            self._client = None
+            self._msg_queue.shutdown()

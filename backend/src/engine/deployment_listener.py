@@ -1,37 +1,46 @@
 import asyncio
+import logging
 import threading
 from json import JSONDecodeError, loads
 
+from kafka import KafkaConsumer, KafkaProducer
 from pydantic import ValidationError
 
-from kafka import KafkaConsumer
 from config import (
     DISCORD_BOT_TOKEN,
+    KAFKA_BOOTSTRAP_SERVER,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
-    KAFKA_HOST,
-    KAFKA_PORT,
 )
-from core.events import DeploymentEvent
+from core.events import CreateDeploymentEvent, DeploymentEvent
 from engine.base_moderator import BaseModerator
 from engine.discord.moderator import DiscordModerator
+
+
+logger = logging.getLogger("deployment_listener")
 
 
 class DeploymentListener:
     def __init__(self):
         self._kafka_consumer = KafkaConsumer(
             KAFKA_DEPLOYMENT_EVENTS_TOPIC,
-            bootstrap_servers=f"{KAFKA_HOST}:{KAFKA_PORT}",
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
             auto_offset_reset="latest",
         )
+        self._kafka_producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
         self._th: threading.Thread | None = None
         self._ev: threading.Event | None = None
 
     def listen(self) -> None:
         for m in self._kafka_consumer:
             try:
-                event = DeploymentEvent(**loads(m.value.decode()))
-                if not self._ev:
+                data = loads(m.value.decode())
+                
+                event_type = data.get("type")
+                print(self._th, self._ev)
+                if event_type == "start" and self._ev is None:
+                    event = CreateDeploymentEvent(**data)
                     self._handle_event(event)
+
             except (ValidationError, JSONDecodeError):
                 pass
 
@@ -43,6 +52,11 @@ class DeploymentListener:
             self._th = None
 
     def _handle_event(self, event: DeploymentEvent) -> None:
+        if event.type == "start":
+            return self._handle_start_deployment(event)
+        
+
+    def _handle_start_deployment(self, event: CreateDeploymentEvent) -> None:
         mod = DiscordModerator(
             event.deployment_id, event.moderator_id, DISCORD_BOT_TOKEN, event.conf
         )
@@ -65,16 +79,21 @@ class DeploymentListener:
         th.start()
 
         loop.run_until_complete(self._func(mod))
+        self._ev.set()
         th.join()
         loop.close()
+        
+        self._th = None
+        self._ev = None
 
     def _handle_ev(self, loop: asyncio.AbstractEventLoop) -> None:
         self._ev.wait()
+        
         loop.stop()
 
     async def _func(self, moderator: BaseModerator) -> None:
         async with moderator:
-            await moderator.moderate()
+            await moderator.run()
 
     def __del__(self) -> None:
         self.stop()

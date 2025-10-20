@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
 from core.enums import MessagePlatformType
-from core.events import DeploymentEvent
+from core.events import CreateDeploymentEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
@@ -108,7 +108,7 @@ async def deploy_moderator(
         created_at=dep.created_at,
     )
 
-    ev = DeploymentEvent(
+    ev = CreateDeploymentEvent(
         deployment_id=dep.deployment_id,
         moderator_id=dep.moderator_id,
         platform=body.platform,
