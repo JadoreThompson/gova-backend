@@ -18,13 +18,18 @@ class DiscordActionManager:
     _task: asyncio.Task | None = None
 
     @classmethod
-    def _initialise(cls) -> None: ...
+    def _register_events(cls) -> None:
+        if cls._client:
+            @cls._client.event
+            async def on_ready():
+                logger.info(f"Discord Manager logged in as {cls._client.user}.")
 
     @classmethod
     async def start(cls) -> None:
         if not cls._client:
             intents = discord.Intents.default()
             cls._client = discord.Client(intents=intents)
+            cls._register_events()
             cls._task = asyncio.create_task(cls._client.start(token=DISCORD_BOT_TOKEN))
 
         if not cls._handler:
