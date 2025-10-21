@@ -4,17 +4,17 @@ import { handleApi } from "@/lib/utils/base";
 import {
   createModeratorModeratorsPost,
   deleteModeratorModeratorsModeratorIdDelete,
-  deployModeratorModeratorsDeployModeratorIdPost,
+  deployModeratorModeratorsModeratorIdDeployPost,
   getDeploymentsModeratorsModeratorIdDeploymentsGet,
   getModeratorModeratorsModeratorIdGet,
   getModeratorStatsModeratorsModeratorIdStatsGet,
   listModeratorsModeratorsGet,
   updateModeratorModeratorsModeratorIdPut,
   type DeploymentCreate,
+  type DeploymentResponse,
   type GetDeploymentsModeratorsModeratorIdDeploymentsGetParams,
   type ListModeratorsModeratorsGetParams,
   type ModeratorCreate,
-  type ModeratorDeploymentResponse,
   type ModeratorResponse,
   type ModeratorStats,
   type ModeratorUpdate,
@@ -109,13 +109,13 @@ export function useDeleteModeratorMutation() {
 
 export function useDeployModeratorMutation() {
   return useMutation<
-    ModeratorDeploymentResponse,
+    DeploymentResponse,
     Error,
     { moderatorId: string; data: DeploymentCreate }
   >({
     mutationFn: async (params) =>
       handleApi(
-        await deployModeratorModeratorsDeployModeratorIdPost(
+        await deployModeratorModeratorsModeratorIdDeployPost(
           params.moderatorId,
           params.data,
         ),
