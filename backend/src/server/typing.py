@@ -18,4 +18,4 @@ class Identity(NamedTuple):
 class Guild(NamedTuple):
     id: int
     name: str
-    icon: str
+    icon: str | None
