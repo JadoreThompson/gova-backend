@@ -31,12 +31,12 @@ async def get_owned_discord_guilds(
         return []
 
     owned_guilds = await DiscordService.fetch_owned_guilds(access_token)
-    return [Guild(id=g.id, name=g.name, icon=g.icon) for g in owned_guilds]
+    return [Guild(id=str(g.id), name=g.name, icon=g.icon) for g in owned_guilds]
 
 
 @router.get("/discord/{guild_id}/channels", response_model=list[GuildChannel])
 async def get_discord_channels(
-    guild_id: int,
+    guild_id: str,
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
@@ -52,8 +52,13 @@ async def get_discord_channels(
     if not access_token:
         return []
 
-    channels = await DiscordService.fetch_guild_channels(guild_id)
-    return [GuildChannel(id=ch.id, name=ch.name) for ch in channels]
+    try:
+        parsed_id = int(guild_id)
+    except TypeError:
+        raise HTTPException(status_code=400, detail="Invalid guild id.")
+    
+    channels = await DiscordService.fetch_guild_channels(parsed_id)
+    return [GuildChannel(id=str(ch.id), name=ch.name) for ch in channels]
 
 
 @router.delete("/{platform}")
