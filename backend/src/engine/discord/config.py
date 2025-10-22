@@ -6,5 +6,5 @@ from engine.base_action import BaseActionDefinition
 
 class DiscordConfig(CustomBaseModel):
     guild_id: int
-    allowed_channels: list[int | Literal["*"]]  # Channel IDs
-    allowed_actions: list[BaseActionDefinition | Literal["*"]]
+    allowed_channels: tuple[Literal["*"]] | tuple[int, ...]
+    allowed_actions: tuple[Literal["*"]] | tuple[BaseActionDefinition, ...]

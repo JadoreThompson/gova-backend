@@ -90,6 +90,10 @@ class DiscordService:
             )
             rsp.raise_for_status()
             channels = await rsp.json()
-            return [GuildChannel(id=ch["id"], name=ch["name"]) for ch in channels if ch.get("type") == 0]
+            return [
+                GuildChannel(id=ch["id"], name=ch["name"])
+                for ch in channels
+                if ch.get("type") == 0
+            ]
         except ClientError:
             return []

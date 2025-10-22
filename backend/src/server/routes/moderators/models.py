@@ -34,6 +34,7 @@ class ModeratorStats(BaseModel):
     total_actions: int
     message_chart: dict[MessagePlatformType, list[MessageChartData]]
 
+
 class NewModeratorStats(BaseModel):
     total_messages: int
     total_actions: int
