@@ -9,6 +9,9 @@ export const queryKeys = {
   auth: () => ["auth"] as const,
   me: () => ["me"] as const,
 
+  // Connections
+  discordGuilds: () => ["connections", "guilds"] as const,
+
   // Guidelines
   guidelines: (params?: ListGuidelinesGuidelinesGetParams) =>
     ["guidelines", params] as const,

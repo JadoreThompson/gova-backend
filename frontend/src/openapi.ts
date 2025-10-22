@@ -143,6 +143,12 @@ export interface GuidelineUpdate {
   text?: GuidelineUpdateText;
 }
 
+export interface Guild {
+  id: number;
+  name: string;
+  icon: string;
+}
+
 export interface HTTPValidationError {
   detail?: ValidationError[];
 }
@@ -598,6 +604,82 @@ export const deleteConnectionAuthConnectionsPlatformDelete = async (
     {
       ...options,
       method: "DELETE",
+    },
+  );
+};
+
+/**
+ * @summary Delete Connection
+ */
+export type deleteConnectionConnectionsPlatformDeleteResponse200 = {
+  data: unknown;
+  status: 200;
+};
+
+export type deleteConnectionConnectionsPlatformDeleteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type deleteConnectionConnectionsPlatformDeleteResponseSuccess =
+  deleteConnectionConnectionsPlatformDeleteResponse200 & {
+    headers: Headers;
+  };
+export type deleteConnectionConnectionsPlatformDeleteResponseError =
+  deleteConnectionConnectionsPlatformDeleteResponse422 & {
+    headers: Headers;
+  };
+
+export type deleteConnectionConnectionsPlatformDeleteResponse =
+  | deleteConnectionConnectionsPlatformDeleteResponseSuccess
+  | deleteConnectionConnectionsPlatformDeleteResponseError;
+
+export const getDeleteConnectionConnectionsPlatformDeleteUrl = (
+  platform: MessagePlatformType,
+) => {
+  return `/connections/${platform}`;
+};
+
+export const deleteConnectionConnectionsPlatformDelete = async (
+  platform: MessagePlatformType,
+  options?: RequestInit,
+): Promise<deleteConnectionConnectionsPlatformDeleteResponse> => {
+  return customFetch<deleteConnectionConnectionsPlatformDeleteResponse>(
+    getDeleteConnectionConnectionsPlatformDeleteUrl(platform),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+/**
+ * @summary Get Owned Discord Guilds
+ */
+export type getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponse200 = {
+  data: Guild[];
+  status: 200;
+};
+
+export type getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponseSuccess =
+  getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponse200 & {
+    headers: Headers;
+  };
+export type getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponse =
+  getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponseSuccess;
+
+export const getGetOwnedDiscordGuildsConnectionsDiscordGuildsGetUrl = () => {
+  return `/connections/discord/guilds`;
+};
+
+export const getOwnedDiscordGuildsConnectionsDiscordGuildsGet = async (
+  options?: RequestInit,
+): Promise<getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponse> => {
+  return customFetch<getOwnedDiscordGuildsConnectionsDiscordGuildsGetResponse>(
+    getGetOwnedDiscordGuildsConnectionsDiscordGuildsGetUrl(),
+    {
+      ...options,
+      method: "GET",
     },
   );
 };
