@@ -12,10 +12,11 @@ class UserLogin(CustomBaseModel):
     password: str
 
 
-class DiscordConnection(CustomBaseModel):
-    user_id: int
+class PlatformConnection(CustomBaseModel):
+    username: str
+    avatar: str
 
 
 class UserMe(CustomBaseModel):
     username: str
-    connections: dict[ConnectionType, DiscordConnection] | None = None
+    connections: dict[ConnectionType, PlatformConnection] | None = None

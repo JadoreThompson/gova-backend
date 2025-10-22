@@ -1,16 +1,16 @@
-import json
+import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from sqlalchemy import insert, select
+from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.enums import MessagePlatformType
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
-from server.services import JWTService
+from server.services import DiscordService, JWTService
 from server.typing import JWTPayload
-from .controllers import fetch_discord_access_token
-from .models import UserCreate, UserLogin, UserMe
+from .models import PlatformConnection, UserCreate, UserLogin, UserMe
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -62,15 +62,76 @@ async def get_me(
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
+    async def wrapper(platform: MessagePlatformType, coro):
+        identity = await coro
+        return platform, identity
+
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    return UserMe(username=user.username, connections=user.connections)
+    funcs = {MessagePlatformType.DISCORD: DiscordService.fetch_identity}
+    coros = []
+
+    for plat, data in (user.connections or {}).items():
+        func = funcs.get(plat)
+        if func:
+            coros.append(wrapper(plat, func(data)))
+
+    plat_conns = {}
+    if coros:
+        res = await asyncio.gather(*coros)
+        for plat, identity in res:
+            plat_conns[plat] = PlatformConnection(
+                username=identity.username, avatar=identity.avatar
+            )
+
+    return UserMe(username=user.username, connections=plat_conns)
 
 
 @router.get("/discord/oauth")
-async def discord_callback(code: str):
-    data = await fetch_discord_access_token(code)
-    with open("discord-token.json", "w") as f:  # TODO: Remove
-        json.dump(data, f)
+async def discord_callback(
+    code: str,
+    jwt: JWTPayload = Depends(depends_jwt),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    data = await DiscordService.fetch_discord_access_token(code)
+
+    conns = await db_sess.scalar(
+        select(Users.connections).where(Users.user_id == jwt.sub)
+    )
+    if not conns:
+        conns = {}
+
+    conns[MessagePlatformType.DISCORD] = data
+    await db_sess.execute(
+        update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
+    )
+    await db_sess.commit()
+
+    return RedirectResponse(url="http://localhost:5173/connections")
+
+
+@router.delete("/connections/{platform}")
+async def delete_connection(
+    platform: MessagePlatformType,
+    jwt: JWTPayload = Depends(depends_jwt),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    conns = user.connections or {}
+
+    if platform not in conns:
+        raise HTTPException(status_code=404, detail=f"No {platform.value} connection found.")
+
+    conns.pop(platform)
+
+    await db_sess.execute(
+        update(Users)
+        .values(connections=conns)
+        .where(Users.user_id == jwt.sub)
+    )
+    await db_sess.commit()
