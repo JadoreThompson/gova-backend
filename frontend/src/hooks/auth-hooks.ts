@@ -1,9 +1,12 @@
+import { queryClient } from "@/lib/query/query-client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { handleApi } from "@/lib/utils/base";
 import {
+  deleteConnectionAuthConnectionsPlatformDelete,
   discordCallbackAuthDiscordOauthGet,
   getMeAuthMeGet,
   loginAuthLoginPost,
+  MessagePlatformType,
   registerAuthRegisterPost,
   type DiscordCallbackAuthDiscordOauthGetParams,
   type UserCreate,
@@ -43,5 +46,14 @@ export function useDiscordCallbackQuery(
     enabled: enabled && !!params.code,
     staleTime: 0,
     gcTime: 0,
+  });
+}
+
+export function useDeleteConnectionMutation() {
+  return useMutation({
+    mutationFn: async (platform: MessagePlatformType) =>
+      handleApi(await deleteConnectionAuthConnectionsPlatformDelete(platform)),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.me() }),
   });
 }

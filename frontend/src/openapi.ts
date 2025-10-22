@@ -121,10 +121,6 @@ export interface DiscordConfig {
   allowed_actions: DiscordConfigAllowedActionsItem[];
 }
 
-export interface DiscordConnection {
-  user_id: number;
-}
-
 export interface GuidelineCreate {
   name: string;
   text: string;
@@ -238,6 +234,11 @@ export interface PaginatedResponseModeratorResponse {
   data: ModeratorResponse[];
 }
 
+export interface PlatformConnection {
+  username: string;
+  avatar: string;
+}
+
 export interface UserCreate {
   username: string;
   password: string;
@@ -248,7 +249,7 @@ export interface UserLogin {
   password: string;
 }
 
-export type UserMeConnectionsAnyOf = { [key: string]: DiscordConnection };
+export type UserMeConnectionsAnyOf = { [key: string]: PlatformConnection };
 
 export type UserMeConnections = UserMeConnectionsAnyOf | null;
 
@@ -552,6 +553,51 @@ export const discordCallbackAuthDiscordOauthGet = async (
     {
       ...options,
       method: "GET",
+    },
+  );
+};
+
+/**
+ * @summary Delete Connection
+ */
+export type deleteConnectionAuthConnectionsPlatformDeleteResponse200 = {
+  data: unknown;
+  status: 200;
+};
+
+export type deleteConnectionAuthConnectionsPlatformDeleteResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type deleteConnectionAuthConnectionsPlatformDeleteResponseSuccess =
+  deleteConnectionAuthConnectionsPlatformDeleteResponse200 & {
+    headers: Headers;
+  };
+export type deleteConnectionAuthConnectionsPlatformDeleteResponseError =
+  deleteConnectionAuthConnectionsPlatformDeleteResponse422 & {
+    headers: Headers;
+  };
+
+export type deleteConnectionAuthConnectionsPlatformDeleteResponse =
+  | deleteConnectionAuthConnectionsPlatformDeleteResponseSuccess
+  | deleteConnectionAuthConnectionsPlatformDeleteResponseError;
+
+export const getDeleteConnectionAuthConnectionsPlatformDeleteUrl = (
+  platform: MessagePlatformType,
+) => {
+  return `/auth/connections/${platform}`;
+};
+
+export const deleteConnectionAuthConnectionsPlatformDelete = async (
+  platform: MessagePlatformType,
+  options?: RequestInit,
+): Promise<deleteConnectionAuthConnectionsPlatformDeleteResponse> => {
+  return customFetch<deleteConnectionAuthConnectionsPlatformDeleteResponse>(
+    getDeleteConnectionAuthConnectionsPlatformDeleteUrl(platform),
+    {
+      ...options,
+      method: "DELETE",
     },
   );
 };

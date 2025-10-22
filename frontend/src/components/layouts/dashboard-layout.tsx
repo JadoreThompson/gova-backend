@@ -1,4 +1,4 @@
-import { Bell, Bot, Box, FileText } from "lucide-react";
+import { Bell, Bot, Box, FileText, SendToBack } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import SiteLogo from "../site-logo";
@@ -36,6 +36,7 @@ const DashboardSidebar: FC = () => {
     ["Guidelines", "/guidelines", FileText],
     ["Deployments", "/deployments", Box],
     ["Moderators", "/moderators", Bot],
+    ["Connections", "/connections", SendToBack]
   ] as const;
 
   return (
