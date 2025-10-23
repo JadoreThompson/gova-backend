@@ -1,13 +1,15 @@
 import asyncio
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from openapi_pydantic import Components, Info, OpenAPI, Schema
 
 import engine.discord.actions as discord_actions
 from config import ACTION_DEFINITIONS_PATH
 from core.enums import MessagePlatformType
 from infra import KafkaManager, DiscordClientManager
+from server.exc import JWTError
 from server.routes.actions.route import router as action_router
 from server.routes.auth.route import router as auth_router
 from server.routes.connections.route import router as connections_router
@@ -56,9 +58,7 @@ async def lifespan(app: FastAPI):
     yield
 
     await asyncio.gather(
-        DiscordClientManager.stop(),
-        KafkaManager.stop(),
-        DiscordService.stop()
+        DiscordClientManager.stop(), KafkaManager.stop(), DiscordService.stop()
     )
 
 
@@ -78,3 +78,13 @@ app.include_router(connections_router)
 app.include_router(deployments_router)
 app.include_router(guidelines_router)
 app.include_router(moderators_router)
+
+
+@app.exception_handler(HTTPException)
+async def handle_http_exception(req: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+
+
+@app.exception_handler(JWTError)
+async def handle_jwt_exception(req: Request, exc: JWTError):
+    return JSONResponse(status_code=401, content={"error": str(exc)})
