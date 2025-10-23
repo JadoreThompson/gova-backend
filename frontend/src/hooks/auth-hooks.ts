@@ -41,6 +41,15 @@ export function useMeQuery() {
   });
 }
 
+
+export function useMeQueryAuthGuard() {
+  return useQuery({
+    queryKey: queryKeys.me(),
+    queryFn: async () => handleApi(await getMeAuthMeGet()),
+    retry: 1
+  });
+}
+
 export function useDiscordCallbackQuery(
   params: DiscordCallbackAuthDiscordOauthGetParams,
   enabled: boolean = true,

@@ -15,9 +15,9 @@ import {
   type BaseActionDefinition,
   type DeploymentCreate,
   type DeploymentCreateConf,
-  type DiscordConfig,
-  type DiscordConfigAllowedActionsItem,
-  type DiscordConfigAllowedChannelsItem,
+  type DiscordConfigResponse,
+  type DiscordConfigResponseAllowedActions,
+  type DiscordConfigResponseAllowedChannels,
 } from "@/openapi";
 import { useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -32,10 +32,9 @@ interface DeploymentStageProps<T> {
   onNext: (arg: T) => void;
 }
 
-// Define a type for action definitions to be used in the frontend
 type ActionField = {
   name: string;
-  type: "number" | "text"; // Simplified for form input types
+  type: "number" | "text";
 };
 
 type ActionConfig = {
@@ -44,7 +43,6 @@ type ActionConfig = {
   defaultRequiresApproval: boolean;
 };
 
-// Mock list of available actions for configuration
 const AVAILABLE_ACTIONS: ActionConfig[] = [
   {
     type: "Mute",
@@ -100,7 +98,7 @@ const SelectNameCard: FC<DeploymentStageProps<string>> = (props) => {
 };
 
 const SelectActionsCard: FC<
-  DeploymentStageProps<DiscordConfigAllowedActionsItem>
+  DeploymentStageProps<DiscordConfigResponseAllowedActions>
 > = (props) => {
   const [allowAll, setAllowAll] = useState(false);
   const [allowedActions, setAllowedActions] = useState<{
@@ -166,7 +164,7 @@ const SelectActionsCard: FC<
   };
 
   const finalizeAndSubmit = () => {
-    let finalActions: DiscordConfigAllowedActionsItem;
+    let finalActions: DiscordConfigResponseAllowedActions;
 
     if (allowAll) {
       finalActions = ["*"];
@@ -339,7 +337,9 @@ const SelectActionsCard: FC<
 };
 
 const SelectChannelsCard: FC<
-  DeploymentStageProps<DiscordConfigAllowedChannelsItem> & { guildId: string }
+  DeploymentStageProps<DiscordConfigResponseAllowedChannels> & {
+    guildId: string;
+  }
 > = (props) => {
   const discordChannelsQuery = useDiscordChannelsQuery(props.guildId);
   const [selectedChannels, setSelectedChannels] = useState<{
@@ -392,7 +392,7 @@ const SelectChannelsCard: FC<
                 props.onNext(
                   Object.keys(
                     selectedChannels,
-                  ) as DiscordConfigAllowedChannelsItem,
+                  ) as DiscordConfigResponseAllowedChannels,
                 )
               }
             >
@@ -486,9 +486,9 @@ const DeployModeratorFlow: FC = () => {
   const [deploymentPlatform, setDeploymentPlatform] = useState<
     MessagePlatformType | undefined
   >(undefined);
-  const [discordConfig, setDiscordConfig] = useState<DiscordConfig | undefined>(
-    undefined,
-  );
+  const [discordConfigResponse, setDiscordConfigResponse] = useState<
+    DiscordConfigResponse | undefined
+  >(undefined);
 
   const [showLoading, setShowLoading] = useState(false);
 
@@ -525,31 +525,34 @@ const DeployModeratorFlow: FC = () => {
         {curStage === 2 && (
           <SelectGuildCard
             onNext={(arg: string) => {
-              setDiscordConfig(
-                (prev) => ({ ...(prev ?? {}), guild_id: arg }) as DiscordConfig,
+              setDiscordConfigResponse(
+                (prev) =>
+                  ({ ...(prev ?? {}), guild_id: arg }) as DiscordConfigResponse,
               );
               setCurStage((prev) => prev + 1);
             }}
           />
         )}
 
-        {curStage === 3 && (discordConfig ?? {}).guild_id && (
+        {curStage === 3 && (discordConfigResponse ?? {}).guild_id && (
           <SelectChannelsCard
-            onNext={(arg: DiscordConfigAllowedChannelsItem) => {
-              setDiscordConfig(
-                (prev) => ({ ...prev, allowed_channels: arg }) as DiscordConfig,
+            onNext={(arg: DiscordConfigResponseAllowedChannels) => {
+              setDiscordConfigResponse(
+                (prev) =>
+                  ({ ...prev, allowed_channels: arg }) as DiscordConfigResponse,
               );
               setCurStage((prev) => prev + 1);
             }}
-            guildId={discordConfig!.guild_id}
+            guildId={discordConfigResponse!.guild_id}
           />
         )}
 
         {curStage === 4 && (
           <SelectActionsCard
-            onNext={(arg: DiscordConfigAllowedActionsItem) => {
-              setDiscordConfig(
-                (prev) => ({ ...prev, allowed_actions: arg }) as DiscordConfig,
+            onNext={(arg: DiscordConfigResponseAllowedActions) => {
+              setDiscordConfigResponse(
+                (prev) =>
+                  ({ ...prev, allowed_actions: arg }) as DiscordConfigResponse,
               );
               setCurStage((prev) => prev + 1);
             }}
@@ -562,7 +565,7 @@ const DeployModeratorFlow: FC = () => {
               handleDeploy({
                 name: arg,
                 platform: deploymentPlatform!,
-                conf: discordConfig as unknown as DeploymentCreateConf,
+                conf: discordConfigResponse as unknown as DeploymentCreateConf,
               });
             }}
           />

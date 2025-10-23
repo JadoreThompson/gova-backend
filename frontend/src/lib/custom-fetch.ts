@@ -39,7 +39,7 @@ const getHeaders = (headers?: HeadersInit): HeadersInit => {
 
 export const customFetch = async <T>(
   url: string,
-  options: RequestInit
+  options: RequestInit,
 ): Promise<T> => {
   const requestUrl = getUrl(url);
 
@@ -54,7 +54,7 @@ export const customFetch = async <T>(
   const rsp = await fetch(requestUrl, requestInit);
   if (!rsp.ok) {
     const errorText = await rsp.json();
-    throw Error(errorText.error);
+    throw { status: rsp.status, error: errorText };
   }
   const data = await getBody<T>(rsp);
 

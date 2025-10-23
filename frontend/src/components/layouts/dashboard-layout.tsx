@@ -1,11 +1,15 @@
-import { Bell, Bot, Box, FileText, SendToBack } from "lucide-react";
+import { useLogoutMutation } from "@/hooks/auth-hooks";
+import { Bell, Bot, Box, FileText, LogOut, SendToBack } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
+import AuthGuard from "../auth-guard";
 import SiteLogo from "../site-logo";
 import ThemeToggle from "../theme-toggle";
+import { Button } from "../ui/button";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -31,16 +35,27 @@ const Header: FC = () => {
 
 const DashboardSidebar: FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const logoutMutation = useLogoutMutation();
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
   const menuItems = [
     ["Guidelines", "/guidelines", FileText],
     ["Deployments", "/deployments", Box],
     ["Moderators", "/moderators", Bot],
-    ["Connections", "/connections", SendToBack]
+    ["Connections", "/connections", SendToBack],
   ] as const;
 
   return (
-    <Sidebar className="mt-12 border-transparent">
+    <Sidebar className="border-transparent pt-12">
       <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupContent>
@@ -73,6 +88,18 @@ const DashboardSidebar: FC = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter>
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          className="flex w-full items-center justify-start gap-2 hover:bg-red-100 dark:hover:bg-red-900/30"
+          disabled={logoutMutation.isPending}
+        >
+          <LogOut size={16} />
+          {logoutMutation.isPending ? "Logging out..." : "Logout"}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 };
@@ -83,17 +110,19 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: FC<DashboardLayoutProps> = ({ children }) => {
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <DashboardSidebar />
-        <div className="flex flex-1 flex-col pb-5">
-          <Header />
-          <div className="mt-12 min-h-200 w-full rounded-l-lg border-y-2 border-l-2 bg-neutral-100 p-4 dark:bg-neutral-900">
-            <main>{children}</main>
+    <AuthGuard>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <DashboardSidebar />
+          <div className="flex flex-1 flex-col pb-5">
+            <Header />
+            <div className="mt-12 min-h-200 w-full rounded-l-lg border-y-2 border-l-2 bg-neutral-100 p-4 dark:bg-neutral-900">
+              <main>{children}</main>
+            </div>
           </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </AuthGuard>
   );
 };
 
