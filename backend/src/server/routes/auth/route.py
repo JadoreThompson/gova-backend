@@ -10,7 +10,14 @@ from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
 from server.services import DiscordService, JWTService
 from server.typing import JWTPayload
-from .models import PlatformConnection, UserCreate, UserLogin, UserMe
+from .models import (
+    PlatformConnection,
+    UpdatePassword,
+    UpdateUsername,
+    UserCreate,
+    UserLogin,
+    UserMe,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -115,3 +122,41 @@ async def discord_callback(
     await db_sess.commit()
 
     return RedirectResponse(url="http://localhost:5173/connections")
+
+
+@router.patch("/change-username")
+async def change_username(
+    body: UpdateUsername,
+    jwt: JWTPayload = Depends(depends_jwt),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    # TODO: Auth and validation
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db_sess.execute(
+        update(Users)
+        .where(Users.user_id == user.user_id)
+        .values(username=body.username)
+    )
+    await db_sess.commit()
+
+
+@router.patch("/change-password")
+async def change_password(
+    body: UpdatePassword,
+    jwt: JWTPayload = Depends(depends_jwt),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    # TODO: Auth and validation
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db_sess.execute(
+        update(Users)
+        .where(Users.user_id == user.user_id)
+        .values(password=body.password)
+    )
+    await db_sess.commit()
