@@ -57,6 +57,11 @@ async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess
     return JWTService.set_cookie(user)
 
 
+@router.post("/logout")
+async def logout(jwt: JWTPayload = Depends(depends_jwt)):
+    return JWTService.remove_cookie()
+
+
 @router.get("/me", response_model=UserMe)
 async def get_me(
     jwt: JWTPayload = Depends(depends_jwt),
