@@ -1,9 +1,15 @@
+import DashboardLayout from "@/components/layouts/dashboard-layout";
+import MessagePlatformImg from "@/components/message-platform-image";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDiscordChannelsQuery,
   useOwnedDiscordGuildsQuery,
@@ -21,12 +27,6 @@ import {
 } from "@/openapi";
 import { useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router";
-import DashboardLayout from "./layouts/dashboard-layout";
-import MessagePlatformImg from "./message-platform-image";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardFooter } from "./ui/card";
-import { Input } from "./ui/input";
-import { Skeleton } from "./ui/skeleton";
 
 interface DeploymentStageProps<T> {
   onNext: (arg: T) => void;
@@ -500,7 +500,7 @@ const DeployModeratorFlow: FC = () => {
     deployMutation.mutateAsync({
       moderatorId: moderatorId!,
       data,
-    });
+    }).then(() => navigate(`/moderators/${moderatorId}`));
     setShowLoading(false);
   };
 

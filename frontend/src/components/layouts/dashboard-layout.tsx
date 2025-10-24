@@ -130,11 +130,9 @@ const DashboardSidebar: FC = () => {
   );
 };
 
-interface DashboardLayoutProps {
+const DashboardLayout: FC<{
   children: ReactNode;
-}
-
-const DashboardLayout: FC<DashboardLayoutProps> = ({ children }) => {
+}> = (props) => {
   return (
     <AuthGuard>
       <SidebarProvider>
@@ -142,8 +140,15 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({ children }) => {
           <DashboardSidebar />
           <div className="flex flex-1 flex-col pb-5">
             <Header />
-            <div className="mt-12 min-h-200 w-full rounded-l-lg border-y-2 border-l-2 bg-neutral-100 p-4 dark:bg-neutral-900">
-              <main>{children}</main>
+            <div className="pt-12">
+              <div
+                className="w-full rounded-l-lg border-y-2 border-l-2 bg-neutral-100 p-4 dark:bg-neutral-900"
+                style={{
+                  minHeight: "calc(100vh - 5rem)",
+                }}
+              >
+                <main>{props.children}</main>
+              </div>
             </div>
           </div>
         </div>

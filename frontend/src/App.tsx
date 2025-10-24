@@ -1,6 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router";
-import DeployModeratorFlow from "./components/deploy-moderator-flow";
 import ConnectionsPage from "./pages/ConnectionsPage";
+import DeployModeratorFlow from "./pages/DeployModeratorFlowPage";
 import DeploymentPage from "./pages/DeploymentPage";
 import DeploymentsPage from "./pages/DeploymentsPage";
 import GuidelinesPage from "./pages/GuidelinesPage";
@@ -17,9 +17,9 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage/>}/>
-          <Route path="/register" element={<RegisterPage/>}/>
-          <Route path="/profile" element={<ProfilePage />}/>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/deployments" element={<DeploymentsPage />} />
           <Route
             path="/deployments/:deploymentId"
