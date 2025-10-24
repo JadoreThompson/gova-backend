@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebouncedInput } from "@/hooks/debounced-input";
 import { useGuidelinesQuery } from "@/hooks/guidelines-hooks";
 import {
   useCreateModeratorMutation,
@@ -133,6 +134,10 @@ const ModeratorsPage: FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
 
+  const debouncedInput = useDebouncedInput({
+    delay: 2000,
+    callback: (e) => setName(e.target.value),
+  });
   const moderatorsQuery = useModeratorsQuery({ page, name });
   const createModeratorMutation = useCreateModeratorMutation();
 
@@ -183,7 +188,8 @@ const ModeratorsPage: FC = () => {
           <Input
             type="text"
             placeholder="Search..."
-            onChange={(e) => setName(e.currentTarget.value.trim())}
+            // onChange={(e) => setName(e.currentTarget.value.trim())}
+            onChange={debouncedInput.handleChange}
             className="h-7 w-50 border-none !bg-transparent focus:!ring-0"
           />
         </div>
