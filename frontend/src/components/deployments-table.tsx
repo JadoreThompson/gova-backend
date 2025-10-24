@@ -49,18 +49,28 @@ const DeploymentsTable: FC<
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
 
   const toggleStatus = (status: ModeratorDeploymentStatus) =>
-    setSelectedStatuses((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status],
-    );
+    setSelectedStatuses((prev) => {
+      if (prev.includes(status)) {
+        if (prev.length > 1) {
+          return prev.filter((p) => p !== status);
+        }
+        return prev;
+      }
+
+      return [...prev, status];
+    });
 
   const togglePlatform = (platform: MessagePlatformType) =>
-    setSelectedPlatforms((prev) =>
-      prev.includes(platform)
-        ? prev.filter((p) => p !== platform)
-        : [...prev, platform],
-    );
+    setSelectedPlatforms((prev) => {
+      if (prev.includes(platform)) {
+        if (prev.length > 1) {
+          return prev.filter((p) => p !== platform);
+        }
+        return prev;
+      }
+
+      return [...prev, platform];
+    });
 
   const toggleSort = () =>
     setSortOrder((prev) =>
