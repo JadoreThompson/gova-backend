@@ -27,7 +27,7 @@ import {
 import { formatDate } from "@/lib/utils/utils";
 import dayjs from "dayjs";
 import { ArrowDown, ArrowUp, Minus, Search, X } from "lucide-react";
-import { useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { useNavigate } from "react-router";
 
 interface ModeratorGuideline {
@@ -48,6 +48,13 @@ const AddModeratorSheet: FC<{
   const guidelines: ModeratorGuideline[] = (
     (guidelinesQuery.data?.data as ModeratorGuideline[]) ?? []
   ).filter((g) => !!g.guideline_id && !!g.name);
+
+  useEffect(() => {
+    if (!props.open) {
+      setNewName("");
+      setSelectedGuidelineId("");
+    }
+  }, [props.open]);
 
   return (
     <Sheet open={props.open} onOpenChange={props.onClose}>
