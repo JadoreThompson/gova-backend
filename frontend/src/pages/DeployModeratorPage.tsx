@@ -36,6 +36,7 @@ interface DeploymentStageProps<T> {
 type ActionField = {
   name: string;
   type: "number" | "text";
+  label?: string;
 };
 
 type ActionConfig = {
@@ -47,12 +48,12 @@ type ActionConfig = {
 const AVAILABLE_ACTIONS: ActionConfig[] = [
   {
     type: "mute",
-    fields: [{ name: "duration_minutes", type: "number" }],
+    fields: [{ name: "duration", type: "number", label: "Duration ms (Optional)", }],
     defaultRequiresApproval: false,
   },
   {
     type: "ban",
-    fields: [{ name: "reason", type: "text" }],
+    fields: [],
     defaultRequiresApproval: true,
   },
   {
@@ -176,16 +177,15 @@ const SelectActionsCard: FC<
         const collectedParams = Object.entries(config.params).reduce(
           (acc, [key, value]) => {
             if (typeof value === "string" && value.trim() !== "") {
-              // // Attempt to convert to number if type is 'number'
-              // const fieldDef = action.fields.find((f) => f.name === key);
-              // if (fieldDef?.type === "number") {
-              //   const numVal = parseFloat(value);
-              //   if (!isNaN(numVal)) {
-              //     acc[key] = numVal;
-              //     return acc;
-              //   }
-              // }
-              // acc[key] = value;
+              const fieldDef = action.fields.find((f) => f.name === key);
+              if (fieldDef?.type === "number") {
+                const numVal = parseFloat(value);
+                if (!isNaN(numVal)) {
+                  acc[key] = numVal;
+                  return acc;
+                }
+              }
+              acc[key] = value;
             } else if (typeof value === "number") {
               acc[key] = value;
             }
@@ -257,9 +257,8 @@ const SelectActionsCard: FC<
                         htmlFor={`${action.type}-${field.name}`}
                         className="text-sm font-medium"
                       >
-                        {field.name.charAt(0).toUpperCase() +
-                          field.name.slice(1).replace(/_/g, " ")}{" "}
-                        (Optional)
+                        {field.label ? field.label: field.name.charAt(0).toUpperCase() +
+                          field.name.slice(1).replace(/_/g, " ") + " (Optional)"}
                       </label>
                       <Input
                         id={`${action.type}-${field.name}`}
