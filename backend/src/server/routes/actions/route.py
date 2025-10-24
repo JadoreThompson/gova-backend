@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import ACTION_DEFINITIONS_PATH
 from core.enums import ActionStatus, MessagePlatformType
 from engine.discord.action_handler import DiscordActionHandler
-from db_models import ModeratorDeploymentLogs, Moderators
+from db_models import ModeratorDeploymentLogs, ModeratorDeployments, Moderators
+from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
+from engine.discord.context import DiscordMessageContext
 from server.dependencies import depends_db_sess, depends_jwt, depends_discord_action_handler
 from server.shared.models import DeploymentAction
 from server.typing import JWTPayload
@@ -27,22 +29,38 @@ async def update_action_status(
     session: AsyncSession = Depends(depends_db_sess),
     action_handler: DiscordActionHandler = Depends(depends_discord_action_handler),
 ):
-    log = await session.scalar(
-        select(ModeratorDeploymentLogs)
+    res = await session.execute(
+        select(ModeratorDeploymentLogs, ModeratorDeployments.platform)
         .join(
             Moderators, Moderators.moderator_id == ModeratorDeploymentLogs.moderator_id
         )
+        .join(ModeratorDeployments, ModeratorDeployments.deployment_id == ModeratorDeploymentLogs.deployment_id)
         .where(Moderators.user_id == jwt.sub, ModeratorDeploymentLogs.log_id == log_id)
     )
 
-    if not log:
+    data = res.first()
+    if not data:
         raise HTTPException(status_code=404, detail="Action log not found")
+    
+    log, platform = data
 
     if body.status == ActionStatus.APPROVED:
         # Fulfilling action
-        platform = log.action_params.get("platform")
         if platform == MessagePlatformType.DISCORD:
-            success = await action_handler.handle(log.action_params, log.context)
+            params = log.action_params
+            act_typ = params.get("type")
+            
+            if act_typ == DiscordActionType.BAN:
+                action = BanAction(**params)
+            elif act_typ == DiscordActionType.KICK:
+                action = KickAction(**params)
+            elif act_typ == DiscordActionType.MUTE:
+                action = MuteAction(**params)
+            else:
+                raise HTTPException(status_code=500, detail="Unknown discord action type.")
+
+            ctx = DiscordMessageContext(**log.context)
+            success = await action_handler.handle(action, ctx)
         else:
             raise HTTPException(
                 status_code=400, detail=f"Unknown platform '{platform}'."
@@ -56,6 +74,7 @@ async def update_action_status(
     rsp_body = DeploymentAction(
         log_id=log.log_id,
         deployment_id=log.deployment_id,
+        action_params=log.action_params,
         action_type=log.action_type,
         status=status,
         created_at=log.created_at,
