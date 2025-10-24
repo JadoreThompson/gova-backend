@@ -2,7 +2,6 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import ConnectionsPage from "./pages/ConnectionsPage";
 import DeployModeratorPage from "./pages/DeployModeratorPage";
 import DeploymentPage from "./pages/DeploymentPage";
-import DeploymentsPage from "./pages/DeploymentsPage";
 import GuidelinesPage from "./pages/GuidelinesPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -20,7 +19,6 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/deployments" element={<DeploymentsPage />} />
           <Route
             path="/deployments/:deploymentId"
             element={<DeploymentPage />}

@@ -1,6 +1,6 @@
 import { useLogoutMutation, useMeQuery } from "@/hooks/auth-hooks";
 import { useMeStore } from "@/stores/me-store";
-import { Bell, Bot, Box, FileText, LogOut, SendToBack } from "lucide-react";
+import { Bell, Bot, FileText, LogOut, SendToBack } from "lucide-react";
 import { useEffect, type FC, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import AuthGuard from "../auth-guard";
@@ -62,7 +62,6 @@ const DashboardSidebar: FC = () => {
   const menuItems = [
     ["Guidelines", "/guidelines", FileText],
     ["Moderators", "/moderators", Bot],
-    ["Deployments", "/deployments", Box],
     ["Connections", "/connections", SendToBack],
   ] as const;
 
