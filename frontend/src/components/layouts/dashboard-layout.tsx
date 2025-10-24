@@ -1,11 +1,10 @@
 import { useLogoutMutation, useMeQuery } from "@/hooks/auth-hooks";
 import { useMeStore } from "@/stores/me-store";
-import { Bell, Bot, FileText, LogOut, SendToBack } from "lucide-react";
+import { Bot, FileText, LogOut, SendToBack } from "lucide-react";
 import { useEffect, type FC, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import AuthGuard from "../auth-guard";
 import SiteLogo from "../site-logo";
-import ThemeToggle from "../theme-toggle";
 import { Button } from "../ui/button";
 import {
   Sidebar,
@@ -25,11 +24,6 @@ const Header: FC = () => {
     <header className="bg-background/80 fixed top-0 left-0 z-50 flex h-12 w-full items-center justify-between p-2 backdrop-blur-sm">
       <div className="flex w-20 items-center justify-center">
         <SiteLogo />
-      </div>
-
-      <div className="flex items-center justify-center gap-6">
-        <Bell size={15} />
-        <ThemeToggle />
       </div>
     </header>
   );
