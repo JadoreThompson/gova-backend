@@ -7,11 +7,13 @@ from server.shared.models import PlatformConnection
 
 class UserCreate(CustomBaseModel):
     username: str
+    email: str
     password: str
 
 
 class UserLogin(CustomBaseModel):
-    username: str
+    username: str | None = None
+    email: str | None = None
     password: str
 
 

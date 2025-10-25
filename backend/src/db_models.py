@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import uuid4, UUID
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import UUID as SaUUID, Float, String, DateTime, ForeignKey
+from sqlalchemy import UUID as SaUUID, Float, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -25,6 +25,7 @@ class Users(Base):
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
     connections: Mapped[dict] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -37,7 +38,7 @@ class Users(Base):
         onupdate=get_datetime,
     )
     pricing_tier: Mapped[str] = mapped_column(
-        String, nullable=False, default=PricingTierType.FREE.value
+        Integer, nullable=False, default=PricingTierType.FREE.value
     )
     payment_info: Mapped[dict] = mapped_column(JSONB, nullable=True)
     payment_link: Mapped[str] = mapped_column(String, nullable=True)

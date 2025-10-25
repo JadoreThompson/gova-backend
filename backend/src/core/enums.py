@@ -24,7 +24,7 @@ class ConnectionType(str, Enum):
     DISCORD = "discord"
 
 
-class PricingTierType(str, Enum):
-    FREE = "free"
-    PRO = "pro"
-    ENTERPRISE = "enterprise"
+class PricingTierType(int, Enum):
+    FREE = 0
+    PRO = 1
+    ENTERPRISE = 2

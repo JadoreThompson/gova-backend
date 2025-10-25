@@ -25,7 +25,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register")
 async def register(body: UserCreate, db_sess: AsyncSession = Depends(depends_db_sess)):
-    res = await db_sess.execute(select(Users).where(Users.username == body.username))
+    res = await db_sess.execute(select(Users).where((Users.username == body.username) | (Users.email == body.email)))
     if res.first():
         return JSONResponse(
             status_code=401, content={"error": "User with username already exists."}
