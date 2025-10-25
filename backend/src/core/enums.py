@@ -12,13 +12,19 @@ class ModeratorDeploymentStatus(str, Enum):
 
 
 class ActionStatus(str, Enum):
-    FAILED = 'failed'
+    FAILED = "failed"
     PENDING = "pending"
     SUCCESS = "success"
-    DECLINED = 'declined'
+    DECLINED = "declined"
     AWAITING_APPROVAL = "awaiting_approval"
     APPROVED = "approved"
 
 
 class ConnectionType(str, Enum):
-    DISCORD = 'discord'
+    DISCORD = "discord"
+
+
+class PricingTierType(str, Enum):
+    FREE = "free"
+    PRO = "pro"
+    ENTERPRISE = "enterprise"

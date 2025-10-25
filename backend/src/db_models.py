@@ -6,7 +6,7 @@ from sqlalchemy import UUID as SaUUID, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from core.enums import ModeratorDeploymentStatus
+from core.enums import ModeratorDeploymentStatus, PricingTierType
 from utils.db import get_datetime
 
 
@@ -30,6 +30,17 @@ class Users(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=get_datetime,
+        onupdate=get_datetime,
+    )
+    pricing_tier: Mapped[str] = mapped_column(
+        String, nullable=False, default=PricingTierType.FREE.value
+    )
+    payment_info: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    payment_link: Mapped[str] = mapped_column(String, nullable=True)
 
     # Relationship
     moderators: Mapped[list["Moderators"]] = relationship(
