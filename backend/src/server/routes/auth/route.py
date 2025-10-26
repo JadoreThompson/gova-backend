@@ -215,23 +215,21 @@ async def change_username(
             "new_value": body.username,
         }
     )
-
+    redis_key = f"{jwt.sub}:change_username:{verification_code}"
     await REDIS_CLIENT.set(
-        f"{prefix}{verification_code}",
+        redis_key,
         payload,
         ex=REDIS_EXPIRY,
     )
-
-    verification_link = f"http://localhost:5173/verify-action?code={verification_code}"
 
     bg_tasks.add_task(
         em_service.send_email,
         user.email,
         "Confirm Your Username Change",
-        f"Please click the following link to confirm your username change: {verification_link}",
+        f"Your verification code is: {verification_code}",
     )
 
-    return {"message": "A confirmation link has been sent to your email."}
+    return {"message": "A verification code has been sent to your email."}
 
 
 @router.post("/change-password", status_code=202)
@@ -249,7 +247,7 @@ async def change_password(
     async for key in REDIS_CLIENT.scan_iter(f"{prefix}*"):
         await REDIS_CLIENT.delete(key)
 
-    verification_code = _gen_verification_code(k=24)
+    verification_code = _gen_verification_code()
 
     payload = json.dumps(
         {
@@ -265,16 +263,14 @@ async def change_password(
         ex=REDIS_EXPIRY,
     )
 
-    verification_link = f"http://localhost:5173/verify-action?code={verification_code}"
-
     bg_tasks.add_task(
         em_service.send_email,
         user.email,
         "Confirm Your Password Change",
-        f"Please click the following link to confirm your password change: {verification_link}",
+        f"Your verification code is: {verification_code}",
     )
 
-    return {"message": "A confirmation link has been sent to your email."}
+    return {"message": "A verification code has been sent to your email."}
 
 
 @router.post("/verify-action")
