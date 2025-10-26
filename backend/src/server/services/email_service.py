@@ -1,7 +1,6 @@
 import logging
-
+import requests
 from aiohttp import ClientSession
-
 from config import BREVO_API_KEY
 
 
@@ -35,9 +34,9 @@ class EmailService:
 
         try:
             await self._send_via_brevo(recipient, subject, body)
-            logger.info("Email sent via Brevo to %s", recipient)
+            logger.info(f"Email sent via Brevo to {recipient}")
         except Exception as e:
-            logger.exception("Brevo send failed, attempting SMTP fallback: %s", e)
+            logger.exception(f"Brevo send failed, attempting SMTP fallback: {e}")
 
     async def _send_via_brevo(self, recipient: str, subject: str, body: str) -> None:
         """
@@ -65,8 +64,57 @@ class EmailService:
         rsp = await self._http_sess.post(url, json=payload, headers=headers)
         if rsp.status >= 400:
             text = await rsp.text()
-            logger.error("Brevo API error: %s - %s", rsp.status, text)
+            logger.error(f"Brevo API error: {rsp.status} - {text}")
             raise RuntimeError(f"Brevo API returned {rsp.status}: {text}")
+
+    async def close(self):
+        """Gracefully close the internal HTTP session."""
+        if self._http_sess and not self._http_sess.closed:
+            await self._http_sess.close()
+
+    def send_email_sync(self, recipient: str, subject: str, body: str) -> None:
+        """
+        Pure synchronous version of send_email().
+        No asyncio used. Uses requests directly.
+        """
+        if not recipient:
+            raise ValueError("recipient is required")
+
+        try:
+            self._send_via_brevo_sync(recipient, subject, body)
+            logger.info(f"Email sent (sync) via Brevo to {recipient}")
+        except Exception as e:
+            logger.exception(f"Brevo sync send failed: {e}")
+            raise
+
+    def _send_via_brevo_sync(self, recipient: str, subject: str, body: str) -> None:
+        """Synchronous version using requests instead of aiohttp."""
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json",
+        }
+
+        payload = {
+            "sender": {"name": self.sender_name, "email": self.sender_email},
+            "to": [{"email": recipient}],
+            "subject": subject,
+            "textContent": body,
+            "htmlContent": self._escape_html(body),
+        }
+
+        rsp = requests.post(url, json=payload, headers=headers, timeout=15)
+        if rsp.status_code >= 400:
+            logger.error(f"Brevo API error: {rsp.status_code} - {rsp.text}")
+            raise RuntimeError(f"Brevo API returned {rsp.status_code}: {rsp.text}")
+
+    def close_sync(self):
+        """
+        No-op for synchronous mode.
+        Included for interface consistency.
+        """
+        pass
 
     @staticmethod
     def _escape_html(s: str) -> str:
@@ -78,8 +126,3 @@ class EmailService:
             .replace('"', "&quot;")
             .replace("'", "&#x27;")
         )
-
-    async def close(self):
-        """Gracefully close the internal HTTP session."""
-        if self._http_sess and not self._http_sess.closed:
-            await self._http_sess.close()

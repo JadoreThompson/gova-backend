@@ -7,7 +7,10 @@ from uuid import UUID
 
 from kafka import KafkaConsumer, KafkaProducer
 from pydantic import ValidationError
+from sqlalchemy import select
 
+from db_models import ModeratorDeployments, Moderators, Users
+from utils.db import get_db_sess_sync
 from config import (
     DISCORD_BOT_TOKEN,
     KAFKA_BOOTSTRAP_SERVER,
@@ -15,6 +18,7 @@ from config import (
 )
 from core.events import CreateDeploymentEvent, DeploymentEvent
 from engine.discord.moderator import DiscordModerator
+from server.services import EmailService
 
 
 logger = logging.getLogger("deployment_listener")
@@ -63,6 +67,7 @@ class DeploymentListener:
         )
         self._kafka_producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
         self._deployments: dict[UUID, tuple[Process, MPEventType]] = {}
+        self._email_service = EmailService("No-Reply", "no-reply@gova.chat")
 
     def listen(self) -> None:
         for m in self._kafka_consumer:
@@ -73,7 +78,6 @@ class DeploymentListener:
                 if event_type == "start":
                     event = CreateDeploymentEvent(**data)
                     self._handle_event(event)
-
             except (ValidationError, JSONDecodeError):
                 pass
 
@@ -97,6 +101,19 @@ class DeploymentListener:
         )
         self._deployments[event.deployment_id] = (ps, stop_ev)
         ps.start()
+        self._send_email(event.deployment_id)
+
+    def _send_email(self, deployment_id: UUID) -> None:
+        with get_db_sess_sync() as db_sess:
+            em = db_sess.scalar(
+                select(Users.email)
+                .select_from(ModeratorDeployments)
+                .join(Moderators, Moderators.moderator_id == ModeratorDeployments.moderator_id)
+                .join(Users, Users.user_id == Moderators.user_id)
+                .where(ModeratorDeployments.deployment_id == deployment_id)
+            )
+
+        self._email_service.send_email_sync(em, "New Deployment", "A new deployment has been initiated.")
 
     def __del__(self) -> None:
         self.stop()
