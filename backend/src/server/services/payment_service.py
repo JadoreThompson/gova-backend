@@ -2,16 +2,22 @@ import json
 import logging
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
+from aiokafka import AIOKafkaProducer
 import stripe
 from sqlalchemy import select, update
 
+from backend.src.core.events import StopDeploymentEvent
+from backend.src.utils.kafka import dump_model
 from config import (
+    KAFKA_BOOTSTRAP_SERVER,
+    KAFKA_DEPLOYMENT_EVENTS_TOPIC,
     REDIS_CLIENT,
     REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX,
 )
-from core.enums import PricingTierType
-from db_models import Users
+from core.enums import ModeratorDeploymentStatus, PricingTierType
+from db_models import ModeratorDeployments, Users
 from server.services.email_service import EmailService
 from utils.db import get_db_sess
 
@@ -26,6 +32,7 @@ class VerificationError(Exception):
 class PaymentService:
     _handlers: dict | None = None
     _email_service: EmailService | None = None
+    _kafka_producer: AIOKafkaProducer | None = None
 
     @classmethod
     async def handle_event(
@@ -102,7 +109,18 @@ class PaymentService:
                 .where(user_lookup_condition)
                 .returning(Users)
             )
+
+            res = await db_sess.scalars(
+                select(ModeratorDeployments.deployment_id).where(
+                    ModeratorDeployments.status
+                    != ModeratorDeploymentStatus.OFFLINE.value
+                )
+            )
+            dids = res.all()
+
             await db_sess.commit()
+
+        await cls._stop_deployments(dids)
 
         if not user:
             logger.error(
@@ -128,6 +146,19 @@ class PaymentService:
             ),
         )
         return True
+
+    @classmethod
+    async def _stop_deployments(cls, deployment_ids: list[UUID]) -> None:
+        if not cls._kafka_producer:
+            cls._kafka_producer = AIOKafkaProducer(
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+            )
+
+        for did in deployment_ids:
+            ev = StopDeploymentEvent(deployment_id=did)
+            await cls._kafka_producer.send(
+                KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev)
+            )
 
     @classmethod
     async def _handle_invoice_payment_succeeded(cls, event: dict[str, Any]):
