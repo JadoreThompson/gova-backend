@@ -45,6 +45,9 @@ class Users(Base):
     authenticated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True
+    )
 
     # Relationship
     moderators: Mapped[list["Moderators"]] = relationship(

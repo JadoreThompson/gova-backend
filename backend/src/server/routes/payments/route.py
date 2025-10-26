@@ -32,9 +32,7 @@ async def get_payment_link(
 
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
 
-    customer_id = None
-    if user and user.payment_info and "customer_id" in user.payment_info:
-        customer_id = user.payment_info["customer_id"]
+    customer_id = user.stripe_customer_id if user else None
 
     # Create a new Stripe customer if none exists
     if not customer_id:
@@ -46,8 +44,7 @@ async def get_payment_link(
             )
             customer_id = customer.id
             if user:
-                user.payment_info = user.payment_info or {}
-                user.payment_info["customer_id"] = customer_id
+                user.stripe_customer_id = customer_id
                 db_sess.add(user)
                 await db_sess.commit()
         except Exception as e:
