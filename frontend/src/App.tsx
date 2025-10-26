@@ -1,4 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ChangeUsernamePage from "./pages/ChangeUsername";
 import ConfirmEmailPage from "./pages/ConfirmEmailPage";
 import ConnectionsPage from "./pages/ConnectionsPage";
 import ContactUsPage from "./pages/ContactUsPage";
@@ -35,7 +37,9 @@ function App() {
           <Route path="/connections" element={<ConnectionsPage />} />
           <Route path="/contact-us" element={<ContactUsPage />} />
           <Route path="/500" element={<Page500 />} />
-          <Route path="/confirm-email" element={<ConfirmEmailPage/>} />
+          <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route path="/change-username" element={<ChangeUsernamePage />} />
         </Routes>
       </BrowserRouter>
     </>

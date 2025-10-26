@@ -6,11 +6,12 @@ import { useRef, useState, type FC } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 const LoginPage: FC = () => {
+  useRedirectAuthenticated({ to: "/moderators" });
+  
   const navigate = useNavigate();
   const location = useLocation();
   const queryParamsRef = useRef(new URLSearchParams(location.search));
   const loginMutation = useLoginMutation();
-  const redirectAuthenticated = useRedirectAuthenticated({ to: "/moderators" });
 
   const [formData, setFormData] = useState({
     username: "",
