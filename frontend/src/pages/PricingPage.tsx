@@ -7,25 +7,28 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import { type FC } from "react";
+import { type FC, type ReactNode } from "react";
+import { Link } from "react-router";
 
-const PricingCard: FC<{
-  planType?: string;
+interface PricingCardProps {
+  planType?: "free" | "pro" | "enterprise";
   title: string;
   description: string;
   price: string;
-  features: string[];
-}> = (props) => {
+  features: readonly string[];
+  cta?: ReactNode;
+}
+
+const PricingCard: FC<PricingCardProps> = (props) => {
   return (
     <div
       className={cn(
-        "w-full max-w-sm mx-auto transition-transform duration-300",
-        props.planType === "pro" &&
-          "scale-[1.03] rounded-xl bg-blue-400 p-1"
+        "mx-auto w-full max-w-sm transition-transform duration-300",
+        props.planType === "pro" && "scale-[1.03] rounded-xl bg-blue-400 p-1",
       )}
     >
       {props.planType === "pro" && (
-        <div className="text-center text-sm font-semibold text-blue-900 mb-1">
+        <div className="mb-1 text-center text-sm font-semibold text-blue-900">
           Recommended
         </div>
       )}
@@ -48,11 +51,11 @@ const PricingCard: FC<{
         </CardHeader>
 
         <CardContent className="pb-8">
-          <p className="font-semibold mb-2">What's included:</p>
+          <p className="mb-2 font-semibold">What's included:</p>
           <ul className="space-y-2">
             {props.features.map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
-                <Check size={20} className="text-green-500 mt-[2px]" />
+                <Check size={20} className="mt-[2px] text-green-500" />
                 <span className="text-sm">{feature}</span>
               </li>
             ))}
@@ -60,7 +63,7 @@ const PricingCard: FC<{
         </CardContent>
 
         <CardFooter>
-          <Button className="w-full">Get Started</Button>
+          {props.cta ?? <Button className="w-full">Get Started</Button>}
         </CardFooter>
       </Card>
     </div>
@@ -68,54 +71,58 @@ const PricingCard: FC<{
 };
 
 const PricingPage: FC = () => {
-  const pricingCardConfigs = [
-    {
-      title: "Free Plan",
-      description: "Basic features for personal use",
-      price: "$0",
-      features: [
-        "Up to 1,000 messages moderated",
-        "Basic moderation tools",
-        "Email support",
-      ],
-    },
-    {
-      planType: "pro",
-      title: "Pro Plan",
-      description: "Advanced features for professionals",
-      price: "$29",
-      features: [
-        "Up to 100,000 messages moderated",
-        "Advanced moderation tools",
-        "Priority email support",
-      ],
-    },
-    {
-      title: "Enterprise Plan",
-      description: "All features for large organizations",
-      price: "Contact us",
-      features: [
-        "Unlimited messages moderated",
-        "All moderation tools",
-        "Dedicated support",
-      ],
-    },
-  ];
-
+  const sendToPaymentLink = () => {};
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Fixed-positioned inner section */}
-      <div className="fixed inset-0 m-2 sm:m-4 lg:m-8 bg-secondary flex flex-col items-center justify-center rounded-md border p-4 sm:p-6 md:p-10 overflow-y-auto">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 text-center">
+      <div className="bg-secondary fixed inset-0 m-2 flex flex-col items-center justify-center overflow-y-auto rounded-md border p-4 sm:m-4 sm:p-6 md:p-10 lg:m-8">
+        <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl md:text-4xl">
           Plans and Pricing
         </h2>
-        <p className="text-muted-foreground text-center max-w-2xl mb-10 text-sm sm:text-base">
-          Choose a plan that fits your needs. Upgrade anytime as your team grows.
+        <p className="text-muted-foreground mb-10 max-w-2xl text-center text-sm sm:text-base">
+          Choose a plan that fits your needs. Upgrade anytime as your team
+          grows.
         </p>
 
         {/* Responsive Pricing Grid */}
-        <div className="grid w-full gap-6 sm:gap-8 md:max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-2 sm:px-0">
-          {pricingCardConfigs.map((config) => (
+        <div className="grid w-full grid-cols-1 gap-6 px-2 sm:grid-cols-2 sm:gap-8 sm:px-0 md:max-w-6xl lg:grid-cols-3">
+          {(
+            [
+              {
+                planType: "free",
+                title: "Free Plan",
+                description: "Basic features for personal use",
+                price: "$0",
+                features: [
+                  "Up to 1,000 messages moderated",
+                  "Basic moderation tools",
+                  "Email support",
+                ],
+              },
+              {
+                planType: "pro",
+                title: "Pro Plan",
+                description: "Advanced features for professionals",
+                price: "$29",
+                features: [
+                  "Up to 100,000 messages moderated",
+                  "Advanced moderation tools",
+                  "Priority email support",
+                ],
+              },
+              {
+                planType: "enterprise",
+                title: "Enterprise Plan",
+                description: "All features for large organizations",
+                price: "Contact us",
+                features: [
+                  "Unlimited messages moderated",
+                  "All moderation tools",
+                  "Dedicated support",
+                ],
+              },
+            ] as const
+          ).map((config) => (
             <PricingCard
               key={config.title}
               planType={config.planType}
@@ -123,6 +130,27 @@ const PricingPage: FC = () => {
               description={config.description}
               price={config.price}
               features={config.features}
+              cta={
+                config.planType === "enterprise" ? (
+                  <Link to="#" className="w-full">
+                    <Button className="w-full">Contact Us</Button>
+                  </Link>
+                ) : config.planType === "pro" ? (
+                  <Link
+                    to={
+                      import.meta.env.VITE_HTTP_BASE_URL +
+                      "/payments/payment-link"
+                    }
+                    className="w-full"
+                  >
+                    <Button className="w-full">Get Started</Button>
+                  </Link>
+                ) : (
+                  <Link to="/login" className="w-full">
+                    <Button className="w-full">Get Started</Button>
+                  </Link>
+                )
+              }
             />
           ))}
         </div>
