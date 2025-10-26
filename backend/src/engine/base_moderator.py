@@ -7,10 +7,12 @@ from json import JSONDecodeError
 from uuid import UUID
 
 from aiohttp import ClientSession
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import insert, select, update
 
+from core.events import DeploymentEvent
+from utils.kafka import dump_model
 from config import (
     KAFKA_BOOTSTRAP_SERVER,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
@@ -139,7 +141,10 @@ class BaseModerator:
             bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
             auto_offset_reset="latest",
         )
+        self._producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,)
+        
         await self._consumer.start()
+        await self._producer.start()
 
         try:
             async for m in self._consumer:
@@ -155,7 +160,10 @@ class BaseModerator:
         except asyncio.CancelledError:
             pass
         finally:
+            event = DeploymentEvent(type='stopped', deployment_id=self._deployment_id)
+            await self._producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(event))
             await self._consumer.stop()
+            await self._producer.stop()
 
     def _load_embedding_model(self) -> None:
         if self._embedding_model:

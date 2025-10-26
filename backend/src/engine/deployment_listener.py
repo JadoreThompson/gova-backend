@@ -75,8 +75,14 @@ class DeploymentListener:
                 data = loads(m.value.decode())
 
                 event_type = data.get("type")
+                event = None
+
                 if event_type == "start":
                     event = CreateDeploymentEvent(**data)
+                else:
+                    event = DeploymentEvent(**data)
+
+                if event is not None:
                     self._handle_event(event)
             except (ValidationError, JSONDecodeError):
                 pass
@@ -90,6 +96,18 @@ class DeploymentListener:
     def _handle_event(self, event: DeploymentEvent) -> None:
         if event.type == "start":
             return self._handle_start_deployment(event)
+        elif event.type == "stop":
+            return self._send_email(
+                event.deployment_id,
+                "Deployment Stopped",
+                "We've got your request. Stopping your deployment now.",
+            )
+        elif event.type == "stopped":
+            return self._send_email(
+                event.deployment_id,
+                "Deplyoment Stopped",
+                "We've stopped your deployment.",
+            )
 
     def _handle_start_deployment(self, event: CreateDeploymentEvent) -> None:
         stop_ev = Event()
@@ -101,19 +119,26 @@ class DeploymentListener:
         )
         self._deployments[event.deployment_id] = (ps, stop_ev)
         ps.start()
-        self._send_email(event.deployment_id)
+        self._send_email(
+            event.deployment_id,
+            "New Deployment",
+            "A new deployment has been initiated.",
+        )
 
-    def _send_email(self, deployment_id: UUID) -> None:
+    def _send_email(self, deployment_id: UUID, subject: str, body: str) -> None:
         with get_db_sess_sync() as db_sess:
             em = db_sess.scalar(
                 select(Users.email)
                 .select_from(ModeratorDeployments)
-                .join(Moderators, Moderators.moderator_id == ModeratorDeployments.moderator_id)
+                .join(
+                    Moderators,
+                    Moderators.moderator_id == ModeratorDeployments.moderator_id,
+                )
                 .join(Users, Users.user_id == Moderators.user_id)
                 .where(ModeratorDeployments.deployment_id == deployment_id)
             )
 
-        self._email_service.send_email_sync(em, "New Deployment", "A new deployment has been initiated.")
+        self._email_service.send_email_sync(em, subject, body)
 
     def __del__(self) -> None:
         self.stop()

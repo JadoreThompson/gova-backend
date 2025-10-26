@@ -6,7 +6,7 @@ from core.enums import MessagePlatformType
 from engine.discord.config import DiscordConfig
 
 
-DeploymentEventType = Literal["start", "stop"]
+DeploymentEventType = Literal["start", "stop", "stopped"]
 
 
 class DeploymentEvent(CustomBaseModel):
