@@ -83,13 +83,26 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 # Server
 PAGE_SIZE = 10
+if PRODUCTION:
+    SCHEME = "https"
+    SUB_DOMAIN = "www."
+    DOMAIN = "gova.chat"
+else:
+    SCHEME = "http"
+    SUB_DOMAIN = ""
+    DOMAIN = "localhost:5173"
+
 
 # Auth
 COOKIE_ALIAS = "app-cookie"
 JWT_ALGO = os.getenv("JWT_ALGO")
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY = timedelta(days=1000)
+
+# Security
 PW_HASH_SALT = os.getenv("PW_HASH_SALT")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+ENCRYPTION_IV_LEN = int(os.getenv("ENCRYPTION_IV_LEN"))
 
 # Stripe
 STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
