@@ -11,13 +11,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
 
-PRODUCTION = False
-
 BASE_PATH = os.path.dirname(__file__)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
 load_dotenv(os.path.join(BASE_PATH, ".env"))
+
+IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
 # DB
 DB_HOST_CREDS = f"{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 5132)}"
@@ -83,7 +83,7 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 # Server
 PAGE_SIZE = 10
-if PRODUCTION:
+if IS_PRODUCTION:
     SCHEME = "https"
     SUB_DOMAIN = "www."
     DOMAIN = "gova.chat"

@@ -5,7 +5,7 @@ import jwt
 from fastapi import Response
 from sqlalchemy import select
 
-from config import COOKIE_ALIAS, PRODUCTION, JWT_SECRET, JWT_ALGO, JWT_EXPIRY
+from config import COOKIE_ALIAS, IS_PRODUCTION, JWT_SECRET, JWT_ALGO, JWT_EXPIRY
 from db_models import Users
 from server.exc import JWTError
 from server.typing import JWTPayload
@@ -46,7 +46,7 @@ class JWTService:
             COOKIE_ALIAS,
             token,
             httponly=True,
-            secure=PRODUCTION,
+            secure=IS_PRODUCTION,
             expires=get_datetime() + JWT_EXPIRY,
         )
         return rsp
@@ -55,7 +55,7 @@ class JWTService:
     def remove_cookie(rsp: Response | None = None) -> Response:
         if rsp is None:
             rsp = Response()
-        rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=PRODUCTION)
+        rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION)
         return rsp
 
     @staticmethod
