@@ -1,14 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useRegisterMutation } from "@/hooks/auth-hooks";
 import { useRedirectAuthenticated } from "@/hooks/redirect-authenticated";
 import { Loader2 } from "lucide-react";
@@ -55,86 +46,90 @@ const RegisterPage: FC = () => {
   };
 
   return (
-    <div className="bg-background flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <CardHeader>
-            <CardTitle className="text-2xl">Create an Account</CardTitle>
-            <CardDescription>
-              Enter your details below to create your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                placeholder="Your unique username"
-                value={formData.username}
-                onChange={handleChange}
-                disabled={registerMutation.isPending}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="your-email@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={registerMutation.isPending}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="********"
-                value={formData.password}
-                onChange={handleChange}
-                disabled={registerMutation.isPending}
-                required
-              />
-            </div>
-            <div className="min-h-[20px]">
-              {errorMessage && (
-                <p className="text-destructive text-sm font-medium">
-                  {errorMessage}
-                </p>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col items-stretch gap-4">
-            <Button
-              type="submit"
-              className="w-full"
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-neutral-900">
+      <div className="w-full max-w-md rounded-lg border bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-800">
+        <h2 className="mb-6 text-center text-2xl font-semibold">
+          Create an Account
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium" htmlFor="username">
+              Username
+            </label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="Your unique username"
+              value={formData.username}
+              onChange={handleChange}
               disabled={registerMutation.isPending}
-            >
-              {registerMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
-                </>
-              ) : (
-                "Create Account"
-              )}
-            </Button>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Button variant="link" asChild className="h-auto p-0">
-                <Link to="/login">Log in</Link>
-              </Button>
-            </div>
-          </CardFooter>
+              required
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" htmlFor="email">
+              Email
+            </label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="your-email@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" htmlFor="password">
+              Password
+            </label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="********"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          {errorMessage && (
+            <p className="text-sm text-red-500">{errorMessage}</p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={registerMutation.isPending}
+          >
+            {registerMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
+          </Button>
         </form>
-      </Card>
+
+        <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
+          Already have an account?{" "}
+          <Link to="/login" className="text-blue-600 hover:underline">
+            Log in
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
