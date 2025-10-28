@@ -27,7 +27,19 @@ async def get_owned_discord_guilds(
         return []
 
     decrypted = EncryptionService.decrypt(discord_conn, expected_aad=str(user.user_id))
-    access_token = decrypted.get("access_token")
+    refreshed = await DiscordService.refresh_token(decrypted)
+
+    if refreshed != decrypted:
+        conns = user.connections or {}
+        conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
+            refreshed, aad=str(user.user_id)
+        )
+        await db_sess.execute(
+            update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
+        )
+        await db_sess.commit()
+
+    access_token = refreshed.get("access_token")
     if not access_token:
         return []
 
@@ -50,13 +62,25 @@ async def get_discord_channels(
         return []
 
     decrypted = EncryptionService.decrypt(discord_conn, expected_aad=str(user.user_id))
-    access_token = decrypted.get("access_token")
+    refreshed = await DiscordService.refresh_token(decrypted)
+
+    if refreshed != decrypted:
+        conns = user.connections or {}
+        conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
+            refreshed, aad=str(user.user_id)
+        )
+        await db_sess.execute(
+            update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
+        )
+        await db_sess.commit()
+
+    access_token = refreshed.get("access_token")
     if not access_token:
         return []
 
     try:
         parsed_id = int(guild_id)
-    except TypeError:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid guild id.")
 
     channels = await DiscordService.fetch_guild_channels(parsed_id)

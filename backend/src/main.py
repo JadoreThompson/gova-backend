@@ -105,7 +105,7 @@ if __name__ == "__main__":
     args = sys.argv
 
     if len(args) == 1 or args[1] == "0":
-        uvicorn.run("server.app:app", host="0.0.0.0", port=8000, reload=True)
+        uvicorn.run("server.app:app", host="0.0.0.0", port=8000, reload=False)
     elif args[1] == "1":
         main()
     elif args[1] == "2":

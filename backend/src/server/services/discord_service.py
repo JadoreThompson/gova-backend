@@ -1,3 +1,4 @@
+from typing import Any
 from aiohttp import BasicAuth, ClientError, ClientSession
 
 from config import (
@@ -7,6 +8,7 @@ from config import (
     DISCORD_REDIRECT_URI,
 )
 from server.typing import Guild, GuildChannel, Identity
+from utils.db import get_datetime
 
 
 class DiscordService:
@@ -39,11 +41,11 @@ class DiscordService:
         return data
 
     @classmethod
-    async def fetch_identity(cls, data: dict) -> Identity:
+    async def fetch_identity(cls, access_token: str) -> Identity:
         try:
             rsp = await cls._http_sess.get(
                 "https://discord.com/api/users/@me",
-                headers={"Authorization": f"Bearer {data['access_token']}"},
+                headers={"Authorization": f"Bearer {access_token}"},
             )
             rsp.raise_for_status()
             rsp_body = await rsp.json()
@@ -65,12 +67,15 @@ class DiscordService:
             rsp.raise_for_status()
             guilds_data = await rsp.json()
 
-            print(guilds_data)
             owned_guilds = [
                 Guild(
                     id=g["id"],
                     name=g["name"],
-                    icon=f"{cls._cdn_base_url}/icons/{g['id']}/{g['icon']}.png" if g.get("icon") else None,
+                    icon=(
+                        f"{cls._cdn_base_url}/icons/{g['id']}/{g['icon']}.png"
+                        if g.get("icon")
+                        else None
+                    ),
                 )
                 for g in guilds_data
                 if g.get("owner") is True
@@ -98,3 +103,49 @@ class DiscordService:
             ]
         except ClientError:
             return []
+
+    @classmethod
+    async def refresh_token(cls, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Refresh the Discord OAuth2 token if expired.
+
+        payload: Dict containing 'access_token', 'refresh_token', 'expires_in', and 'created_at' (optional)
+
+        Returns the updated payload if refreshed, or the original payload if still valid.
+        """
+        if (
+            "expires_at" not in payload
+            and "created_at" in payload
+            and "expires_in" in payload
+        ):
+            payload["expires_at"] = payload["created_at"] + payload["expires_in"]
+
+        if (
+            "expires_at" in payload
+            and get_datetime().timestamp() < payload["expires_at"]
+        ):
+            return payload
+
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": payload["refresh_token"],
+            "redirect_uri": DISCORD_REDIRECT_URI,
+            "client_id": DISCORD_CLIENT_ID,
+            "client_secret": DISCORD_CLIENT_SECRET,
+        }
+
+        try:
+            created_at = get_datetime().timestamp()
+            rsp = await cls._http_sess.post(
+                "https://discord.com/api/v10/oauth2/token",
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            rsp.raise_for_status()
+            new_payload = await rsp.json()
+
+            new_payload["created_at"] = created_at
+            new_payload["expires_at"] = new_payload["created_at"] + new_payload["expires_in"]
+            return new_payload
+        except ClientError:
+            return payload

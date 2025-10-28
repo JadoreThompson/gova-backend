@@ -177,6 +177,7 @@ async def discord_oauth_callback(
     jwt: JWTPayload = Depends(depends_jwt),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
+    created_at = get_datetime().timestamp()
     data = await DiscordService.fetch_discord_access_token(code)
 
     conns = await db_sess.scalar(
@@ -184,7 +185,9 @@ async def discord_oauth_callback(
     )
     if not conns:
         conns = {}
-
+    
+    data['created_at'] = created_at
+    data['expires_at'] = data['created_at'] + data['expires_in']
     conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(data, aad=str(jwt.sub))
     await db_sess.execute(
         update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
