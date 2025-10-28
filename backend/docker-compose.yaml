@@ -11,7 +11,7 @@ services:
       - postgres:/var/lib/postgresql/data
   
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.0.1
     hostname: broker
     container_name: ai-chat-mod-kafka
     ports:
@@ -42,6 +42,17 @@ services:
     volumes:
       - redis:/data
     command: ["redis-server", "--appendonly", "yes"]
+
+  backend:
+    build:
+      dockerfile: dockerfile
+    container_name: ai-chat-mod-backend
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    ports:
+      - 8000:8000
 
 volumes:
   postgres:
