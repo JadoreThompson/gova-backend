@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from config import DOMAIN, SCHEME
+from config import DOMAIN, SCHEME, SUB_DOMAIN
 from infra import KafkaManager, DiscordClientManager
 from server.exc import JWTError
 from server.routes.actions.route import router as action_router
@@ -19,24 +19,24 @@ from server.services import DiscordService
 
 
 async def lifespan(app: FastAPI):
-    DiscordService.start()
-    await asyncio.gather(
-        DiscordClientManager.start(),
-        KafkaManager.start(),
-    )
+    # DiscordService.start()
+    # await asyncio.gather(
+    #     DiscordClientManager.start(),
+    #     KafkaManager.start(),
+    # )
 
     yield
 
-    await asyncio.gather(
-        DiscordClientManager.stop(), KafkaManager.stop(), DiscordService.stop()
-    )
+    # await asyncio.gather(
+    #     DiscordClientManager.stop(), KafkaManager.stop(), DiscordService.stop()
+    # )
 
 
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[f"{SCHEME}://{DOMAIN}"],
+    allow_origins=[f"{SCHEME}://{DOMAIN}", f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
