@@ -2,11 +2,11 @@ import { queryClient } from "@/lib/query/query-client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { handleApi } from "@/lib/utils/base";
 import {
-    getDeploymentActionsDeploymentsDeploymentIdActionsGet,
-    updateActionStatusActionsLogIdPatch,
-    type ActionUpdate,
-    type GetDeploymentActionsDeploymentsDeploymentIdActionsGetParams,
-    type PaginatedResponseDeploymentAction,
+  getDeploymentActionsDeploymentsDeploymentIdActionsGet,
+  updateActionStatusActionsLogIdPatch,
+  type ActionUpdate,
+  type GetDeploymentActionsDeploymentsDeploymentIdActionsGetParams,
+  type PaginatedResponseDeploymentAction,
 } from "@/openapi";
 import { useMutation, useQuery } from "@tanstack/react-query";
 

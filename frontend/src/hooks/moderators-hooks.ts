@@ -120,7 +120,7 @@ export function useDeployModeratorMutation() {
           params.data,
         ),
       ),
-    onSuccess: (newDeployment, variables) => {
+    onSuccess: (newDeployment, _) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.moderators() });
       queryClient.invalidateQueries({ queryKey: queryKeys.deployments() });
 
