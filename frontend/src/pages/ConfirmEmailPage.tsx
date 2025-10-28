@@ -1,17 +1,8 @@
 import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-    useRequestEmailVerificationMutation,
-    useVerifyEmailMutation,
+  useRequestEmailVerificationMutation,
+  useVerifyEmailMutation,
 } from "@/hooks/auth-hooks";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, type FC, type FormEvent } from "react";
@@ -35,9 +26,7 @@ const ConfirmEmailPage: FC = () => {
 
   useEffect(() => {
     const token = queryParamsRef.current.get("token");
-    if (token) {
-      setTokenInput(token);
-    }
+    if (token) setTokenInput(token);
   }, [queryParamsRef]);
 
   useEffect(() => {
@@ -63,7 +52,6 @@ const ConfirmEmailPage: FC = () => {
       .mutateAsync({ code: tokenInput })
       .then(() => {
         const next = queryParamsRef.current.get("next");
-
         if (next?.trim()) {
           next.startsWith("/") ? navigate(next) : window.open(next);
         } else {
@@ -98,79 +86,73 @@ const ConfirmEmailPage: FC = () => {
   };
 
   return (
-    <div className="bg-background flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <CardHeader>
-            <CardTitle className="text-2xl">Confirm Your Email</CardTitle>
-            <CardDescription>
-              Enter the verification code sent to your email address.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="py-3">
-            <div className="space-y-2">
-              <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                placeholder="Paste your code here"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                disabled={verifyEmailMutation.isPending}
-                required
-              />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-neutral-900">
+      <div className="w-full max-w-md rounded-lg border bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-800">
+        <h2 className="mb-6 text-center text-2xl font-semibold">
+          Confirm Your Email
+        </h2>
+        <p className="mb-4 text-center text-sm text-gray-600 dark:text-gray-300">
+          Enter the verification code sent to your email address.
+        </p>
 
-            <div className="mt-2 min-h-[20px]">
-              {errorMessage && (
-                <p className="text-destructive text-sm font-medium">
-                  {errorMessage}
-                </p>
-              )}
-              {resendMessage && (
-                <p className="text-sm font-medium text-green-600">
-                  {resendMessage}
-                </p>
-              )}
-            </div>
-
-            <div className="text-sm">
-              Didn't receive a code?
-              <Button
-                variant={"link"}
-                type="button"
-                onClick={handleResend}
-                disabled={
-                  resendCooldown > 0 ||
-                  requestEmailVerificationMutation.isPending
-                }
-                className="disabled:text-muted-foreground h-auto p-1 font-medium disabled:cursor-not-allowed"
-              >
-                {requestEmailVerificationMutation.isPending
-                  ? "Sending..."
-                  : resendCooldown > 0
-                    ? `Resend again in ${resendCooldown}s`
-                    : "Resend email"}
-              </Button>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              type="submit"
-              className="w-full"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium" htmlFor="code">
+              Verification Code
+            </label>
+            <Input
+              id="code"
+              placeholder="Paste your code here"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
               disabled={verifyEmailMutation.isPending}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          {errorMessage && (
+            <p className="text-sm text-red-500">{errorMessage}</p>
+          )}
+          {resendMessage && (
+            <p className="text-sm text-green-600">{resendMessage}</p>
+          )}
+
+          <div className="text-sm">
+            Didn't receive a code?{" "}
+            <Button
+              variant="link"
+              type="button"
+              onClick={handleResend}
+              disabled={
+                resendCooldown > 0 || requestEmailVerificationMutation.isPending
+              }
+              className="disabled:text-muted-foreground h-auto p-1 font-medium disabled:cursor-not-allowed"
             >
-              {verifyEmailMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                "Confirm Email"
-              )}
+              {requestEmailVerificationMutation.isPending
+                ? "Sending..."
+                : resendCooldown > 0
+                ? `Resend again in ${resendCooldown}s`
+                : "Resend email"}
             </Button>
-          </CardFooter>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={verifyEmailMutation.isPending}
+          >
+            {verifyEmailMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Confirm Email"
+            )}
+          </Button>
         </form>
-      </Card>
+      </div>
     </div>
   );
 };
