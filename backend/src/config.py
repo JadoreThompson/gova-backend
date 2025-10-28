@@ -144,3 +144,6 @@ del kafka_logger
 stripe_logger = logging.getLogger("stripe")
 stripe_logger.setLevel(logging.CRITICAL)
 del stripe_logger
+
+
+logger.info(f"PRODUCTION={IS_PRODUCTION}")
