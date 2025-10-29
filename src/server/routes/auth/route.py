@@ -58,11 +58,11 @@ async def register(
 
     body.password = pw_hasher.hash(body.password, salt=PW_HASH_SALT.encode())
 
-    new_user_id = await db_sess.scalar(
-        insert(Users).values(**body.model_dump()).returning(Users.user_id)
+    user = await db_sess.scalar(
+        insert(Users).values(**body.model_dump()).returning(Users)
     )
     code = gen_verification_code()
-    await REDIS_CLIENT.set(code, str(new_user_id), ex=REDIS_EXPIRY)
+    await REDIS_CLIENT.set(code, str(user.user_id), ex=REDIS_EXPIRY)
 
     bg_tasks.add_task(
         em_service.send_email,
@@ -70,7 +70,11 @@ async def register(
         "Verify your email",
         f"Your verification code is: {code}",
     )
+
+    rsp = JWTService.set_cookie(user)
     await db_sess.commit()
+
+    return rsp
 
 
 @router.post("/login")
