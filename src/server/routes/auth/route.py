@@ -8,7 +8,14 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import DOMAIN, PW_HASH_SALT, REDIS_CLIENT, REDIS_EXPIRY, SCHEME, SUB_DOMAIN
+from config import (
+    DOMAIN,
+    PW_HASH_SALT,
+    REDIS_CLIENT,
+    REDIS_EXPIRY,
+    SCHEME,
+    SUB_DOMAIN,
+)
 from core.enums import MessagePlatformType
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
@@ -185,10 +192,12 @@ async def discord_oauth_callback(
     )
     if not conns:
         conns = {}
-    
-    data['created_at'] = created_at
-    data['expires_at'] = data['created_at'] + data['expires_in']
-    conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(data, aad=str(jwt.sub))
+
+    data["created_at"] = created_at
+    data["expires_at"] = data["created_at"] + data["expires_in"]
+    conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
+        data, aad=str(jwt.sub)
+    )
     await db_sess.execute(
         update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
     )

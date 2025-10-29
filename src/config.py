@@ -55,6 +55,28 @@ REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX = os.getenv(
 )
 REDIS_EXPIRY = 900
 
+# Server
+PAGE_SIZE = 10
+if IS_PRODUCTION:
+    SCHEME = "https"
+    SUB_DOMAIN = "www."
+    DOMAIN = "gova.chat"
+else:
+    SCHEME = "http"
+    SUB_DOMAIN = ""
+    DOMAIN = "localhost:5173"
+
+# Auth
+COOKIE_ALIAS = "app-cookie"
+JWT_ALGO = os.getenv("JWT_ALGO")
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_EXPIRY = timedelta(days=1000)
+
+# Security
+PW_HASH_SALT = os.getenv("PW_HASH_SALT")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+ENCRYPTION_IV_LEN = int(os.getenv("ENCRYPTION_IV_LEN"))
+
 # LLM
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_AGENT_ID = os.getenv("LLM_AGENT_ID")
@@ -78,31 +100,11 @@ with open(os.path.join(PROMPTS_PATH, "final-prompt-template.txt")) as f:
 # Discord
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-
-# Server
-PAGE_SIZE = 10
 if IS_PRODUCTION:
-    SCHEME = "https"
-    SUB_DOMAIN = "www."
-    DOMAIN = "gova.chat"
+    DISCORD_REDIRECT_URI = "https://api.gova.chat/auth/discord/oauth"
 else:
-    SCHEME = "http"
-    SUB_DOMAIN = ""
-    DOMAIN = "localhost:5173"
-
-
-# Auth
-COOKIE_ALIAS = "app-cookie"
-JWT_ALGO = os.getenv("JWT_ALGO")
-JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY = timedelta(days=1000)
-
-# Security
-PW_HASH_SALT = os.getenv("PW_HASH_SALT")
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-ENCRYPTION_IV_LEN = int(os.getenv("ENCRYPTION_IV_LEN"))
+    DISCORD_REDIRECT_URI = "http://localhost:8000/auth/discord/oauth"
 
 # Stripe
 STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")

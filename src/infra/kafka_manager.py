@@ -22,11 +22,3 @@ class KafkaManager:
     @classmethod
     def get_producer(cls) -> AIOKafkaProducer | None:
         return cls._producer
-
-
-async def func():
-    await KafkaManager.start()
-    prod = await KafkaManager.get_producer()
-
-# import asyncio
-# asyncio.run(func())
