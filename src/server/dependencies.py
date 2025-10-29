@@ -26,7 +26,7 @@ async def depends_db_sess():
             raise
 
 
-async def depends_jwt(is_authenticated: bool = True):
+def depends_jwt(is_authenticated: bool = True):
     """Verify the JWT token from the request cookies and validate it."""
     async def func(req: Request)-> JWTPayload:
         """
