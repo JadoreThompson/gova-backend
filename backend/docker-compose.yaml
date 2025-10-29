@@ -56,6 +56,12 @@ services:
     ports:
       - 8000:8000
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ai-chat-mod-cloudflare-tunnel
+    restart: always
+    command: tunnel --no-autoupdate run --token eyJhIjoiMDRiMmY4NDE0M2IyYWQxN2YzNjhhNDg2M2QyNjA5NmEiLCJ0IjoiZjJkMzhkMjEtNDQyMi00YWZmLTk0OGYtNDc2NmU3OWE5NmFlIiwicyI6IllXRmlNalUyTUdRdE5ERXhNQzAwTkRNNExXRmpZVE10TldNMk5tWTVOMk0wTW1ObSJ9
+
 volumes:
   postgres:
   redis:

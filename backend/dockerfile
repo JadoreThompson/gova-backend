@@ -18,4 +18,4 @@ RUN uv sync --locked
 
 RUN uv run alembic upgrade head
 
-CMD ["uv", "run", "src/main.py"]
+CMD ["bash", "-c", "uv run alembic upgrade head && uv run src/main.py"]
