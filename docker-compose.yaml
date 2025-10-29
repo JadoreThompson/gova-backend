@@ -81,8 +81,6 @@ services:
       - postgres
       - kafka
       - redis
-    environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5432/ai_chat_mod
     ports:
       - 8000:8000
     networks:
