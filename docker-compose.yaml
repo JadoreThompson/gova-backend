@@ -29,6 +29,7 @@ services:
         done
 
         echo "✅ Postgres ready, creating pgvector extension..."
+        psql -U postgres -c "CREATE DATABASE ai_chat_mod;"
         psql -U postgres -d ai_chat_mod -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
         # Keep Postgres running
