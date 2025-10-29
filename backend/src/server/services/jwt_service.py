@@ -59,10 +59,26 @@ class JWTService:
         return rsp
 
     @staticmethod
-    async def validate_payload(payload: JWTPayload) -> JWTPayload:
-        """Validate a JWT payload and ensure the Users exists"""
+    async def validate_payload(payload: JWTPayload, is_authenticated: bool = True) -> JWTPayload:
+        """Validate a JWT payload and ensure the Users exists
+
+        Args:
+            payload (JWTPayload): JWT payload to validate.
+            is_authenticated (bool, optional): Whether or not to check if the user
+            is authenticated. Defaults to True.
+
+        Raises:
+            JWTError: No user found with adhring to the constraints.
+
+        Returns:
+            JWTPayload: Original payload
+        """        
+        query = select(Users).where(Users.user_id == payload.sub)
+        if is_authenticated:
+            query = query.where(Users.authenticated_at != None)
+            
         async with get_db_sess() as sess:
-            user = await sess.scalar(select(Users).where(Users.user_id == payload.sub))
+            user = await sess.scalar(query)
 
         if not user:
             raise JWTError("Invalid user.")

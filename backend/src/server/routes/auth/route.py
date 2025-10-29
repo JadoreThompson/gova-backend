@@ -95,7 +95,7 @@ async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess
 
 @router.post("/request-email-verification")
 async def request_email_verification(
-    bg_tasks: BackgroundTasks, jwt: JWTPayload = Depends(depends_jwt)
+    bg_tasks: BackgroundTasks, jwt: JWTPayload = Depends(depends_jwt(False))
 ):
     global em_service
 
@@ -138,7 +138,7 @@ async def logout():
 
 @router.get("/me", response_model=UserMe)
 async def get_me(
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     async def wrapper(platform: MessagePlatformType, coro):
@@ -174,7 +174,7 @@ async def get_me(
 @router.get("/discord/oauth")
 async def discord_oauth_callback(
     code: str,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     created_at = get_datetime().timestamp()
@@ -201,7 +201,7 @@ async def discord_oauth_callback(
 async def change_username(
     body: UpdateUsername,
     bg_tasks: BackgroundTasks,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     global em_service
@@ -249,7 +249,7 @@ async def change_username(
 async def change_password(
     body: UpdatePassword,
     bg_tasks: BackgroundTasks,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     global em_service
@@ -291,7 +291,7 @@ async def change_password(
 @router.post("/verify-action")
 async def verify_action(
     body: VerifyAction,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     global pw_hasher

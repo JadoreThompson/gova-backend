@@ -22,7 +22,7 @@ router = APIRouter(prefix="/actions", tags=["Actions"])
 async def update_action_status(
     log_id: UUID,
     body: ActionUpdate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     session: AsyncSession = Depends(depends_db_sess),
     action_handler: DiscordActionHandler = Depends(depends_discord_action_handler),
 ):

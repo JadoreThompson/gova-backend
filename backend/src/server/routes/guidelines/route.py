@@ -19,7 +19,7 @@ router = APIRouter(prefix="/guidelines", tags=["Guidelines"])
 @router.post("/", response_model=GuidelineResponse)
 async def create_guideline(
     body: GuidelineCreate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     topics = await get_topics("Guidelines:\n" + body.text)
@@ -48,7 +48,7 @@ async def create_guideline(
 async def list_guidelines(
     page: int = Query(ge=1),
     search: str | None = None,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     query = (
@@ -85,7 +85,7 @@ async def list_guidelines(
 @router.get("/{guideline_id}", response_model=GuidelineResponse)
 async def get_guideline(
     guideline_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     res = await db_sess.scalar(
@@ -110,7 +110,7 @@ async def get_guideline(
 async def update_guideline(
     guideline_id: UUID,
     body: GuidelineUpdate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     vals = body.model_dump(exclude_unset=True, exclude_none=True)
@@ -143,7 +143,7 @@ async def update_guideline(
 @router.delete("/{guideline_id}")
 async def delete_guideline(
     guideline_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     res = await db_sess.scalar(

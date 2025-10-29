@@ -38,7 +38,7 @@ async def list_deployments(
     name: str | None = None,
     status: list[ModeratorDeploymentStatus] | None = None,
     platform: list[MessagePlatformType] | None = None,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     query = (
@@ -85,7 +85,7 @@ async def list_deployments(
 @router.get("/{deployment_id}", response_model=DeploymentResponse)
 async def get_deployment(
     deployment_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     dep = await db_sess.scalar(
@@ -113,7 +113,7 @@ async def get_deployment(
 @router.get("/{deployment_id}/stats", response_model=DeploymentStats)
 async def get_deployment_stats(
     deployment_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     deployment = await db_sess.scalar(
@@ -189,7 +189,7 @@ async def get_deployment_stats(
 async def get_deployment_actions(
     deployment_id: UUID,
     page: int = Query(1, ge=1),
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     """
@@ -243,7 +243,7 @@ async def get_deployment_actions(
 @router.post("/{deployment_id}/stop")
 async def stop_deployment(
     deployment_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
     kafka_producer: AIOKafkaProducer = Depends(depends_kafka_producer),
 ):
@@ -273,7 +273,7 @@ async def stop_deployment(
 @router.post("/{deployment_id}/start")
 async def stop_deployment(
     deployment_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
     kafka_producer: AIOKafkaProducer = Depends(depends_kafka_producer),
 ):
@@ -306,7 +306,7 @@ async def stop_deployment(
 async def update_deployment(
     deployment_id: UUID,
     body: DeploymentUpdate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     vals = body.model_dump(exclude_unset=True, exclude_none=True)
@@ -347,7 +347,7 @@ async def update_deployment(
 @router.delete("/{deployment_id}")
 async def delete_deployment(
     deployment_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     res = await db_sess.scalar(

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/connections", tags=["Connections"])
 
 @router.get("/discord/guilds", response_model=list[Guild])
 async def get_owned_discord_guilds(
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
@@ -50,7 +50,7 @@ async def get_owned_discord_guilds(
 @router.get("/discord/{guild_id}/channels", response_model=list[GuildChannel])
 async def get_discord_channels(
     guild_id: str,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
@@ -90,7 +90,7 @@ async def get_discord_channels(
 @router.delete("/{platform}")
 async def delete_connection(
     platform: MessagePlatformType,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))

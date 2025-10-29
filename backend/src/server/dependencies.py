@@ -26,26 +26,28 @@ async def depends_db_sess():
             raise
 
 
-async def depends_jwt(req: Request) -> JWTPayload:
-    """Verify the JWT token from the request cookies and validate it.
+async def depends_jwt(is_authenticated: bool = True):
+    """Verify the JWT token from the request cookies and validate it."""
+    async def func(req: Request)-> JWTPayload:
+        """
+        Args:
+            req (Request)
 
-    Args:
-        req (Request)
+        Raises:
+            JWTError: If the JWT token is missing, expired, or invalid.
 
-    Raises:
-        JWTError: If the JWT token is missing, expired, or invalid.
+        Returns:
+            JWTPayload: The decoded JWT payload if valid.
+        """
+        token = req.cookies.get(COOKIE_ALIAS)
 
-    Returns:
-        JWTPayload: The decoded JWT payload if valid.
-    """
-    token = req.cookies.get(COOKIE_ALIAS)
+        if not token:
+            raise JWTError("Authentication token is missing")
 
-    if not token:
-        raise JWTError("Authentication token is missing")
+        payload = JWTService.decode_jwt(token)
+        return await JWTService.validate_payload(payload, is_authenticated=is_authenticated)
 
-    payload = JWTService.decode_jwt(token)
-    return await JWTService.validate_payload(payload)
-
+    return func
 
 async def depends_kafka_producer() -> AsyncGenerator[AIOKafkaProducer, None]:
     return KafkaManager.get_producer()

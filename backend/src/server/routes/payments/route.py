@@ -21,7 +21,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 @router.get("/payment-link")
 async def get_payment_link(
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     """Generate a Stripe Checkout link for a given user and pricing tier."""
