@@ -41,7 +41,7 @@ router = APIRouter(prefix="/moderators", tags=["Moderators"])
 @router.post("/", response_model=ModeratorResponse)
 async def create_moderator(
     body: ModeratorCreate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     mod = await db_sess.scalar(
@@ -72,7 +72,7 @@ async def create_moderator(
 async def deploy_moderator(
     moderator_id: UUID,
     body: DeploymentCreate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
     kafka_producer: AIOKafkaProducer = Depends(depends_kafka_producer),
 ):
@@ -132,7 +132,7 @@ async def deploy_moderator(
 async def list_moderators(
     name: str | None = None,
     page: int = Query(ge=1),
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     mods = await fetch_moderators_with_platforms(
@@ -164,7 +164,7 @@ async def list_moderators(
 @router.get("/{moderator_id}", response_model=ModeratorResponse)
 async def get_moderator(
     moderator_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     res = await fetch_moderators_with_platforms(
@@ -192,7 +192,7 @@ async def get_moderator(
 async def get_deployments(
     moderator_id: UUID,
     page: int = Query(1, ge=1),
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     deps = (
@@ -235,7 +235,7 @@ async def get_deployments(
 @router.get("/{moderator_id}/stats", response_model=ModeratorStats)
 async def get_moderator_stats(
     moderator_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     moderator_exists = await db_sess.scalar(
@@ -316,7 +316,7 @@ async def get_moderator_stats(
 async def update_moderator(
     moderator_id: UUID,
     body: ModeratorUpdate,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     vals = body.model_dump(exclude_unset=True, exclude_none=True)
@@ -374,7 +374,7 @@ async def update_moderator(
 @router.delete("/{moderator_id}")
 async def delete_moderator(
     moderator_id: UUID,
-    jwt: JWTPayload = Depends(depends_jwt),
+    jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     res = await db_sess.scalar(
