@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: ai-chat-mod-postgres
+    container_name: ai_chat_mod_postgres
     restart: always
     environment:
       POSTGRES_PASSWORD: password
@@ -10,11 +10,34 @@ services:
       - 5132:5432
     volumes:
       - postgres:/var/lib/postgresql/data
+    networks:
+      - ai_chat_network
+    entrypoint:
+      - bash
+      - -c
+      - |
+        # Install pgvector
+        apt-get update && apt-get install -y postgresql-16-pgvector && rm -rf /var/lib/apt/lists/*
+
+        # Start Postgres in the background
+        docker-entrypoint.sh postgres &
+
+        # Wait for Postgres to be ready
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "⏳ Waiting for PostgreSQL..."
+          sleep 2
+        done
+
+        echo "✅ Postgres ready, creating pgvector extension..."
+        psql -U postgres -d ai_chat_mod -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+        # Keep Postgres running
+        wait -n
 
   kafka:
     image: apache/kafka:4.0.1
     hostname: broker
-    container_name: ai-chat-mod-kafka
+    container_name: ai_chat_mod_kafka
     ports:
       - 9092:9092
     environment:
@@ -33,35 +56,49 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - ai_chat_network
 
   redis:
     image: redis:7
-    container_name: ai-chat-mod-redis
+    container_name: ai_chat_mod_redis
     restart: always
     ports:
       - 6793:6379
     volumes:
       - redis:/data
     command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - ai_chat_network
 
   backend:
     build:
       dockerfile: dockerfile
-    container_name: ai-chat-mod-backend
+      context: .
+    container_name: ai_chat_mod_backend
     depends_on:
       - postgres
       - kafka
       - redis
-    network_mode: host
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5432/ai_chat_mod
     ports:
       - 8000:8000
+    networks:
+      - ai_chat_network
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: ai-chat-mod-cloudflare-tunnel
+    container_name: ai_chat_mod_cloudflare_tunnel
     restart: always
     command: tunnel --no-autoupdate run --token eyJhIjoiMDRiMmY4NDE0M2IyYWQxN2YzNjhhNDg2M2QyNjA5NmEiLCJ0IjoiZjJkMzhkMjEtNDQyMi00YWZmLTk0OGYtNDc2NmU3OWE5NmFlIiwicyI6IllXRmlNalUyTUdRdE5ERXhNQzAwTkRNNExXRmpZVE10TldNMk5tWTVOMk0wTW1ObSJ9
+    networks:
+      - ai_chat_network
 
 volumes:
   postgres:
   redis:
+
+networks:
+  ai_chat_network:
+    driver: bridge
