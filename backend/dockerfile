@@ -16,4 +16,6 @@ WORKDIR /app
 
 RUN uv sync --locked
 
+RUN uv run alembic upgrade head
+
 CMD ["uv", "run", "src/main.py"]
