@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import STRIPE_PRICING_PRO_PRICE_ID
+from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
 from core.enums import PricingTierType
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
@@ -63,8 +63,8 @@ async def get_payment_link(
                 }
             ],
             mode="subscription",
-            success_url="https://formula1.com",
-            cancel_url="https://x.com",
+            success_url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/profile",
+            cancel_url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/profile",
             expires_at=int(datetime.now().timestamp() + 3600),
             metadata={"user_id": str(jwt.sub)},
         )
