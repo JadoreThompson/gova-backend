@@ -4,9 +4,11 @@ extracting the key topics mentioned within the guidelines. The only acceptable r
 format is a list of topics whereby each element is unique.
 
 Here's an example of an input and output. The output format shown is the
-only acceptable format. Ensure you output has  the json markdown annotation.
+only acceptable format. Ensure you output embodies the nature of the example.
 
 Input:
+Guidelines:
+
 1. Be respectful.
    - Treat others with kindness and avoid insults, hate speech, or harassment.
    - Disagreement is fine, but personal attacks are not.

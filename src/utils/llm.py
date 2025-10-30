@@ -6,19 +6,25 @@ from aiohttp import ClientSession
 from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_NAME
 
 
-logger = logging.getLogger("llm")
+logger = logging.getLogger("utils.llm")
 
 
 def parse_to_json(value: str) -> dict | list:
     logger.info(f"Handling '{value}'")
 
-    s = "```json"
-    ind = value.index(s)
-    value = value[ind + len(s) :]
+    try:
+        s = "```json"
+        ind = value.index(s)
+        value = value[ind + len(s) :]
+    except ValueError:
+        pass
 
-    s = "```"
-    ind = value.index(s)
-    value = value[:ind]
+    try:
+        s = "```"
+        ind = value.index(s)
+        value = value[:ind]
+    except ValueError:
+        pass
 
     logger.info(f"Parsed to {value}")
     return loads(value)
