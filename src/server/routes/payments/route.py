@@ -76,7 +76,7 @@ async def get_payment_link(
     return {'url': checkout_session.url}
 
 
-@router.post("/stripe/webhook")
+@router.post("/stripe/webhook", include_in_schema=False)
 async def stripe_webhook(req: Request):
     """Stripe webhook endpoint for handling subscription events."""
     sig_header = req.headers.get("stripe-signature")

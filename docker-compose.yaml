@@ -24,11 +24,11 @@ services:
 
         # Wait for Postgres to be ready
         until pg_isready -h localhost -p 5432 -U postgres; do
-          echo "⏳ Waiting for PostgreSQL..."
+          echo "Waiting for PostgreSQL..."
           sleep 2
         done
 
-        echo "✅ Postgres ready, creating pgvector extension..."
+        echo "Postgres ready, creating pgvector extension..."
         psql -U postgres -c "CREATE DATABASE ai_chat_mod;"
         psql -U postgres -d ai_chat_mod -c "CREATE EXTENSION IF NOT EXISTS vector;"
 

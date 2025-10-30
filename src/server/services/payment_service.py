@@ -15,6 +15,7 @@ from config import (
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
     REDIS_CLIENT,
     REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX,
+    STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
 )
 from core.enums import ModeratorDeploymentStatus, PricingTierType
 from db_models import ModeratorDeployments, Users
@@ -35,9 +36,7 @@ class PaymentService:
     _kafka_producer: AIOKafkaProducer | None = None
 
     @classmethod
-    async def handle_event(
-        cls, event_bytes: bytes, sig_header: str, secret: str
-    ) -> bool:
+    async def handle_event(cls, event_bytes: bytes, sig_header: str) -> bool:
         if not cls._handlers:
             cls._handlers = {
                 "checkout.session.completed": cls._handle_checkout_session_completed,
@@ -53,7 +52,7 @@ class PaymentService:
             event = stripe.Webhook.construct_event(
                 payload=event_bytes,
                 sig_header=sig_header,
-                secret=secret,
+                secret=STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
             )
         except stripe.SignatureVerificationError:
             raise VerificationError("Invalid signature.")
