@@ -84,4 +84,5 @@ async def stripe_webhook(req: Request):
         success = await PaymentService.handle_event(await req.body(), sig_header=sig_header)
         return {"success": success}
     except VerificationError as e:
+        print()
         raise HTTPException(status_code=400, detail=str(e))

@@ -184,18 +184,13 @@ class PaymentService:
                 )
                 return False
 
-            user = await db_sess.scalar(
-                update(Users)
-                .values(
-                    pricing_tier=PricingTierType.PRO.value,
-                    stripe_customer_id=customer_id,
-                )
-                .where(user_lookup_condition)
-                .returning(Users)
-            )
+            user = await db_sess.scalar(select(Users).where(user_lookup_condition))
+            user.pricing_tier = PricingTierType.PRO.value
+            user.stripe_customer_id = customer_id
+            user_id, username, email = user.user_id, user.username, user.email
             await db_sess.commit()
 
-        if not user:
+        if not user_id:
             logger.error(
                 f"Payment succeeded for invoice {invoice_id}, but no matching user found "
                 f"with user_id='{user_id}' or stripe_customer_id='{customer_id}'."
@@ -206,11 +201,11 @@ class PaymentService:
         billing_reason = invoice.get("billing_reason")
         if billing_reason == "subscription_create":
             logger.info(
-                f"New PRO subscription for user {user.user_id}, invoice {invoice_id}."
+                f"New PRO subscription for user {user_id}, invoice {invoice_id}."
             )
             subject = "Welcome to Gova PRO!"
             body = (
-                f"Hi {user.username or 'there'},\n\n"
+                f"Hi {username or 'there'},\n\n"
                 "Thank you for subscribing! Your Gova PRO plan is now active.\n\n"
                 "You can now enjoy all the premium features. If you have any questions, "
                 "feel free to contact our support team.\n\n"
@@ -218,19 +213,17 @@ class PaymentService:
             )
         else:
             logger.info(
-                f"Subscription renewed for user {user.user_id}, invoice {invoice_id}."
+                f"Subscription renewed for user {user_id}, invoice {invoice_id}."
             )
             subject = "Your Gova Subscription Has Been Renewed"
             body = (
-                f"Hi {user.username or 'there'},\n\n"
+                f"Hi {username or 'there'},\n\n"
                 "Thank you for your payment. Your Gova PRO subscription has been successfully renewed.\n\n"
                 "We're glad to have you with us for another billing cycle!\n\n"
                 "Best regards,\nThe Gova Team"
             )
 
-        await cls._email_service.send_email(
-            recipient=user.email, subject=subject, body=body
-        )
+        await cls._email_service.send_email(email, subject, body)
         return True
 
     @classmethod
