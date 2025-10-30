@@ -24,7 +24,7 @@ class DiscordService:
         await cls._http_sess.close()
 
     @classmethod
-    async def fetch_discord_access_token(cls, auth_code: str) -> None:
+    async def fetch_discord_oauth_payload(cls, auth_code: str):
         data = {
             "grant_type": "authorization_code",
             "code": auth_code,
@@ -145,7 +145,9 @@ class DiscordService:
             new_payload = await rsp.json()
 
             new_payload["created_at"] = created_at
-            new_payload["expires_at"] = new_payload["created_at"] + new_payload["expires_in"]
+            new_payload["expires_at"] = (
+                new_payload["created_at"] + new_payload["expires_in"]
+            )
             return new_payload
         except ClientError:
             return payload

@@ -22,28 +22,18 @@ async def get_owned_discord_guilds(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    discord_conn = (user.connections or {}).get(MessagePlatformType.DISCORD)
-    if not discord_conn:
+    if user.discord_oauth is None:
         return []
 
-    decrypted = EncryptionService.decrypt(discord_conn, expected_aad=str(user.user_id))
+    decrypted = EncryptionService.decrypt(
+        user.discord_oauth, expected_aad=str(user.user_id)
+    )
     refreshed = await DiscordService.refresh_token(decrypted)
-
     if refreshed != decrypted:
-        conns = user.connections or {}
-        conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
-            refreshed, aad=str(user.user_id)
-        )
-        await db_sess.execute(
-            update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
-        )
+        user.discord_oauth = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
         await db_sess.commit()
 
-    access_token = refreshed.get("access_token")
-    if not access_token:
-        return []
-
-    owned_guilds = await DiscordService.fetch_owned_guilds(access_token)
+    owned_guilds = await DiscordService.fetch_owned_guilds(refreshed["access_token"])
     return [Guild(id=str(g.id), name=g.name, icon=g.icon) for g in owned_guilds]
 
 
@@ -57,26 +47,13 @@ async def get_discord_channels(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    discord_conn = (user.connections or {}).get(MessagePlatformType.DISCORD)
-    if not discord_conn:
-        return []
-
-    decrypted = EncryptionService.decrypt(discord_conn, expected_aad=str(user.user_id))
+    decrypted = EncryptionService.decrypt(
+        user.discord_oauth, expected_aad=str(user.user_id)
+    )
     refreshed = await DiscordService.refresh_token(decrypted)
-
     if refreshed != decrypted:
-        conns = user.connections or {}
-        conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
-            refreshed, aad=str(user.user_id)
-        )
-        await db_sess.execute(
-            update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
-        )
+        user.discord_oauth = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
         await db_sess.commit()
-
-    access_token = refreshed.get("access_token")
-    if not access_token:
-        return []
 
     try:
         parsed_id = int(guild_id)
@@ -97,16 +74,9 @@ async def delete_connection(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    conns = user.connections or {}
+    query = update(Users).where(Users.user_id == jwt.sub)
+    if platform == MessagePlatformType.DISCORD:
+        query = query.values(discord_oauth=None)
 
-    if platform not in conns:
-        raise HTTPException(
-            status_code=404, detail=f"No {platform.value} connection found."
-        )
-
-    conns.pop(platform)
-
-    await db_sess.execute(
-        update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
-    )
+    await db_sess.execute(query)
     await db_sess.commit()

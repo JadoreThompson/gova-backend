@@ -24,8 +24,8 @@ from server.typing import JWTPayload
 from utils.db import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (
+    PasswordField,
     UserConnection,
-    UpdatePassword,
     UpdateUsername,
     UserCreate,
     UserLogin,
@@ -161,17 +161,22 @@ async def get_me(
             username=user.username, pricing_tier=user.pricing_tier, connections={}
         )
 
-    identity = await handle_fetch_discord_identity(user.discord_oauth, user)
+    decrypted_payload = EncryptionService.decrypt(
+        user.discord_oauth, expected_aad=str(user.user_id)
+    )
+    identity = await handle_fetch_discord_identity(decrypted_payload, user)
+    username, pricing_tier = user.username, user.pricing_tier
     await db_sess.commit()
 
+    if identity.success:
+        conn = UserConnection(username=identity.username, avatar=identity.avatar)
+    else:
+        conn = None
+
     return UserMe(
-        username=user.username,
-        pricing_tier=user.pricing_tier,
-        connections={
-            MessagePlatformType.DISCORD: UserConnection(
-                username=identity.username, avatar=identity.avatar
-            )
-        },
+        username=username,
+        pricing_tier=pricing_tier,
+        connections={MessagePlatformType.DISCORD: conn},
     )
 
 
@@ -182,21 +187,18 @@ async def discord_oauth_callback(
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     created_at = get_datetime().timestamp()
-    data = await DiscordService.fetch_discord_access_token(code)
+    oauth_payload = await DiscordService.fetch_discord_oauth_payload(code)
 
-    conns = await db_sess.scalar(
-        select(Users.connections).where(Users.user_id == jwt.sub)
+    oauth_payload["created_at"] = created_at
+    oauth_payload["expires_at"] = (
+        oauth_payload["created_at"] + oauth_payload["expires_in"]
     )
-    if not conns:
-        conns = {}
 
-    data["created_at"] = created_at
-    data["expires_at"] = data["created_at"] + data["expires_in"]
-    conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(
-        data, aad=str(jwt.sub)
-    )
+    encrypted_payload = EncryptionService.encrypt(oauth_payload, aad=str(jwt.sub))
     await db_sess.execute(
-        update(Users).values(connections=conns).where(Users.user_id == jwt.sub)
+        update(Users)
+        .values(discord_oauth=encrypted_payload)
+        .where(Users.user_id == jwt.sub)
     )
     await db_sess.commit()
 
@@ -253,7 +255,7 @@ async def change_username(
 
 @router.post("/change-password", status_code=202)
 async def change_password(
-    body: UpdatePassword,
+    body: PasswordField,
     bg_tasks: BackgroundTasks,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
