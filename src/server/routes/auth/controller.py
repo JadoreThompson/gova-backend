@@ -1,13 +1,10 @@
 import random
 import string
 from typing import Any
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.enums import MessagePlatformType
 from db_models import Users
-from server.services.discord_service import DiscordService
-from server.services.encryption_service import EncryptionService
+from server.services import DiscordService, EncryptionService
+from server.typing import Identity
 
 
 def gen_verification_code(k: int = 6):
@@ -15,14 +12,12 @@ def gen_verification_code(k: int = 6):
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=k))
 
 
-async def handle_fetch_discord_identity(oauth_payload: dict[str, Any], db_sess: AsyncSession, user: Users):
+async def handle_fetch_discord_identity(
+    oauth_payload: dict[str, Any], user: Users
+) -> Identity:
     refreshed = await DiscordService.refresh_token(oauth_payload)
-    to_commit = False
-    
-    # Save updated token if it changed
-    if refreshed != oauth_payload:
-        conns = user.connections or {}
-        conns[MessagePlatformType.DISCORD] = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
-        to_commit = True
 
-    return DiscordService.fetch_identity(refreshed['access_token']), to_commit
+    if refreshed != oauth_payload:
+        user.discord_oauth = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
+
+    return await DiscordService.fetch_identity(refreshed["access_token"])

@@ -22,9 +22,9 @@ from server.dependencies import depends_db_sess, depends_jwt
 from server.services import DiscordService, EmailService, EncryptionService, JWTService
 from server.typing import JWTPayload
 from utils.db import get_datetime
-from .controller import gen_verification_code
+from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (
-    PlatformConnection,
+    UserConnection,
     UpdatePassword,
     UpdateUsername,
     UserCreate,
@@ -152,33 +152,26 @@ async def get_me(
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    async def wrapper(platform: MessagePlatformType, coro):
-        identity = await coro
-        return platform, identity
-
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    funcs = {MessagePlatformType.DISCORD: DiscordService.fetch_identity}
-    coros = []
+    if user.discord_oauth is None:
+        return UserMe(
+            username=user.username, pricing_tier=user.pricing_tier, connections={}
+        )
 
-    for plat, data in (user.connections or {}).items():
-        func = funcs.get(plat)
-        if func:
-            decrypted = EncryptionService.decrypt(data, expected_aad=str(user.user_id))
-            coros.append(wrapper(plat, func(decrypted)))
-
-    plat_conns = {}
-    if coros:
-        res = await asyncio.gather(*coros)
-        for plat, identity in res:
-            plat_conns[plat] = PlatformConnection(
-                username=identity.username, avatar=identity.avatar
-            )
+    identity = await handle_fetch_discord_identity(user.discord_oauth, user)
+    await db_sess.commit()
 
     return UserMe(
-        username=user.username, connections=plat_conns, pricing_tier=user.pricing_tier
+        username=user.username,
+        pricing_tier=user.pricing_tier,
+        connections={
+            MessagePlatformType.DISCORD: UserConnection(
+                username=identity.username, avatar=identity.avatar
+            )
+        },
     )
 
 

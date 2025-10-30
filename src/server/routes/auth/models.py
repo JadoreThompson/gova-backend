@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 from typing import Literal
 
-from core.enums import ConnectionType, PricingTierType
+from core.enums import MessagePlatformType, PricingTierType
 from core.models import CustomBaseModel
-from server.shared.models import PlatformConnection
 
 
 class UserCreate(CustomBaseModel):
@@ -18,10 +17,15 @@ class UserLogin(CustomBaseModel):
     password: str
 
 
+class UserConnection(BaseModel):
+    username: str
+    avatar: str
+
+
 class UserMe(CustomBaseModel):
     username: str
     pricing_tier: PricingTierType
-    connections: dict[ConnectionType, PlatformConnection] | None = None
+    connections: dict[MessagePlatformType, UserConnection]
 
 
 class UpdateUsername(BaseModel):

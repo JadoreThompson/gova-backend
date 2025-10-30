@@ -20,10 +20,6 @@ class ActionStatus(str, Enum):
     APPROVED = "approved"
 
 
-class ConnectionType(str, Enum):
-    DISCORD = "discord"
-
-
 class PricingTierType(int, Enum):
     FREE = 0
     PRO = 1
