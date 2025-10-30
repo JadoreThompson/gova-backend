@@ -71,7 +71,7 @@ async def register(
         f"Your verification code is: {code}",
     )
 
-    rsp = JWTService.set_cookie(user)
+    rsp = await JWTService.set_user_cookie(user)
     await db_sess.commit()
 
     return rsp
@@ -101,7 +101,7 @@ async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess
     except Argon2Error:
         raise HTTPException(status_code=400, detail="Invalid password.")
 
-    return JWTService.set_cookie(user)
+    return await JWTService.set_cookie(user)
 
 
 @router.post("/request-email-verification")
@@ -137,7 +137,7 @@ async def verify_email(
         .values(authenticated_at=get_datetime())
         .returning(Users)
     )
-    rsp = JWTService.set_cookie(user)
+    rsp = await JWTService.set_cookie(user)
     await db_sess.commit()
     return rsp
 
@@ -340,12 +340,17 @@ async def verify_action(
             .where(Users.user_id == user_id)
             .values(password=pw_hasher.hash(new_value, salt=PW_HASH_SALT.encode()))
         )
-        await db_sess.commit()
+
+        await db_sess.execute(
+            update(Users).values(jwt=None).where(Users.user_id == user_id)
+        )
 
         rsp = JSONResponse(
             status_code=200, content={"message": "Password changed successfully."}
         )
-        return JWTService.remove_cookie(rsp)
+        rsp = JWTService.remove_cookie(rsp)
+        await db_sess.commit()
+        return rsp
 
     else:
         raise HTTPException(status_code=400, detail="Unknown action specified.")

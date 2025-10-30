@@ -27,6 +27,7 @@ class Users(Base):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
+    jwt: Mapped[str] = mapped_column(String, nullable=True)
     # Encrypted oauth payload
     discord_oauth: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

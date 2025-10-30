@@ -3,7 +3,7 @@ from datetime import datetime
 
 import jwt
 from fastapi import Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from config import COOKIE_ALIAS, IS_PRODUCTION, JWT_SECRET, JWT_ALGO, JWT_EXPIRY
 from db_models import Users
@@ -52,34 +52,65 @@ class JWTService:
         return rsp
 
     @staticmethod
+    async def set_user_cookie(user: Users, rsp: Response | None = None) -> Response:
+        token = JWTService.generate_jwt(
+            sub=user.user_id,
+            em=user.email,
+            pricing_tier=user.pricing_tier,
+            authenticated=user.authenticated_at is not None,
+        )
+        if rsp is None:
+            rsp = Response()
+
+        async with get_db_sess() as db_sess:
+            await db_sess.execute(
+                update(Users).values(jwt=token).where(Users.user_id == user.user_id)
+            )
+            await db_sess.commit()
+
+        rsp.set_cookie(
+            COOKIE_ALIAS,
+            token,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            expires=get_datetime() + JWT_EXPIRY,
+        )
+        return rsp
+
+    @staticmethod
     def remove_cookie(rsp: Response | None = None) -> Response:
         if rsp is None:
             rsp = Response()
         rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION)
         return rsp
 
-    @staticmethod
-    async def validate_payload(payload: JWTPayload, is_authenticated: bool = True) -> JWTPayload:
-        """Validate a JWT payload and ensure the Users exists
+    @classmethod
+    async def validate_jwt(cls, token: str, is_authenticated: bool = True):
+        """Validate a JWT token and ensure the Users exists
 
         Args:
-            payload (JWTPayload): JWT payload to validate.
+            token (str): JWT token to validate.
             is_authenticated (bool, optional): Whether or not to check if the user
-            is authenticated. Defaults to True.
+                is authenticated. Defaults to True.
 
         Raises:
             JWTError: No user found with adhring to the constraints.
 
         Returns:
             JWTPayload: Original payload
-        """        
-        query = select(Users).where(Users.user_id == payload.sub)
-        if is_authenticated:
-            query = query.where(Users.authenticated_at != None)
-            
-        async with get_db_sess() as sess:
-            user = await sess.scalar(query)
+        """
+        payload = cls.decode_jwt(token)
 
-        if not user:
-            raise JWTError("Invalid user.")
+        async with get_db_sess() as db_sess:
+            user = await db_sess.scalar(
+                select(Users).where(Users.user_id == payload.sub)
+            )
+
+            if user is None:
+                raise JWTError("User not found.")
+            if user.jwt != token:
+                raise JWTError("Invalid token")
+            if is_authenticated and user.authenticated_at is None:
+                raise JWTError("User not authenticated")
+
         return payload

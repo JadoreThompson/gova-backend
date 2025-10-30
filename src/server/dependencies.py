@@ -40,12 +40,10 @@ def depends_jwt(is_authenticated: bool = True):
             JWTPayload: The decoded JWT payload if valid.
         """
         token = req.cookies.get(COOKIE_ALIAS)
-
         if not token:
             raise JWTError("Authentication token is missing")
-
-        payload = JWTService.decode_jwt(token)
-        return await JWTService.validate_payload(payload, is_authenticated=is_authenticated)
+        
+        return await JWTService.validate_jwt(token, is_authenticated=is_authenticated)
 
     return func
 
