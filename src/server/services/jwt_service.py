@@ -4,6 +4,7 @@ from datetime import datetime
 import jwt
 from fastapi import Response
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import COOKIE_ALIAS, IS_PRODUCTION, JWT_SECRET, JWT_ALGO, JWT_EXPIRY
 from db_models import Users
@@ -52,7 +53,9 @@ class JWTService:
         return rsp
 
     @staticmethod
-    async def set_user_cookie(user: Users, rsp: Response | None = None) -> Response:
+    async def set_user_cookie(
+        user: Users, db_sess: AsyncSession | None = None, rsp: Response | None = None
+    ) -> Response:
         token = JWTService.generate_jwt(
             sub=user.user_id,
             em=user.email,
@@ -62,10 +65,15 @@ class JWTService:
         if rsp is None:
             rsp = Response()
 
-        async with get_db_sess() as db_sess:
+        if db_sess:
             await db_sess.execute(
                 update(Users).values(jwt=token).where(Users.user_id == user.user_id)
             )
+        else:
+            async with get_db_sess() as db_sess:
+                await db_sess.execute(
+                    update(Users).values(jwt=token).where(Users.user_id == user.user_id)
+                )
             await db_sess.commit()
 
         rsp.set_cookie(
@@ -100,6 +108,10 @@ class JWTService:
             JWTPayload: Original payload
         """
         payload = cls.decode_jwt(token)
+        if is_authenticated and not payload.authenticated:
+            raise JWTError("User not authenticated")
+        if payload.exp < get_datetime().timestamp():
+            raise JWTError("Expired token")
 
         async with get_db_sess() as db_sess:
             user = await db_sess.scalar(
@@ -108,9 +120,7 @@ class JWTService:
 
             if user is None:
                 raise JWTError("User not found.")
-            if user.jwt != token:
+            if user.jwt is not None and user.jwt != token:
                 raise JWTError("Invalid token")
-            if is_authenticated and user.authenticated_at is None:
-                raise JWTError("User not authenticated")
 
         return payload

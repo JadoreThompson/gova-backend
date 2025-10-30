@@ -1,4 +1,3 @@
-import asyncio
 import json
 
 from argon2 import PasswordHasher
@@ -12,6 +11,7 @@ from config import (
     DOMAIN,
     PW_HASH_SALT,
     REDIS_CLIENT,
+    REDIS_EMAIL_VERIFICATION_KEY_PREFIX,
     REDIS_EXPIRY,
     SCHEME,
     SUB_DOMAIN,
@@ -61,8 +61,11 @@ async def register(
     user = await db_sess.scalar(
         insert(Users).values(**body.model_dump()).returning(Users)
     )
+
     code = gen_verification_code()
-    await REDIS_CLIENT.set(code, str(user.user_id), ex=REDIS_EXPIRY)
+    key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(user.user_id)}"
+    await REDIS_CLIENT.delete(key)
+    await REDIS_CLIENT.set(key, code, ex=REDIS_EXPIRY)
 
     bg_tasks.add_task(
         em_service.send_email,
@@ -101,7 +104,9 @@ async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess
     except Argon2Error:
         raise HTTPException(status_code=400, detail="Invalid password.")
 
-    return await JWTService.set_cookie(user)
+    rsp = await JWTService.set_user_cookie(user, db_sess)
+    await db_sess.commit()
+    return rsp
 
 
 @router.post("/request-email-verification")
@@ -111,7 +116,11 @@ async def request_email_verification(
     global em_service
 
     code = gen_verification_code()
-    await REDIS_CLIENT.set(code, str(jwt.sub), ex=REDIS_EXPIRY)
+    key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(jwt.sub)}"
+
+    await REDIS_CLIENT.delete(key)
+    await REDIS_CLIENT.set(key, code, ex=REDIS_EXPIRY)
+
     bg_tasks.add_task(
         em_service.send_email,
         jwt.em,
@@ -122,29 +131,37 @@ async def request_email_verification(
 
 @router.post("/verify-email")
 async def verify_email(
-    body: VerifyCode, db_sess: AsyncSession = Depends(depends_db_sess)
+    body: VerifyCode,
+    jwt: JWTPayload = Depends(depends_jwt(False)),
+    db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    user_id = await REDIS_CLIENT.get(body.code)
-    if not user_id:
+    key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(jwt.sub)}"
+    code = await REDIS_CLIENT.get(key)
+    await REDIS_CLIENT.delete(key)
+
+    if code is None or code != body.code:
         raise HTTPException(
             status_code=400, detail="Invalid or expired verification code."
         )
-    await REDIS_CLIENT.delete(body.code)
 
-    user = await db_sess.scalar(
-        update(Users)
-        .where(Users.user_id == user_id)
-        .values(authenticated_at=get_datetime())
-        .returning(Users)
-    )
-    rsp = await JWTService.set_cookie(user)
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
+    user.authenticated_at = get_datetime()
+    rsp = await JWTService.set_user_cookie(user, db_sess)
     await db_sess.commit()
     return rsp
 
 
 @router.post("/logout")
-async def logout():
-    return JWTService.remove_cookie()
+async def logout(
+    jwt: JWTPayload = Depends(depends_jwt(True)),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    rsp = JWTService.remove_cookie()
+    await db_sess.execute(
+        update(Users).values(jwt=None).where(Users.user_id == jwt.sub)
+    )
+    await db_sess.commit()
+    return rsp
 
 
 @router.get("/me", response_model=UserMe)
