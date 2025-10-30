@@ -7,7 +7,7 @@ from sqlalchemy import func, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
-from core.enums import MessagePlatformType
+from core.enums import MessagePlatformType, ModeratorDeploymentStatus, PricingTierType
 from core.events import CreateDeploymentEvent
 from db_models import (
     Messages,
@@ -83,6 +83,23 @@ async def deploy_moderator(
     )
     if not mod:
         raise HTTPException(status_code=404, detail="Moderator not found.")
+
+    # Resitricting access
+    active_count = await db_sess.scalar(
+        select(ModeratorDeployments)
+        .join(Moderators, Moderators.moderator_id == ModeratorDeployments.moderator_id)
+        .where(
+            Moderators.user_id == jwt.sub,
+            ModeratorDeployments.status != ModeratorDeploymentStatus.PENDING.value,
+        )
+    )
+
+    if jwt.pricing_tier == PricingTierType.FREE and active_count:
+        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
+    elif jwt.pricing_tier == PricingTierType.PRO and active_count > 5:
+        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
+    elif jwt.pricing_tier == PricingTierType.ENTERPRISE and active_count > 50:
+        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
 
     conf = None
     if body.platform == MessagePlatformType.DISCORD:
