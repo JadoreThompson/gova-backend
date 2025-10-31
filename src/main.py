@@ -98,7 +98,9 @@ def run_moderator(deployment_id: str):
                 ModeratorDeployments.deployment_id == deployment_id
             )
         )
-        logger.info(f"Faild to find deployment '{deployment_id}'")
+        if dep is None:
+            logger.info(f"Faild to find deployment '{deployment_id}'")
+            return
 
         mod = DiscordModerator(
             deployment_id,
