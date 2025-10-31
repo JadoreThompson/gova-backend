@@ -3,20 +3,20 @@ from datetime import datetime
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
 from core.enums import PricingTierType
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
-from backend.src.server.services.stripe_event_handler import StripeEventHandler, VerificationError
+from server.services import StripeEventHandler
+from server.services.stripe_event_handler import VerificationError
 from server.typing import JWTPayload
 from sqlalchemy import select
 
 
-logger = logging.getLogger("paymnents_router")
 router = APIRouter(prefix="/payments", tags=["Payments"])
+logger = logging.getLogger("paymnents_router")
 
 
 @router.get("/payment-link")
@@ -76,7 +76,7 @@ async def get_payment_link(
     return {"url": checkout_session.url}
 
 
-@router.post("/stripe/webhook", include_in_schema=False)
+@router.post("/stripe/webhook",)
 async def stripe_webhook(req: Request):
     """Stripe webhook endpoint for handling subscription events."""
     sig_header = req.headers.get("stripe-signature")

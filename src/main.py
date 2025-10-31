@@ -5,19 +5,37 @@ from multiprocessing import Process
 from types import CoroutineType
 from typing import Any, Callable
 
+from sqlalchemy import select
 import uvicorn
 
+from db_models import ModeratorDeployments
 from engine.deployment_listener import DeploymentListener
-
+from utils.db import get_db_sess_sync
 
 logger = logging.getLogger("main")
 
 
-def run_sever():
-    uvicorn.run("server.app:app", host="localhost", port=8000)
+def silence_keyboard_interrupt(func):
+    def wrapper(*args, **kw):
+        try:
+            res = func(*args, **kw)
+            return res
+        except KeyboardInterrupt:
+            pass
+
+    return wrapper
+
+
+# Base runners
+
+
+def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
+    """Run only the FastAPI server."""
+    uvicorn.run("server.app:app", host=host, port=port, reload=reload)
 
 
 async def run_deployment_listener() -> None:
+    """Run the Kafka deployment listener."""
     listener = DeploymentListener()
     listener.listen()
 
@@ -26,10 +44,11 @@ def asyncio_run(func: Callable[[], CoroutineType[Any, Any, Any]]) -> None:
     asyncio.run(func())
 
 
-def main() -> None:
+@silence_keyboard_interrupt
+def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
     pargs = (
         (asyncio_run, (run_deployment_listener,), {}, "Deployment Listener"),
-        (run_sever, (), {}, "Server"),
+        (run_server, (host, port, reload), {}, "Server"),
     )
 
     ps = [
@@ -47,66 +66,80 @@ def main() -> None:
                     logger.critical(f"Process '{p.name}' has died.")
                     p.kill()
                     p.join()
-
                     target, args, kw, name = pargs[idx]
                     ps[idx] = Process(target=target, args=args, kwargs=kw, name=name)
                     ps[idx].start()
-
-                    logger.critical(
-                        f"Process '{p.name}' has been relaunced successfully."
-                    )
-
+                    logger.critical(f"Process '{p.name}' relaunched successfully.")
             time.sleep(0.5)
     except KeyboardInterrupt:
-        pass
+        logger.info("Keyboard interrupt — shutting down all processes.")
     finally:
-        logger.info("Shutting down all processes.")
-
         for p in ps:
-            logger.info(f"Process '{p.name}' is shutting down.")
+            logger.info(f"Shutting down process '{p.name}'...")
             p.kill()
             p.join()
-            logger.info(f"Process '{p.name}' shut down successfully.")
-
         logger.info("All processes shut down.")
 
 
-async def test():
+@silence_keyboard_interrupt
+def run_moderator(deployment_id: str):
+    """Run a makeshift moderator function for testing."""
     from config import DISCORD_BOT_TOKEN
-    from engine.discord.actions import (
-        BanActionDefinition,
-        MuteActionDefinition,
-        KickActionDefinition,
-    )
     from engine.discord.config import DiscordConfig
     from engine.discord.moderator import DiscordModerator
 
-    mod = DiscordModerator(
-        "f22de979-2ca4-4163-b974-b018359ba4b4",
-        "0e55d78b-ec79-400a-8df9-1d077ebfafc2",
-        logger=logging.getLogger("test-discord-moderator"),
-        token=DISCORD_BOT_TOKEN,
-        config=DiscordConfig(
-            guild_id=1334317047995432980,
-            allowed_channels=[1334317050629460114],
-            allowed_actions=[
-                MuteActionDefinition(requires_approval=False),
-                KickActionDefinition(requires_approval=True),
-            ],
-        ),
-    )
-    async with mod:
-        await mod.moderate()
+    async def runner(mod: DiscordModerator):
+        async with mod:
+            await mod.moderate()
+
+    with get_db_sess_sync() as db_sess:
+        dep = db_sess.scalar(
+            select(ModeratorDeployments).where(
+                ModeratorDeployments.deployment_id == deployment_id
+            )
+        )
+        logger.info(f"Faild to find deployment '{deployment_id}'")
+
+        mod = DiscordModerator(
+            deployment_id,
+            dep.moderator_id,
+            logger=logging.getLogger(f"moderator-{deployment_id}"),
+            token=DISCORD_BOT_TOKEN,
+            config=DiscordConfig(**dep.conf),
+        )
+
+    asyncio.run(runner(mod))
 
 
 if __name__ == "__main__":
     import sys
 
-    args = sys.argv
+    mode = ""
+    host = "0.0.0.0"
+    port = 8000
+    reload_flag = True
+    deployment_id = None
 
-    if len(args) == 1 or args[1] == "0":
-        uvicorn.run("server.app:app", host="0.0.0.0", port=8000, reload=True)
-    elif args[1] == "1":
-        main()
-    elif args[1] == "2":
-        asyncio.run(test())
+    args = sys.argv[1:]
+    for arg in args:
+        if arg.startswith("--mode="):
+            mode = arg.split("=")[1]
+        elif arg.startswith("--host="):
+            host = arg.split("=")[1]
+        elif arg.startswith("--port="):
+            port = int(arg.split("=")[1])
+        elif arg.startswith("--reload="):
+            reload_flag = arg.split("=")[1].lower() == "true"
+        elif arg.startswith("--deployment-id="):
+            deployment_id = arg.split("=")[1]
+
+    if not mode:
+        raise ValueError("Must provide --mode")
+    elif mode == "local":
+        run_server(host=host, port=port, reload=reload_flag)
+    elif mode == "remote":
+        run_remote(host=host, port=port, reload=reload_flag)
+    elif mode == "moderator":
+        if not deployment_id:
+            raise ValueError("Must provide --deployment-id for moderator mode")
+        run_moderator(deployment_id)

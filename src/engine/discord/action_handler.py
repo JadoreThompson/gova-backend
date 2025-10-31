@@ -3,8 +3,8 @@ from logging import Logger
 
 import discord
 
-from engine.base_action import BaseAction
-from engine.base_action_handler import BaseActionHandler
+from engine.base.base_action import BaseAction
+from engine.base.base_action_handler import BaseActionHandler
 from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
 from engine.discord.context import DiscordMessageContext
 from engine.exc import UnkownActionExc

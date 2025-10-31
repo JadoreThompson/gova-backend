@@ -2,17 +2,13 @@ import asyncio
 import json
 import logging
 from abc import abstractmethod
-from enum import Enum
-from json import JSONDecodeError
 from uuid import UUID
 
 from aiohttp import ClientSession
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from sentence_transformers import SentenceTransformer
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 
-from core.events import DeploymentEvent
-from utils.kafka import dump_model
 from config import (
     KAFKA_BOOTSTRAP_SERVER,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
@@ -21,21 +17,25 @@ from config import (
     SCORE_PROMPT_TEMPLATE,
     SCORE_SYSTEM_PROMPT,
 )
-from core.enums import ActionStatus, ModeratorDeploymentStatus
-from db_models import (
-    Guidelines,
-    Messages,
-    MessagesEvaluations,
-    ModeratorDeployments,
-    ModeratorDeploymentLogs,
-    Moderators,
+from core.enums import (
+    ActionStatus,
+    CoreEventType,
+    ModeratorDeploymentEventType,
+    ModeratorDeploymentStatus,
 )
+from core.events import (
+    ActionModeratorDeploymentEvent,
+    CoreEvent,
+    EvaluationModeratorDeploymentEvent,
+    ModeratorDeploymentEvent,
+)
+from db_models import Guidelines, Moderators, MessagesEvaluations, ModeratorDeployments
 from engine.background_executor import BackgroundExecutor
-from engine.base_action import BaseAction
-from engine.base_action_handler import BaseActionHandler
+from engine.base.base_action_handler import BaseActionHandler
 from engine.models import BaseMessageContext, MessageEvaluation
 from engine.task_pool import TaskPool
 from utils.db import get_db_sess
+from utils.kafka import dump_model
 from utils.llm import fetch_response, parse_to_json
 
 
@@ -48,11 +48,14 @@ class BaseModerator:
         moderator_id: UUID,
         action_handler: BaseActionHandler | None = None,
         logger: logging.Logger | None = None,
+        heartbeat_interval: int | None = None,
     ) -> None:
         self._deployment_id = deployment_id
         self._moderator_id = moderator_id
         self._action_handler = action_handler
         self._logger = logger
+        self._message_count = 0
+        self._heartbeat_interval = heartbeat_interval
         self._http_sess: ClientSession | None = None
         self._topics: list[str] | None = None
         self._guidelines: str | None = None
@@ -91,14 +94,14 @@ class BaseModerator:
 
         Returns:
             None
-        """        
+        """
 
     @abstractmethod
     async def _evaluate(
         self, ctx: BaseMessageContext, max_attempts: int = 3
     ) -> MessageEvaluation | None:
         """
-        Evaluates the given context 
+        Evaluates the given context
 
         Args:
             ctx (BaseMessageContext): _description_
@@ -106,7 +109,7 @@ class BaseModerator:
 
         Returns:
             MessageEvaluation | None: _description_
-        """        
+        """
 
     async def _handle_context(self, ctx: BaseMessageContext) -> None:
         evaluation = await self._evaluate(ctx)
@@ -117,23 +120,51 @@ class BaseModerator:
         await self._handle_evaluation(evaluation, ctx)
         return
 
-
     async def _handle_evaluation(
         self, evaluation: MessageEvaluation, ctx: BaseMessageContext
     ) -> None:
-        await self._save_evaluation(evaluation, ctx)
+        if self._producer is None:
+            return
+
+        eval_event = EvaluationModeratorDeploymentEvent(
+            deployment_id=self._deployment_id, evaluation=evaluation, context=ctx
+        )
+        await self._producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(eval_event))
 
         if evaluation.action:
             action = evaluation.action
             self._logger.info(f"Performing action '{action.type}'")
-            log_id = await self._log_action(action, ctx)
+            action_params = action.to_serialisable_dict()
+            action_type = action.type
 
             if action.requires_approval:
-                await self._update_action_status(log_id, ActionStatus.AWAITING_APPROVAL)
+                event = ActionModeratorDeploymentEvent(
+                    type=ModeratorDeploymentEventType.ACTION_PERFORMED,
+                    deployment_id=self._deployment_id,
+                    action_type=action_type,
+                    params=action_params,
+                    status=ActionStatus.AWAITING_APPROVAL,
+                )
             else:
                 success = await self._action_handler.handle(action, ctx)
                 if success:
-                    await self._update_action_status(log_id, ActionStatus.SUCCESS)
+                    event = ActionModeratorDeploymentEvent(
+                        type=ModeratorDeploymentEventType.ACTION_PERFORMED,
+                        deployment_id=self._deployment_id,
+                        action_type=action_type,
+                        params=action_params,
+                        status=ActionStatus.SUCCESS,
+                    )
+                else:
+                    event = ActionModeratorDeploymentEvent(
+                        type=ModeratorDeploymentEventType.ACTION_PERFORMED,
+                        deployment_id=self._deployment_id,
+                        action_type=action_type,
+                        params=action_params,
+                        status=ActionStatus.FAILED,
+                    )
+
+            await self._producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(event))
 
     async def _listen_to_events(self) -> None:
         self._consumer = AIOKafkaConsumer(
@@ -141,12 +172,27 @@ class BaseModerator:
             bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
             auto_offset_reset="latest",
         )
-        self._producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,)
-        
+        self._producer = AIOKafkaProducer(
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
+        )
+
         await self._consumer.start()
         await self._producer.start()
 
         try:
+            await self._producer.send(
+                KAFKA_DEPLOYMENT_EVENTS_TOPIC,
+                dump_model(
+                    CoreEvent(
+                        type=CoreEventType.MODERATOR_DEPLOYMENT,
+                        data=ModeratorDeploymentEvent(
+                            type=ModeratorDeploymentEventType.DEPLOYMENT_ALIVE,
+                            deployment_id=self._deployment_id,
+                        ),
+                    )
+                ),
+            )
+            
             async for m in self._consumer:
                 try:
                     data: dict = json.loads(m.value.decode())
@@ -155,12 +201,15 @@ class BaseModerator:
                     ):
                         self._moderate_task.cancel()
                         await self._moderate_task
-                except JSONDecodeError:
+                except json.JSONDecodeError:
                     pass
         except asyncio.CancelledError:
             pass
         finally:
-            event = DeploymentEvent(type='stopped', deployment_id=self._deployment_id)
+            event = ModeratorDeploymentEvent(
+                type=ModeratorDeploymentEventType.DEPLOYMENT_DEAD,
+                deployment_id=self._deployment_id,
+            )
             await self._producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(event))
             await self._consumer.stop()
             await self._producer.stop()
@@ -177,69 +226,6 @@ class BaseModerator:
                 .values(status=status.value)
                 .where(ModeratorDeployments.deployment_id == self._deployment_id)
             )
-            await db_sess.commit()
-
-    async def _log_action(self, action: BaseAction, ctx: BaseMessageContext) -> UUID:
-        async with get_db_sess() as db_sess:
-            res = await db_sess.scalar(
-                insert(ModeratorDeploymentLogs)
-                .values(
-                    moderator_id=self._moderator_id,
-                    deployment_id=self._deployment_id,
-                    action_type=(
-                        action.type.value
-                        if isinstance(action.type, Enum)
-                        else action.type
-                    ),
-                    action_params=action.to_serialisable_dict(),
-                    context=ctx.to_serialisable_dict(),
-                    status=(
-                        ActionStatus.AWAITING_APPROVAL.value
-                        if action.requires_approval
-                        else ActionStatus.PENDING.value
-                    ),
-                )
-                .returning(ModeratorDeploymentLogs.log_id)
-            )
-            await db_sess.commit()
-        return res
-
-    async def _update_action_status(self, log_id: UUID, status: ActionStatus) -> None:
-        async with get_db_sess() as db_sess:
-            await db_sess.execute(
-                update(ModeratorDeploymentLogs)
-                .values(status=status.value)
-                .where(ModeratorDeploymentLogs.log_id == log_id)
-            )
-            await db_sess.commit()
-
-    async def _save_evaluation(
-        self, eval: MessageEvaluation, ctx: BaseMessageContext
-    ) -> None:
-        """Stores the eval and generates embeddings for future retrieval."""
-        embedding = self._embedding_model.encode([ctx.content])[0]
-        async with get_db_sess() as db_sess:
-            message_id = await db_sess.scalar(
-                insert(Messages)
-                .values(
-                    moderator_id=self._moderator_id,
-                    deployment_id=self._deployment_id,
-                    content=ctx.content,
-                    platform=ctx.platform.value,
-                )
-                .returning(Messages.message_id)
-            )
-
-            records = [
-                {
-                    "message_id": message_id,
-                    "embedding": embedding,
-                    "topic": teval.topic,
-                    "topic_score": teval.topic_score,
-                }
-                for teval in eval.topic_evaluations
-            ]
-            await db_sess.execute(insert(MessagesEvaluations), records)
             await db_sess.commit()
 
     async def _fetch_guidelines(self) -> tuple[str, list[str]]:

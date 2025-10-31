@@ -3,16 +3,16 @@ from uuid import UUID
 
 from aiokafka import AIOKafkaProducer
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, update, delete
+from sqlalchemy import func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
 from core.enums import MessagePlatformType, ModeratorDeploymentStatus
-from core.events import CreateDeploymentEvent, StopDeploymentEvent
+from core.events import StartModeratorDeploymentEvent, StopModeratorDeploymentEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
-    ModeratorDeploymentLogs,
+    ModeratorDeploymentEventLogs,
     Moderators,
 )
 from server.dependencies import depends_db_sess, depends_jwt, depends_kafka_producer
@@ -26,7 +26,7 @@ from server.shared.models import (
 from server.typing import JWTPayload
 from utils.db import get_datetime
 from utils.kafka import dump_model
-from .models import DeploymentStats, DeploymentUpdate, DeploymentStats
+from .models import DeploymentStatsResponse, DeploymentStatsResponse
 
 
 router = APIRouter(prefix="/deployments", tags=["Moderator Deployments"])
@@ -110,7 +110,7 @@ async def get_deployment(
     )
 
 
-@router.get("/{deployment_id}/stats", response_model=DeploymentStats)
+@router.get("/{deployment_id}/stats", response_model=DeploymentStatsResponse)
 async def get_deployment_stats(
     deployment_id: UUID,
     jwt: JWTPayload = Depends(depends_jwt()),
@@ -142,8 +142,8 @@ async def get_deployment_stats(
 
     total_actions = (
         await db_sess.scalar(
-            select(func.count(ModeratorDeploymentLogs.log_id)).where(
-                ModeratorDeploymentLogs.deployment_id == deployment.deployment_id
+            select(func.count(ModeratorDeploymentEventLogs.log_id)).where(
+                ModeratorDeploymentEventLogs.deployment_id == deployment.deployment_id
             )
         )
         or 0
@@ -176,7 +176,7 @@ async def get_deployment_stats(
         counts = {deployment.platform: week_map.get(week_start, 0)}
         message_chart.append(MessageChartData(date=week_start, counts=counts))
 
-    return DeploymentStats(
+    return DeploymentStatsResponse(
         total_messages=total_messages,
         total_actions=total_actions,
         message_chart=message_chart,
@@ -213,9 +213,9 @@ async def get_deployment_actions(
 
     logs = (
         await db_sess.scalars(
-            select(ModeratorDeploymentLogs)
-            .where(ModeratorDeploymentLogs.deployment_id == deployment_id)
-            .order_by(ModeratorDeploymentLogs.created_at.desc())
+            select(ModeratorDeploymentEventLogs)
+            .where(ModeratorDeploymentEventLogs.deployment_id == deployment_id)
+            .order_by(ModeratorDeploymentEventLogs.created_at.desc())
             .offset((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE + 1)
         )
@@ -260,7 +260,7 @@ async def stop_deployment(
     if dep.status != ModeratorDeploymentStatus.ONLINE.value:
         raise HTTPException(status_code=400, detail="Deployment is not online.")
 
-    ev = StopDeploymentEvent(
+    ev = StopModeratorDeploymentEvent(
         type="stop",
         deployment_id=dep.deployment_id,
     )
@@ -290,58 +290,11 @@ async def stop_deployment(
     if dep.status != ModeratorDeploymentStatus.OFFLINE.value:
         raise HTTPException(status_code=400, detail="Deployment is not offline.")
 
-    ev = CreateDeploymentEvent(
-        deployment_id=dep.deployment_id,
-        moderator_id=dep.moderator_id,
-        platform=dep.platform,
-        conf=dep.conf,
-    )
+    ev = StopModeratorDeploymentEvent(deployment_id=dep.deployment_id)
     await kafka_producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev))
 
     dep.status = ModeratorDeploymentStatus.PENDING.value
     await db_sess.commit()
-
-
-@router.put("/{deployment_id}", response_model=DeploymentResponse)
-async def update_deployment(
-    deployment_id: UUID,
-    body: DeploymentUpdate,
-    jwt: JWTPayload = Depends(depends_jwt()),
-    db_sess: AsyncSession = Depends(depends_db_sess),
-):
-    vals = body.model_dump(exclude_unset=True, exclude_none=True)
-    if not vals:
-        raise HTTPException(status_code=400, detail="No update fields provided.")
-
-    dep = await db_sess.scalar(
-        update(ModeratorDeployments)
-        .where(
-            ModeratorDeployments.deployment_id == deployment_id,
-            ModeratorDeployments.moderator_id.in_(
-                select(Moderators.moderator_id).where(Moderators.user_id == jwt.sub)
-            ),
-        )
-        .values(**vals)
-        .returning(ModeratorDeployments)
-    )
-    if not dep:
-        raise HTTPException(
-            status_code=404, detail="Deployment not found or unauthorized."
-        )
-
-    # TODO: Emit event to kafka channel
-
-    await db_sess.commit()
-
-    return DeploymentResponse(
-        deployment_id=dep.deployment_id,
-        moderator_id=dep.moderator_id,
-        platform=dep.platform,
-        name=dep.name,
-        conf=dep.conf,
-        status=dep.status,
-        created_at=dep.created_at,
-    )
 
 
 @router.delete("/{deployment_id}")

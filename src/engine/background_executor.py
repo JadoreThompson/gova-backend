@@ -3,7 +3,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from engine.base_moderator import BaseModerator
+    from engine.base.base_moderator import BaseModerator
 from engine.models import BaseMessageContext
 from engine.task_pool import TaskPool
 

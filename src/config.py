@@ -10,6 +10,8 @@ from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from core.enums import PricingTierType
+
 
 BASE_PATH = os.path.dirname(__file__)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
@@ -21,9 +23,7 @@ IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
 # DB
 DB_HOST_CREDS = f"{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}"
-DB_USER_CREDS = (
-    f"{os.getenv("DB_USER")}:{quote(os.getenv("PASSWORD"))}"
-)
+DB_USER_CREDS = f"{os.getenv("DB_USER")}:{quote(os.getenv("PASSWORD"))}"
 DB_NAME = os.getenv("DB_NAME")
 DB_ENGINE = create_async_engine(
     f"postgresql+asyncpg://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
@@ -112,6 +112,22 @@ STRIPE_PRICING_PRO_WEBHOOOK_SECRET = os.getenv("STRIPE_PRICING_PRO_WEBHOOOK_SECR
 STRIPE_PRICING_PRO_PRICE_ID = os.getenv("STRIPE_PRICING_PRO_PRICE_ID")
 stripe.api_key = STRIPE_API_KEY
 
+# Plans
+PLAN_LIMITS = {
+    PricingTierType.FREE: {
+        "max_messages": 1000,
+        "max_deployments": 1,
+    },
+    PricingTierType.PRO: {
+        "max_messages": 10_000,
+        "max_deployments": 5,
+    },
+    PricingTierType.ENTERPRISE: {
+        "max_messages": 100_000,
+        "max_deployments": 50,
+    },
+}
+
 # SMTP
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
@@ -123,6 +139,11 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 
 # Email
 PERSONAL_EMAIL = os.getenv("PERSONAL_EMAIL")
+
+# Hetzner
+HETZNER_API_KEY = os.getenv("HETZNER_API_KEY")
+HETZNER_SNAPSHOT_ID = os.getenv("HETZNER_SNAPSHOT_ID")
+HETZNER_SNAPSHOT_ID = os.getenv("HETZNER_SNAPSHOT_ID")
 
 # Logging
 logging.basicConfig(

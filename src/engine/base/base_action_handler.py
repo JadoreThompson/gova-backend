@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from engine.base_action import BaseAction
+from engine.base.base_action import BaseAction
 from engine.models import BaseMessageContext
 
 

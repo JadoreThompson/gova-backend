@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any
 
 from pydantic import Field
@@ -7,8 +8,9 @@ from core.models import CustomBaseModel
 
 # TODO: Fix type errors
 
+
 class BaseAction(CustomBaseModel):
-    type: Any # Enum
+    type: Enum
     requires_approval: bool
     reason: str = Field(description="Filled by the system and not the agent.")
 
@@ -19,5 +21,6 @@ class BaseActionDefinition(CustomBaseModel):
     parameters. Used in the platforms config for defining
     the allowed actions.
     """
-    type: Any # Enum
+
+    type: Any # Any for FastAPI openapi
     requires_approval: bool

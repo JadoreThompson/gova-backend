@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from engine.base_action import BaseAction, BaseActionDefinition
+from engine.base.base_action import BaseAction, BaseActionDefinition
 
 
 class DiscordActionType(str, Enum):

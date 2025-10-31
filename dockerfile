@@ -16,4 +16,4 @@ WORKDIR /app
 
 RUN uv sync --locked
 
-CMD ["bash", "-c", "uv run alembic upgrade head && uv run src/main.py"]
+CMD ["bash", "-c", "uv run alembic upgrade head && uv run src/main.py --mode=remote --reload=false"]

@@ -2,7 +2,16 @@ from datetime import datetime
 from uuid import uuid4, UUID
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import UUID as SaUUID, Float, Integer, String, DateTime, ForeignKey
+from sqlalchemy import (
+    UUID as SaUUID,
+    Boolean,
+    Float,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    Text,
+)
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -28,7 +37,6 @@ class Users(Base):
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
     jwt: Mapped[str] = mapped_column(String, nullable=True)
-    # Encrypted oauth payload
     discord_oauth: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
@@ -97,7 +105,7 @@ class Moderators(Base):
     deployments: Mapped[list["ModeratorDeployments"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
-    logs: Mapped[list["ModeratorDeploymentLogs"]] = relationship(
+    event_logs: Mapped[list["ModeratorDeploymentEventLogs"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
     guideline: Mapped["Guidelines"] = relationship(back_populates="moderators")
@@ -112,6 +120,7 @@ class ModeratorDeployments(Base):
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
     )
+    server_id: Mapped[str] = mapped_column(String, nullable=True)  # The VPS server ID
     platform: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -121,16 +130,18 @@ class ModeratorDeployments(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
+    last_heartbeat: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    # Relationships
     moderator: Mapped["Moderators"] = relationship(back_populates="deployments")
-    logs: Mapped[list["ModeratorDeploymentLogs"]] = relationship(
+    event_logs: Mapped[list["ModeratorDeploymentEventLogs"]] = relationship(
         back_populates="deployment", cascade="all, delete-orphan"
     )
 
 
-class ModeratorDeploymentLogs(Base):
-    __tablename__ = "moderator_logs"
+class ModeratorDeploymentEventLogs(Base):
+    __tablename__ = "moderator_deployment_event_logs"
 
     log_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
@@ -138,22 +149,53 @@ class ModeratorDeploymentLogs(Base):
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
     )
-    deployment_id: Mapped[UUID] = mapped_column(
+    deployment_id: Mapped[UUID | None] = mapped_column(
         SaUUID(as_uuid=True),
         ForeignKey("moderator_deployments.deployment_id"),
         nullable=False,
     )
-    action_type: Mapped[str] = mapped_column(String, nullable=False)
-    action_params: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    context: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String, nullable=False)
+    # Event log
+    event_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    severity: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Event details
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[dict] = mapped_column(JSONB, nullable=True)
+
+    # Action tracking (for moderation actions)
+    action_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    action_params: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    action_status: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Context and metadata
+    context: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True
+    )  # Context object used at that time
+    # platform_data: Mapped[dict | None] = mapped_column(
+    #     JSONB, nullable=True
+    # )  # Platform-specific info
+
+    # Error tracking
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # # User/message references
+    # target_user_id: Mapped[str | None] = mapped_column(
+    #     String, nullable=True
+    # )  # Platform user ID
+    message_id: Mapped[UUID | None] = mapped_column(
+        SaUUID(as_uuid=True), nullable=True
+    )  # Link to Messages table
+
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=get_datetime
+        DateTime(timezone=True), nullable=False, default=get_datetime, index=True
     )
 
     # Relationships
-    moderator: Mapped["Moderators"] = relationship(back_populates="logs")
-    deployment: Mapped["ModeratorDeployments"] = relationship(back_populates="logs")
+    moderator: Mapped["Moderators"] = relationship(back_populates="event_logs")
+    deployment: Mapped["ModeratorDeployments"] = relationship(
+        back_populates="event_logs"
+    )
 
 
 class Messages(Base):
@@ -166,6 +208,8 @@ class Messages(Base):
     deployment_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
     platform: Mapped[str] = mapped_column(String, nullable=False)
+    platform_message_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    platform_author_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
@@ -173,8 +217,6 @@ class Messages(Base):
 
 class MessagesEvaluations(Base):
     __tablename__ = "message_evaluations"
-    # NOTE: No foreign keys in this table as we want to retain all data
-    # regardless is a parent is deleted.
 
     evaluation_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
@@ -183,8 +225,10 @@ class MessagesEvaluations(Base):
     embedding: Mapped[list[float]] = mapped_column(Vector(1024))
     topic: Mapped[str] = mapped_column(String, nullable=False)
     topic_score: Mapped[float] = mapped_column(Float, nullable=False)
+    violation_detected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=0
+    )  # Boolean flag
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
-
-    # Relationships

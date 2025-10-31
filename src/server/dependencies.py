@@ -6,7 +6,7 @@ from fastapi import Request
 
 from config import COOKIE_ALIAS
 from core.enums import MessagePlatformType
-from engine.base_action_handler import BaseActionHandler
+from engine.base.base_action_handler import BaseActionHandler
 from engine.discord.action_handler import DiscordActionHandler
 from infra import DiscordClientManager, KafkaManager
 from infra.discord_client_manager import DiscordClientManager

@@ -1,12 +1,11 @@
 from fastapi import APIRouter, BackgroundTasks, status
 
 from config import PERSONAL_EMAIL
-from server.services import EmailService
+from core.services import EmailService
 from .models import ContactForm
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
-
 email_service = EmailService(
     sender_name="Gova Support", sender_email="support@gova.chat"
 )

@@ -5,7 +5,7 @@ from typing import AsyncIterator, Literal
 import discord
 
 from config import DISCORD_BOT_TOKEN
-from engine.base_stream import BaseChatStream
+from engine.base.base_stream import BaseChatStream
 from .context import DiscordMessageContext, DiscordContext
 
 
@@ -65,12 +65,13 @@ class DiscordStream(BaseChatStream):
             while True:
                 item = await self._msg_queue.get()
                 ctx = DiscordMessageContext(
+                    content=item.content,
+                    platform_author_id=item.author.id,
+                    platform_message_id=item.id,
                     discord=DiscordContext(
-                        user_id=item.author.id,
                         channel_id=item.channel.id,
                         guild_id=item.guild.id,
                     ),
-                    content=item.content,
                 )
                 yield ctx
         finally:

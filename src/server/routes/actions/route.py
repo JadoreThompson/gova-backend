@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.enums import ActionStatus, MessagePlatformType
 from engine.discord.action_handler import DiscordActionHandler
-from db_models import ModeratorDeploymentLogs, ModeratorDeployments, Moderators
+from db_models import ModeratorDeploymentEventLogs, ModeratorDeployments, Moderators
 from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
 from engine.discord.context import DiscordMessageContext
 from server.dependencies import depends_db_sess, depends_jwt, depends_discord_action_handler
@@ -27,12 +27,12 @@ async def update_action_status(
     action_handler: DiscordActionHandler = Depends(depends_discord_action_handler),
 ):
     res = await session.execute(
-        select(ModeratorDeploymentLogs, ModeratorDeployments.platform)
+        select(ModeratorDeploymentEventLogs, ModeratorDeployments.platform)
         .join(
-            Moderators, Moderators.moderator_id == ModeratorDeploymentLogs.moderator_id
+            Moderators, Moderators.moderator_id == ModeratorDeploymentEventLogs.moderator_id
         )
-        .join(ModeratorDeployments, ModeratorDeployments.deployment_id == ModeratorDeploymentLogs.deployment_id)
-        .where(Moderators.user_id == jwt.sub, ModeratorDeploymentLogs.log_id == log_id)
+        .join(ModeratorDeployments, ModeratorDeployments.deployment_id == ModeratorDeploymentEventLogs.deployment_id)
+        .where(Moderators.user_id == jwt.sub, ModeratorDeploymentEventLogs.log_id == log_id)
     )
 
     data = res.first()

@@ -11,12 +11,12 @@ class DiscordServer(BaseModel):
 
 class DiscordContext(BaseModel):
     """A replacement for discord.Message"""
-
-    user_id: int
     channel_id: int
     guild_id: int
 
 
 class DiscordMessageContext(BaseMessageContext):
     platform: MessagePlatformType = MessagePlatformType.DISCORD
+    platform_author_id: str
+    platform_message_id: str
     discord: DiscordContext

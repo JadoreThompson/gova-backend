@@ -9,8 +9,8 @@ from aiohttp import ClientError
 import engine.discord.actions as actions_module
 from config import FINAL_PROMPT_TEMPLATE, FINAL_SYSTEM_PROMPT
 from core.models import CustomBaseModel
-from engine.base_moderator import BaseModerator
-from engine.base_action import BaseActionDefinition
+from engine.base.base_moderator import BaseModerator
+from engine.base.base_action import BaseActionDefinition
 from engine.discord.actions import (
     BanAction,
     DiscordAction,
@@ -38,8 +38,9 @@ class DiscordModerator(BaseModerator):
         *,
         token: str,
         config: DiscordConfig,
+        **kw,
     ):
-        super().__init__(deployment_id, moderator_id, action_handler, logger)
+        super().__init__(deployment_id, moderator_id, action_handler, logger, **kw)
         self._token = token
         self._config = config
         self._client: discord.Client | None = None
@@ -62,7 +63,8 @@ class DiscordModerator(BaseModerator):
                         self._action_handler = DiscordActionHandler(
                             self._client, self._logger
                         )
-
+                        
+                    self._message_count += 1
                     await self._task_pool.submit(self._handle_context(ctx))
 
     async def _evaluate(
@@ -110,7 +112,7 @@ class DiscordModerator(BaseModerator):
                         {"role": "system", "content": FINAL_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
                     ],
-                    temperature=1
+                    temperature=1,
                 )
                 data = parse_to_json(content["choices"][0]["message"]["content"])
 

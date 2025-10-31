@@ -18,7 +18,7 @@ class DeploymentUpdate(CustomBaseModel):
     conf: dict[str, Any] | None = None
 
 
-class DeploymentStats(BaseModel):
+class DeploymentStatsResponse(BaseModel):
     total_messages: int
     total_actions: int
     message_chart: list[MessageChartData]

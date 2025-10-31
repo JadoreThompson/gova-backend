@@ -6,13 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
-from core.enums import MessagePlatformType, ModeratorDeploymentStatus, PricingTierType
-from core.events import CreateDeploymentEvent
+from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
+from core.enums import (
+    CoreEventType,
+    MessagePlatformType,
+    ModeratorDeploymentStatus,
+    PricingTierType,
+)
+from core.events import CoreEvent, StartModeratorDeploymentEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
-    ModeratorDeploymentLogs,
+    ModeratorDeploymentEventLogs,
     Moderators,
 )
 from engine.discord.config import DiscordConfig
@@ -86,7 +91,7 @@ async def deploy_moderator(
 
     # Resitricting access
     active_count = await db_sess.scalar(
-        select(ModeratorDeployments)
+        select(func.count(ModeratorDeployments.deployment_id))
         .join(Moderators, Moderators.moderator_id == ModeratorDeployments.moderator_id)
         .where(
             Moderators.user_id == jwt.sub,
@@ -94,12 +99,9 @@ async def deploy_moderator(
         )
     )
 
-    if jwt.pricing_tier == PricingTierType.FREE and active_count:
-        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
-    elif jwt.pricing_tier == PricingTierType.PRO and active_count > 5:
-        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
-    elif jwt.pricing_tier == PricingTierType.ENTERPRISE and active_count > 50:
-        raise HTTPException(status_code=400, detail="Online deployment limit reached.")
+    max_messages = PLAN_LIMITS[jwt.pricing_tier]["max_messages"]
+    if active_count >= max_messages:
+        raise HTTPException(status_code=400, detail="Max deployments reached.")
 
     conf = None
     if body.platform == MessagePlatformType.DISCORD:
@@ -133,15 +135,18 @@ async def deploy_moderator(
         created_at=dep.created_at,
     )
 
-    ev = CreateDeploymentEvent(
+    event = StartModeratorDeploymentEvent(
         deployment_id=dep.deployment_id,
         moderator_id=dep.moderator_id,
         platform=body.platform,
-        conf=conf,
+        moderator_conf=conf,
     )
     await db_sess.commit()
 
-    await kafka_producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev))
+    await kafka_producer.send(
+        KAFKA_DEPLOYMENT_EVENTS_TOPIC,
+        dump_model(CoreEvent(type=CoreEventType.MODERATOR_DEPLOYMENT, data=event)),
+    )
     return rsp_body
 
 
@@ -278,8 +283,8 @@ async def get_moderator_stats(
     total_messages = total_messages or 0
 
     total_actions = await db_sess.scalar(
-        select(func.count(ModeratorDeploymentLogs.log_id)).where(
-            ModeratorDeploymentLogs.moderator_id == moderator_id
+        select(func.count(ModeratorDeploymentEventLogs.log_id)).where(
+            ModeratorDeploymentEventLogs.moderator_id == moderator_id
         )
     )
     total_actions = total_actions or 0

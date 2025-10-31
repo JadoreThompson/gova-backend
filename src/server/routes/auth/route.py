@@ -17,9 +17,10 @@ from config import (
     SUB_DOMAIN,
 )
 from core.enums import MessagePlatformType
+from core.services import EmailService
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
-from server.services import DiscordService, EmailService, EncryptionService, JWTService
+from server.services import DiscordService, EncryptionService, JWTService
 from server.typing import JWTPayload
 from utils.db import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
