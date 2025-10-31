@@ -23,7 +23,7 @@ IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
 # DB
 DB_HOST_CREDS = f"{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}"
-DB_USER_CREDS = f"{os.getenv("DB_USER")}:{quote(os.getenv("PASSWORD"))}"
+DB_USER_CREDS = f"{os.getenv("DB_USER")}:{quote(os.getenv("DB_PASSWORD"))}"
 DB_NAME = os.getenv("DB_NAME")
 DB_ENGINE = create_async_engine(
     f"postgresql+asyncpg://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
