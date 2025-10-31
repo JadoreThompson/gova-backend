@@ -166,13 +166,7 @@ class DeploymentListener:
             server_type=ServerType(name="cx23"),
             image=Image(id=HETZNER_IMAGE_ID),
             ssh_keys=[SSHKey("master")],
-            user_data=f"""#cloud-config
-    runcmd:
-    - cd /backend
-    - git pull
-    - uv sync
-    - uv run src/main.py --mode=moderator --deployment-id={event.deployment_id}
-    """,
+            user_data=f"""/opt/moderator-deploy.sh {event.deployment_id}""",
         )
 
         with get_db_sess_sync() as db_sess:

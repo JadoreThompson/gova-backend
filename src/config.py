@@ -22,9 +22,13 @@ load_dotenv(os.path.join(BASE_PATH, ".env"))
 IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
 # DB
-DB_HOST_CREDS = f"{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}"
-DB_USER_CREDS = f"{os.getenv("DB_USER")}:{quote(os.getenv("DB_PASSWORD"))}"
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
+DB_HOST_CREDS = f"{DB_HOST}:{DB_PORT}"
+DB_USER_CREDS = f"{DB_USER}:{quote(DB_PASSWORD)}"
 DB_ENGINE = create_async_engine(
     f"postgresql+asyncpg://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
 )
@@ -39,8 +43,8 @@ KAFKA_BOOTSTRAP_SERVER = f"{KAFKA_HOST}:{KAFKA_PORT}"
 KAFKA_DEPLOYMENT_EVENTS_TOPIC = os.getenv("KAFKA_DEPLOYMENT_EVENTS_TOPIC")
 
 # Redis
-REDIS_HOST = os.getenv("REDIS_HOST")
-REDIS_PORT = int(os.getenv("REDIS_PORT"))
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "0"))
 REDIS_DB = None
 REDIS_CLIENT = AsyncRedis(
     host=REDIS_HOST,
