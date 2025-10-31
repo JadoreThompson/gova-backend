@@ -30,7 +30,7 @@ class VerificationError(Exception):
     pass
 
 
-class PaymentService:
+class StripeEventHandler:
     _handlers: dict | None = None
     _email_service: EmailService | None = None
     _kafka_producer: AIOKafkaProducer | None = None

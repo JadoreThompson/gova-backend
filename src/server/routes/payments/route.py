@@ -10,7 +10,7 @@ from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
 from core.enums import PricingTierType
 from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
-from server.services.payment_service import PaymentService, VerificationError
+from backend.src.server.services.stripe_event_handler import StripeEventHandler, VerificationError
 from server.typing import JWTPayload
 from sqlalchemy import select
 
@@ -73,7 +73,7 @@ async def get_payment_link(
             status_code=500, detail=f"Failed to create checkout session: {e}"
         )
 
-    return {'url': checkout_session.url}
+    return {"url": checkout_session.url}
 
 
 @router.post("/stripe/webhook", include_in_schema=False)
@@ -81,7 +81,9 @@ async def stripe_webhook(req: Request):
     """Stripe webhook endpoint for handling subscription events."""
     sig_header = req.headers.get("stripe-signature")
     try:
-        success = await PaymentService.handle_event(await req.body(), sig_header=sig_header)
+        success = await StripeEventHandler.handle_event(
+            await req.body(), sig_header=sig_header
+        )
         return {"success": success}
     except VerificationError as e:
         print()

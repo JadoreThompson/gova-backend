@@ -1,7 +1,6 @@
 from datetime import datetime
 from enum import Enum
 from json import loads
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -18,9 +17,3 @@ class CustomBaseModel(BaseModel):
 
     def to_serialisable_dict(self) -> dict:
         return loads(self.model_dump_json())
-
-
-class PaymentInfo(CustomBaseModel):
-    customer_id: str | None = None
-    subscription_id: str | None = None
-    last: dict[str, Any] | None = None
