@@ -1,11 +1,13 @@
 from datetime import datetime, date
+from typing import Any
 from uuid import UUID
 
-from pydantic import ValidationError, field_validator
+from pydantic import field_validator
 
 from core.enums import ActionStatus, MessagePlatformType, ModeratorDeploymentStatus
 from core.models import CustomBaseModel
 from engine.discord.config import DiscordConfig
+from server.exc import CustomValidationError
 
 
 class MessageChartData(CustomBaseModel):
@@ -22,7 +24,7 @@ class DiscordConfigResponse(DiscordConfig):
             return v
         if isinstance(v, int):
             return str(v)
-        raise ValidationError(f"Invalid type '{type(v)}' for guild_id")
+        raise CustomValidationError(400, f"Invalid type '{type(v)}' for guild_id")
 
 
 class DeploymentResponse(CustomBaseModel):
@@ -39,6 +41,6 @@ class DeploymentAction(CustomBaseModel):
     log_id: UUID
     deployment_id: UUID
     action_type: str
-    action_params: dict
+    action_params: dict[str, Any]
     status: ActionStatus
     created_at: datetime
