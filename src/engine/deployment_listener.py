@@ -27,7 +27,7 @@ from core.services import EmailService
 from config import (
     DISCORD_BOT_TOKEN,
     HETZNER_API_KEY,
-    HETZNER_SNAPSHOT_ID,
+    HETZNER_IMAGE_ID,
     KAFKA_BOOTSTRAP_SERVER,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
 )
@@ -164,7 +164,7 @@ class DeploymentListener:
         rsp = self._hetzner.servers.create(
             name=server_name,
             server_type=ServerType(name="cx23"),
-            image=Image(id=HETZNER_SNAPSHOT_ID),
+            image=Image(id=HETZNER_IMAGE_ID),
             ssh_keys=[SSHKey("master")],
             user_data=f"""#cloud-config
     runcmd:

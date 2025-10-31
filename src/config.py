@@ -142,8 +142,7 @@ PERSONAL_EMAIL = os.getenv("PERSONAL_EMAIL")
 
 # Hetzner
 HETZNER_API_KEY = os.getenv("HETZNER_API_KEY")
-HETZNER_SNAPSHOT_ID = os.getenv("HETZNER_SNAPSHOT_ID")
-HETZNER_SNAPSHOT_ID = os.getenv("HETZNER_SNAPSHOT_ID")
+HETZNER_IMAGE_ID = os.getenv("HETZNER_IMAGE_ID")
 
 # Logging
 logging.basicConfig(
