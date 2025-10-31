@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from config import DOMAIN, SCHEME, SUB_DOMAIN
 from infra import KafkaManager, DiscordClientManager
 from server.exc import CustomValidationError, JWTError
+from server.middlewares import RateLimitMiddleware
 from server.routes.actions.route import router as action_router
 from server.routes.auth.route import router as auth_router
 from server.routes.connections.route import router as connections_router
@@ -45,6 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(action_router)
 app.include_router(auth_router)
