@@ -1,5 +1,7 @@
 from typing import Any, Generic, Literal, TypeVar
-from uuid import UUID
+from uuid import UUID, uuid4
+
+from pydantic import Field
 
 from core.enums import (
     ActionStatus,
@@ -22,6 +24,7 @@ class CoreEvent(CustomBaseModel):
 
     type: CoreEventType
     data: Any
+    id: UUID = Field(default=uuid4)
 
 
 # Moderator Events
