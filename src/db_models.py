@@ -174,18 +174,12 @@ class ModeratorDeploymentEventLogs(Base):
     context: Mapped[dict | None] = mapped_column(
         JSONB, nullable=True
     )  # Context object used at that time
-    # platform_data: Mapped[dict | None] = mapped_column(
-    #     JSONB, nullable=True
-    # )  # Platform-specific info
 
     # Error tracking
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # # User/message references
-    # target_user_id: Mapped[str | None] = mapped_column(
-    #     String, nullable=True
-    # )  # Platform user ID
+    # User/message references
     message_id: Mapped[UUID | None] = mapped_column(
         SaUUID(as_uuid=True), nullable=True
     )  # Link to Messages table
