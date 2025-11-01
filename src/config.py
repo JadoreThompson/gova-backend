@@ -75,7 +75,7 @@ else:
 COOKIE_ALIAS = "app-cookie"
 JWT_ALGO = os.getenv("JWT_ALGO")
 JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY = timedelta(days=1000)
+JWT_EXPIRY = timedelta(seconds=int(os.getenv("JWT_EXPIRY_SECS")))
 
 # Security
 PW_HASH_SALT = os.getenv("PW_HASH_SALT")
