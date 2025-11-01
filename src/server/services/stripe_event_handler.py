@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from aiokafka import AIOKafkaProducer
 import stripe
+from aiokafka import AIOKafkaProducer
 from sqlalchemy import select, update
 
 from core.events import CoreEvent, KillModeratorEvent
@@ -20,7 +20,7 @@ from config import (
 )
 from core.enums import CoreEventType, ModeratorStatus, PricingTierType
 from core.services import EmailService
-from db_models import ModeratorDeployments, Users
+from db_models import Moderators, Users
 from utils.db import get_db_sess
 
 
@@ -110,16 +110,14 @@ class StripeEventHandler:
                 .returning(Users)
             )
 
-            res = await db_sess.scalars(
-                select(ModeratorDeployments.deployment_id).where(
-                    ModeratorDeployments.status != ModeratorStatus.OFFLINE.value
+            mod_id = await db_sess.scalar(
+                select(Moderators.moderator_id).where(
+                    Moderators.status != ModeratorStatus.OFFLINE.value
                 )
             )
-            dids = res.all()
-
             await db_sess.commit()
 
-        await cls._stop_deployments(dids)
+        await cls._stop_moderator(mod_id)
 
         if not user:
             logger.error(
@@ -147,18 +145,18 @@ class StripeEventHandler:
         return True
 
     @classmethod
-    async def _stop_deployments(cls, deployment_ids: list[UUID]) -> None:
-        if not cls._kafka_producer:
+    async def _stop_moderator(cls, moderator_id: UUID) -> None:
+        if cls._kafka_producer is None:
             cls._kafka_producer = AIOKafkaProducer(
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
             )
+            await cls._kafka_producer.start()
 
-        for did in deployment_ids:
-            ev = KillModeratorEvent(deployment_id=did)
-            await cls._kafka_producer.send(
-                KAFKA_MODERATOR_EVENTS_TOPIC,
-                dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
-            )
+        ev = KillModeratorEvent(moderator_id=moderator_id, reason="Failed billing cycle.")
+        await cls._kafka_producer.send(
+            KAFKA_MODERATOR_EVENTS_TOPIC,
+            dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
+        )
 
     @classmethod
     async def _handle_invoice_payment_succeeded(cls, event: dict[str, Any]):

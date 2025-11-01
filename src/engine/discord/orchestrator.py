@@ -154,6 +154,9 @@ class DiscordModeratorOrchestrator:
             await self._kafka_consumer.stop()
 
     async def _handle_start_event(self, event: StartModeratorEvent) -> None:
+        if event.platform != MessagePlatformType.DISCORD:
+            return
+        
         async with self._lock:
             if event.moderator_id in self._moderators:
                 logger.warning(f"Moderator {event.moderator_id} already exists")

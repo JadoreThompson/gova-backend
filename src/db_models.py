@@ -91,6 +91,10 @@ class Moderators(Base):
         SaUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
+    platform: Mapped[str] = mapped_column(String, nullable=False)
+    # Telegram group, Discord server
+    platform_server_id: Mapped[str] = mapped_column(String, nullable=False)
+    conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
     guideline_id: Mapped[str] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("guidelines.guideline_id"), nullable=False
     )
@@ -103,56 +107,20 @@ class Moderators(Base):
 
     # Relationships
     user: Mapped["Users"] = relationship(back_populates="moderators")
-    deployments: Mapped[list["ModeratorDeployments"]] = relationship(
-        back_populates="moderator", cascade="all, delete-orphan"
-    )
-    event_logs: Mapped[list["ModeratorDeploymentEventLogs"]] = relationship(
+    event_logs: Mapped[list["ModeratorEventLogs"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
     guideline: Mapped["Guidelines"] = relationship(back_populates="moderators")
 
 
-class ModeratorDeployments(Base):
-    __tablename__ = "moderator_deployments"
-
-    deployment_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
-    )
-    moderator_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
-    )    
-    platform: Mapped[str] = mapped_column(String, nullable=False)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String, nullable=False, default=ModeratorStatus.OFFLINE.value
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=get_datetime
-    )
-    last_heartbeat: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    moderator: Mapped["Moderators"] = relationship(back_populates="deployments")
-    event_logs: Mapped[list["ModeratorDeploymentEventLogs"]] = relationship(
-        back_populates="deployment", cascade="all, delete-orphan"
-    )
-
-
-class ModeratorDeploymentEventLogs(Base):
-    __tablename__ = "moderator_deployment_event_logs"
+class ModeratorEventLogs(Base):
+    __tablename__ = "moderator_event_logs"
 
     log_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
     )
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
-    )
-    deployment_id: Mapped[UUID | None] = mapped_column(
-        SaUUID(as_uuid=True),
-        ForeignKey("moderator_deployments.deployment_id"),
-        nullable=False,
     )
     # Event log
     event_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
@@ -187,9 +155,6 @@ class ModeratorDeploymentEventLogs(Base):
 
     # Relationships
     moderator: Mapped["Moderators"] = relationship(back_populates="event_logs")
-    deployment: Mapped["ModeratorDeployments"] = relationship(
-        back_populates="event_logs"
-    )
 
 
 class Messages(Base):
@@ -199,7 +164,6 @@ class Messages(Base):
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
     moderator_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
-    deployment_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
     platform: Mapped[str] = mapped_column(String, nullable=False)
     platform_message_id: Mapped[str | None] = mapped_column(String, nullable=True)

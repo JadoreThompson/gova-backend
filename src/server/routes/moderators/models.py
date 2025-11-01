@@ -1,12 +1,12 @@
-from datetime import datetime
-from typing import Any
+from datetime import datetime, date
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from core.enums import MessagePlatformType, ModeratorStatus
 from core.models import CustomBaseModel
-from server.shared.models import MessageChartData
+from engine.discord.config import DiscordConfig
+from server.exc import CustomValidationError
 
 
 class ModeratorBase(CustomBaseModel):
@@ -15,19 +15,22 @@ class ModeratorBase(CustomBaseModel):
 
 
 class ModeratorCreate(ModeratorBase):
-    pass
-
-
-class ModeratorUpdate(ModeratorBase):
-    name: str | None = None
-    guideline_id: UUID | None = None
+    platform: MessagePlatformType
+    platform_server_id: str
+    conf: DiscordConfig
 
 
 class ModeratorResponse(ModeratorBase):
-    moderator_id: UUID
+    platform: MessagePlatformType
+    platform_server_id: str
+    conf: DiscordConfig
     status: ModeratorStatus
     created_at: datetime
-    deployment_platforms: list[MessagePlatformType]
+
+
+class MessageChartData(CustomBaseModel):
+    date: date
+    counts: dict[MessagePlatformType, int]
 
 
 class ModeratorStats(BaseModel):
@@ -36,7 +39,13 @@ class ModeratorStats(BaseModel):
     message_chart: list[MessageChartData]
 
 
-class DeploymentCreate(CustomBaseModel):
-    platform: MessagePlatformType
-    name: str | None
-    conf: dict[str, Any]
+class DiscordConfigResponse(DiscordConfig):
+    guild_id: str
+
+    @field_validator("guild_id", mode="before")
+    def validate_guild_id(cls, v):
+        if isinstance(v, str):
+            return v
+        if isinstance(v, int):
+            return str(v)
+        raise CustomValidationError(400, f"Invalid type '{type(v)}' for guild_id")

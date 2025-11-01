@@ -24,12 +24,14 @@ class PasswordField(BaseModel):
 
         if sum(1 for c in value if c.isupper()) < min_uppercase:
             raise CustomValidationError(
-                status, f"Password must contain at least {min_uppercase} uppercase letters."
+                status,
+                f"Password must contain at least {min_uppercase} uppercase letters.",
             )
 
         if sum(1 for c in value if not c.isalnum()) < min_special_chars:
             raise CustomValidationError(
-                status, f"Password must contain at least {min_special_chars} special characters."
+                status,
+                f"Password must contain at least {min_special_chars} special characters.",
             )
 
         return value
@@ -59,6 +61,10 @@ class UserMe(CustomBaseModel):
 
 class UpdateUsername(BaseModel):
     username: str
+
+
+class UpdatePassword(PasswordField):
+    pass
 
 
 class VerifyCode(BaseModel):

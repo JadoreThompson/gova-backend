@@ -64,21 +64,16 @@ class BaseModerator(ABC):
         return self._status
 
     async def start(self):
-        print("in")
         if self._status == ModeratorStatus.OFFLINE:
-            print("step 1")
             self._status = ModeratorStatus.ONLINE
             await self._update_status(ModeratorStatus.ONLINE)
-            print("step 2")
             event = ModeratorEvent(
                 type=ModeratorEventType.ALIVE, moderator_id=self._moderator_id
             )
-            print("step 3")
             await self._kafka_producer.send(
                 KAFKA_MODERATOR_EVENTS_TOPIC,
                 dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=event)),
             )
-            print("step 4")
 
     async def stop(self, reason: str | None = None) -> None:
         if self._status == ModeratorStatus.ONLINE:

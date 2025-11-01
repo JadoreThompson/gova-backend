@@ -2,8 +2,6 @@ import asyncio
 import logging
 import time
 from multiprocessing import Process
-from types import CoroutineType
-from typing import Any, Callable
 
 import uvicorn
 
@@ -81,7 +79,6 @@ if __name__ == "__main__":
     host = "0.0.0.0"
     port = 8000
     reload_flag = True
-    deployment_id = None
 
     args = sys.argv[1:]
     for arg in args:
@@ -93,8 +90,6 @@ if __name__ == "__main__":
             port = int(arg.split("=")[1])
         elif arg.startswith("--reload="):
             reload_flag = arg.split("=")[1].lower() == "true"
-        elif arg.startswith("--deployment-id="):
-            deployment_id = arg.split("=")[1]
 
     if not mode:
         raise ValueError("Must provide --mode")
