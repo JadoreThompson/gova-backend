@@ -6,14 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
-from core.enums import (
-    CoreEventType,
-    MessagePlatformType,
-    ModeratorStatus,
-    PricingTierType,
-)
-from core.events import CoreEvent, StartModeratorEvent
+from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
+from core.enums import CoreEventType, MessagePlatformType, ModeratorStatus
+from core.events import CoreEvent, ModeratorEvent, StartModeratorEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
@@ -143,12 +138,33 @@ async def deploy_moderator(
     )
     await db_sess.commit()
 
-    print('yo')
     await kafka_producer.send(
         KAFKA_MODERATOR_EVENTS_TOPIC,
         dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=event)),
     )
     return rsp_body
+
+
+@router.post("/{moderator_id}/stop", status_code=202)
+async def stop_moderator(
+    moderator_id: UUID,
+    jwt: JWTPayload = Depends(depends_jwt(True)),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+    kafka_producer: AIOKafkaProducer = Depends(depends_kafka_producer),
+):
+    mod = await db_sess.scalar(
+        select(Moderators).where(
+            Moderators.moderator_id == moderator_id, Moderators.user_id == jwt.sub
+        )
+    )
+    if not mod:
+        raise HTTPException(status_code=400, detail="Moderator not found.")
+
+    event = ModeratorEvent(moderator_id=moderator_id)
+    await kafka_producer.send(
+        KAFKA_MODERATOR_EVENTS_TOPIC,
+        dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=event)),
+    )
 
 
 @router.get("/", response_model=PaginatedResponse[ModeratorResponse])
