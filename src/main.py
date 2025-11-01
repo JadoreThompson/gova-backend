@@ -1,14 +1,24 @@
 import asyncio
+import json
 import logging
 import time
 from multiprocessing import Process
 
 import uvicorn
+from kafka import KafkaConsumer
 
 from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
-from core.events import EvaluationCreatedModeratorEvent
+from core.enums import ModeratorEventType
+from core.events import (
+    EvaluationCreatedModeratorEvent,
+    CoreEvent,
+    ActionPerformedModeratorEvent,
+)
+from engine.discord.context import DiscordMessageContext
+from engine.discord.models import DiscordAction
 from engine.discord.orchestrator import DiscordModeratorOrchestrator
 from engine.moderator_event_logger import ModeratorEventLogger
+from utils.db import smaker_sync
 
 
 logger = logging.getLogger("main")
@@ -39,19 +49,11 @@ def run_orchestrator(batch_size: int = 1):
 
 
 def run_event_logger():
-    import json
-    from kafka import KafkaConsumer
-    from core.enums import ModeratorEventType
-    from core.events import CoreEvent, ActionPerformedModeratorEvent
-    from engine.discord.models import DiscordAction
-    from engine.discord.context import DiscordMessageContext
-    from utils.db import smaker_sync
-
     db = smaker_sync()
+    logger = ModeratorEventLogger(db)
     consumer = KafkaConsumer(
         KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
     )
-    logger = ModeratorEventLogger(db)
 
     for msg in consumer:
         try:
@@ -61,7 +63,9 @@ def run_event_logger():
             parsed_ev = None
 
             if ev_type == ModeratorEventType.EVALUATION_CREATED:
-                parsed_ev = EvaluationCreatedModeratorEvent[DiscordAction, DiscordMessageContext](**ev.data)
+                parsed_ev = EvaluationCreatedModeratorEvent[
+                    DiscordAction, DiscordMessageContext
+                ](**ev.data)
             elif ev_type == ModeratorEventType.ACTION_PERFORMED:
                 parsed_ev = ActionPerformedModeratorEvent[DiscordAction](**ev.data)
 
