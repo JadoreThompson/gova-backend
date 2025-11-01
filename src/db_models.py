@@ -38,6 +38,12 @@ class Users(Base):
     password: Mapped[str] = mapped_column(String, nullable=False)
     jwt: Mapped[str] = mapped_column(String, nullable=True)
     discord_oauth: Mapped[str] = mapped_column(String, nullable=True)
+    pricing_tier: Mapped[str] = mapped_column(
+        Integer, nullable=False, default=PricingTierType.FREE.value
+    )
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
@@ -47,16 +53,8 @@ class Users(Base):
         default=get_datetime,
         onupdate=get_datetime,
     )
-    pricing_tier: Mapped[str] = mapped_column(
-        Integer, nullable=False, default=PricingTierType.FREE.value
-    )
-    payment_info: Mapped[dict] = mapped_column(JSONB, nullable=True)
-    payment_link: Mapped[str] = mapped_column(String, nullable=True)
     authenticated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
-    )
-    stripe_customer_id: Mapped[str | None] = mapped_column(
-        String, unique=True, nullable=True
     )
 
     # Relationship
