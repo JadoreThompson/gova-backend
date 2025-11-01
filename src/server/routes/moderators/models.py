@@ -21,6 +21,7 @@ class ModeratorCreate(ModeratorBase):
 
 
 class ModeratorResponse(ModeratorBase):
+    moderator_id: UUID
     platform: MessagePlatformType
     platform_server_id: str
     conf: DiscordConfig

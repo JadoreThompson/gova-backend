@@ -17,7 +17,18 @@ from db_models import ModeratorEventLogs
 class ModeratorEventLogger:
     """Handles persistence of all moderator deployment events."""
 
+    _instance = None
+
+    def __new__(cls, *args, **kw):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+
     def __init__(self, db: Session):
+        if hasattr(self, '_initialised') and self._initialised:
+            return
+        
         self.db = db
         self._handlers = {
             ModeratorEventType.START: self._handle_start,
@@ -31,6 +42,7 @@ class ModeratorEventLogger:
             ModeratorEventType.ERROR: self._handle_error,
             ModeratorEventType.WARNING: self._handle_warning,
         }
+        self._initialised = True
 
     def log_event(self, event: ModeratorEvent) -> ModeratorEventLogs:
         """Log a moderator deployment event."""
@@ -44,11 +56,10 @@ class ModeratorEventLogger:
     def _handle_start(self, event: StartModeratorEvent):
         return self._create_log(
             moderator_id=event.moderator_id,
-            moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
             message=f"Deployment started on {event.platform.value}",
-            details={"config": event.conf.model_dump()},
+            details={"config": event.conf.to_serialisable_dict()},
         )
 
     def _handle_alive(self, event: AliveModeratorEvent):
@@ -114,7 +125,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.WARNING,
             message=f"Action '{event.action_type}' with unhandled status '{event.status.value}'",
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
         )
 
@@ -125,7 +136,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.INFO,
             message=f"Action '{event.action_type}' executed successfully",
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.SUCCESS,
         )
 
@@ -136,7 +147,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.ERROR,
             message=f"Action '{event.action_type}' failed",
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
         )
 
@@ -152,7 +163,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.WARNING,
             message=message,
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
         )
 
@@ -163,7 +174,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.INFO,
             message=f"Action '{event.action_type}' was approved",
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.APPROVED,
         )
 
@@ -174,7 +185,7 @@ class ModeratorEventLogger:
             severity=LogSeverity.WARNING,
             message=f"Action '{event.action_type}' was declined",
             action_type=str(event.action_type),
-            action_params=event.params.model_dump(),
+            action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.DECLINED,
         )
 
@@ -185,8 +196,8 @@ class ModeratorEventLogger:
             severity=LogSeverity.INFO,
             message="Evaluation created",
             details={
-                "evaluation": event.evaluation.model_dump(),
-                "context": event.context.model_dump(),
+                "evaluation": event.evaluation.to_serialisable_dict(),
+                "context": event.context.to_serialisable_dict(),
             },
         )
 
@@ -214,7 +225,7 @@ class ModeratorEventLogger:
             event_type=event.type,
             severity=LogSeverity.INFO,
             message=f"Unhandled event type: {event.type}",
-            details=event.model_dump(),
+            details=event.to_serialisable_dict(),
         )
 
     def _create_log(

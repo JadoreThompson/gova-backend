@@ -5,7 +5,10 @@ from multiprocessing import Process
 
 import uvicorn
 
+from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
+from core.events import EvaluationCreatedModeratorEvent
 from engine.discord.orchestrator import DiscordModeratorOrchestrator
+from engine.moderator_event_logger import ModeratorEventLogger
 
 
 logger = logging.getLogger("main")
@@ -35,11 +38,45 @@ def run_orchestrator(batch_size: int = 1):
     asyncio.run(orch.run())
 
 
+def run_event_logger():
+    import json
+    from kafka import KafkaConsumer
+    from core.enums import ModeratorEventType
+    from core.events import CoreEvent, ActionPerformedModeratorEvent
+    from engine.discord.models import DiscordAction
+    from engine.discord.context import DiscordMessageContext
+    from utils.db import smaker_sync
+
+    db = smaker_sync()
+    consumer = KafkaConsumer(
+        KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+    )
+    logger = ModeratorEventLogger(db)
+
+    for msg in consumer:
+        try:
+            data = json.loads(msg.value.decode())
+            ev = CoreEvent(**data)
+            ev_type = ev.data.get("type")
+            parsed_ev = None
+
+            if ev_type == ModeratorEventType.EVALUATION_CREATED:
+                parsed_ev = EvaluationCreatedModeratorEvent[DiscordAction, DiscordMessageContext](**ev.data)
+            elif ev_type == ModeratorEventType.ACTION_PERFORMED:
+                parsed_ev = ActionPerformedModeratorEvent[DiscordAction](**ev.data)
+
+            if parsed_ev is not None:
+                logger.log_event(parsed_ev)
+        except Exception as e:
+            pass
+
+
 @silence_keyboard_interrupt
 def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
     pargs = (
         (run_orchestrator, (), {}, "Discord Orchestrator"),
         (run_server, (host, port, reload), {}, "Server"),
+        (run_event_logger, (), {}, "Event Logger"),
     )
 
     ps = [

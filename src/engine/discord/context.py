@@ -17,6 +17,4 @@ class DiscordContext(BaseModel):
 
 class DiscordMessageContext(BaseMessageContext):
     platform: MessagePlatformType = MessagePlatformType.DISCORD
-    platform_author_id: int
-    platform_message_id: int
     metadata: DiscordContext

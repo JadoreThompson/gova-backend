@@ -92,21 +92,20 @@ class DiscordModeratorOrchestrator:
         try:
             async for msg in self._stream:
                 guild_id = msg.guild.id
-
-                if guild_id not in self._guild_moderators:
-                    continue
-
-                ctx = DiscordMessageContext(
-                    platform=MessagePlatformType.DISCORD,
-                    platform_author_id=msg.author.id,
-                    platform_message_id=msg.id,
-                    content=msg.content,
-                    metadata=DiscordContext(
-                        channel_id=msg.channel.id, guild_id=msg.guild.id
-                    ),
-                )
-
                 async with self._lock:
+                    if guild_id not in self._guild_moderators:
+                        continue
+
+                    ctx = DiscordMessageContext(
+                        platform=MessagePlatformType.DISCORD,
+                        platform_author_id=str(msg.author.id),
+                        platform_message_id=str(msg.id),
+                        content=msg.content,
+                        metadata=DiscordContext(
+                            channel_id=msg.channel.id, guild_id=msg.guild.id
+                        ),
+                    )
+
                     moderator, batch = self._guild_moderators[guild_id]
                     batch.append(ctx)
                     if len(batch) >= self._batch_size:
@@ -139,7 +138,7 @@ class DiscordModeratorOrchestrator:
 
                     if ev_type == ModeratorEventType.START:
                         await self._handle_start_event(StartModeratorEvent(**ev.data))
-                    if ev_type == ModeratorEventType.HEARTBEAT:
+                    elif ev_type == ModeratorEventType.HEARTBEAT:
                         await self._handle_heartbeat_event(
                             HeartbeatModeratorEvent(**ev.data)
                         )

@@ -25,7 +25,7 @@ from server.typing import JWTPayload
 from utils.db import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (
-    PasswordField,
+    UpdatePassword,
     UserConnection,
     UpdateUsername,
     UserCreate,
@@ -273,7 +273,7 @@ async def change_username(
 
 @router.post("/change-password", status_code=202)
 async def change_password(
-    body: PasswordField,
+    body: UpdatePassword,
     bg_tasks: BackgroundTasks,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),

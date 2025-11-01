@@ -52,7 +52,7 @@ class BaseModerator(ABC):
         self._topics: list[str] | None = None
         self._guidelines: str | None = None
         self._status = ModeratorStatus.OFFLINE
-        self._count = 1
+        self._count = 0
         self._count_lock = asyncio.Lock()
 
     @property
@@ -106,15 +106,21 @@ class BaseModerator(ABC):
         """
 
     async def moderate(self, ctx: BaseMessageContext, max_attempts: int = 3) -> None:
-        self._load_embedding_model()
-        if self._status == ModeratorStatus.ONLINE:
-            evaluation = await self.evaluate(ctx, max_attempts)
-            if evaluation is None:
-                await self._task_pool.submit(self._handle_retry(ctx))
-                return
+        async with self._count_lock:
+            self._count += 1
+        try:
+            self._load_embedding_model()
+            if self._status == ModeratorStatus.ONLINE:
+                evaluation = await self.evaluate(ctx, max_attempts)
+                if evaluation is None:
+                    await self._task_pool.submit(self._handle_retry(ctx))
+                    return
 
-            await self._handle_evaluation(evaluation, ctx)
-            return
+                await self._handle_evaluation(evaluation, ctx)
+                return
+        finally:
+            async with self._count_lock:
+                self._count -= 1
 
     async def _handle_retry(self, ctx: BaseMessageContext) -> None:
         backoff = 1
@@ -153,18 +159,16 @@ class BaseModerator(ABC):
             dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=eval_event)),
         )
 
-        if evaluation.action:
+        if evaluation.action is not None:
             action = evaluation.action
             self._logger.info(f"Performing action '{action.type}'")
-            action_params = action.to_serialisable_dict()
             action_type = action.type
-
+            
             kw = {
                 "moderator_id": self._moderator_id,
                 "action_type": action_type,
-                "params": action_params,
+                "params": action,
             }
-
             if action.requires_approval:
                 event = ActionPerformedModeratorEvent(
                     **kw, status=ActionStatus.AWAITING_APPROVAL

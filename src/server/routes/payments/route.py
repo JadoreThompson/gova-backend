@@ -86,5 +86,4 @@ async def stripe_webhook(req: Request):
         )
         return {"success": success}
     except VerificationError as e:
-        print()
         raise HTTPException(status_code=400, detail=str(e))

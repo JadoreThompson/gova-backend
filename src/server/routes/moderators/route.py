@@ -12,6 +12,7 @@ from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
 from server.dependencies import depends_db_sess, depends_jwt, depends_kafka_producer
 from server.models import PaginatedResponse
+from server.shared.models import ActionResponse
 from server.typing import JWTPayload
 from utils.db import get_datetime
 from utils.kafka import dump_model
@@ -35,7 +36,7 @@ async def create_moderator(
 ):
     mod = await db_sess.scalar(
         insert(Moderators)
-        .values(user_id=jwt.sub, name=body.name, guideline_id=body.guideline_id)
+        .values(user_id=jwt.sub, **body.model_dump())
         .returning(Moderators)
     )
 
@@ -44,6 +45,7 @@ async def create_moderator(
         name=mod.name,
         guideline_id=mod.guideline_id,
         platform=mod.platform,
+        platform_server_id=mod.platform_server_id,
         conf=DiscordConfigResponse(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,
@@ -138,7 +140,7 @@ async def list_moderators(
 
     res = await db_sess.scalars(
         query.order_by(Moderators.created_at.desc())
-        .offset((page - 1 * 10))
+        .offset((page - 1) * 10)
         .limit(PAGE_SIZE + 1)
     )
     mods = res.all()
@@ -150,15 +152,16 @@ async def list_moderators(
         has_next=n > PAGE_SIZE,
         data=[
             ModeratorResponse(
-                moderator_id=m.moderator_id,
-                name=m.name,
-                guideline_id=m.guideline_id,
-                platform=m.platform,
-                conf=DiscordConfigResponse(**m.conf),
-                status=m.status,
-                created_at=m.created_at,
+                moderator_id=mod.moderator_id,
+                name=mod.name,
+                guideline_id=mod.guideline_id,
+                platform=mod.platform,
+                platform_server_id=mod.platform_server_id,
+                conf=DiscordConfigResponse(**mod.conf),
+                status=mod.status,
+                created_at=mod.created_at,
             )
-            for m in mods[:PAGE_SIZE]
+            for mod in mods[:PAGE_SIZE]
         ],
     )
 
@@ -183,6 +186,7 @@ async def get_moderator(
         name=mod.name,
         guideline_id=mod.guideline_id,
         platform=mod.platform,
+        platform_server_id=mod.platform_server_id,
         conf=DiscordConfigResponse(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,
@@ -219,7 +223,7 @@ async def get_moderator_stats(
 
     total_actions = await db_sess.scalar(
         select(func.count(ModeratorEventLogs.log_id)).where(
-            ModeratorEventLogs.moderator_id == moderator_id
+            ModeratorEventLogs.moderator_id == moderator_id, ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value
         )
     )
     total_actions = total_actions or 0
@@ -266,6 +270,57 @@ async def get_moderator_stats(
         total_messages=total_messages,
         total_actions=total_actions,
         message_chart=message_chart,
+    )
+
+
+@router.get("/{moderator_id}/actions", response_model=PaginatedResponse[ActionResponse])
+async def list_moderator_actions(
+    moderator_id: UUID,
+    page: int = Query(1, ge=1),
+    jwt: JWTPayload = Depends(depends_jwt()),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    exists = await db_sess.scalar(
+        select(Moderators.moderator_id).where(
+            Moderators.moderator_id == moderator_id,
+            Moderators.user_id == jwt.sub,
+        )
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="Moderator not found")
+
+    query = (
+        select(ModeratorEventLogs)
+        .where(
+            ModeratorEventLogs.moderator_id == moderator_id,
+            ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value,
+        )
+        .order_by(ModeratorEventLogs.created_at.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE + 1)
+    )
+
+    res = await db_sess.scalars(query)
+    logs = res.all()
+    n = len(logs)
+
+    data = [
+        ActionResponse(
+            log_id=log.log_id,
+            moderator_id=log.moderator_id,
+            action_type=log.action_type,
+            action_params=log.action_params,
+            status=log.action_status,
+            created_at=log.created_at,
+        )
+        for log in logs[:PAGE_SIZE]
+    ]
+
+    return PaginatedResponse[ActionResponse](
+        page=page,
+        size=min(n, PAGE_SIZE),
+        has_next=n > PAGE_SIZE,
+        data=data,
     )
 
 

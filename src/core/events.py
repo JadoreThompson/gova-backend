@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Generic, Literal, TypeVar
 from uuid import UUID
 
 from core.enums import (
@@ -11,6 +11,10 @@ from core.models import CustomBaseModel
 from engine.base.base_action import BaseAction
 from engine.discord.config import DiscordConfig
 from engine.models import BaseMessageContext, MessageEvaluation
+
+
+C = TypeVar("C", bound=BaseMessageContext)
+A = TypeVar("A", bound=BaseAction)
 
 
 class CoreEvent(CustomBaseModel):
@@ -66,21 +70,21 @@ class HeartbeatModeratorEvent(ModeratorEvent):
     timestamp: int
 
 
-class ActionPerformedModeratorEvent(ModeratorEvent):
+class ActionPerformedModeratorEvent(ModeratorEvent, Generic[A]):
     """Deployment action event."""
 
     type: ModeratorEventType = ModeratorEventType.ACTION_PERFORMED
     action_type: Any  # Enum
-    params: BaseAction
+    params: A
     status: ActionStatus
 
 
-class EvaluationCreatedModeratorEvent(ModeratorEvent):
+class EvaluationCreatedModeratorEvent(ModeratorEvent, Generic[A, C]):
     """Message evaluation result."""
 
     type: ModeratorEventType = ModeratorEventType.EVALUATION_CREATED
-    evaluation: MessageEvaluation
-    context: BaseMessageContext
+    evaluation: MessageEvaluation[A]
+    context: C
 
 
 class ErrorModeratorEvent(ModeratorEvent):

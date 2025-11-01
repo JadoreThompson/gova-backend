@@ -1,10 +1,12 @@
-from typing import Any
+from typing import Any, Generic, TypeVar
+
 from pydantic import BaseModel
 
 from core.enums import MessagePlatformType
 from core.models import CustomBaseModel
-from engine.base.base_action import BaseAction
 
+
+T = TypeVar("T")
 
 class BaseMessageContext(CustomBaseModel):
     platform: MessagePlatformType
@@ -19,7 +21,7 @@ class TopicEvaluation(BaseModel):
     topic_score: float
 
 
-class MessageEvaluation(CustomBaseModel):
+class MessageEvaluation(CustomBaseModel, Generic[T]):
     evaluation_score: float
     topic_evaluations: list[TopicEvaluation]
-    action: BaseAction | None
+    action: T | None

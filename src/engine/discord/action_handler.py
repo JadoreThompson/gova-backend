@@ -20,7 +20,6 @@ class DiscordActionHandler(BaseActionHandler):
     _instance: "DiscordActionHandler | None"= None
 
     def __new__(cls, *args, **kw):
-        print(cls)
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

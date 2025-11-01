@@ -14,8 +14,9 @@ from server.dependencies import (
     depends_jwt,
     depends_discord_action_handler,
 )
+from server.shared.models import ActionResponse
 from server.typing import JWTPayload
-from .models import ActionUpdate, ActionResponse
+from .models import ActionUpdate
 
 
 router = APIRouter(prefix="/actions", tags=["Actions"])
@@ -73,7 +74,6 @@ async def update_action_status(
     log.status = new_status.value
     rsp_body = ActionResponse(
         log_id=log.log_id,
-        deployment_id=log.deployment_id,
         action_params=log.action_params,
         action_type=log.action_type,
         status=new_status,

@@ -12,7 +12,7 @@ class DiscordActionType(str, Enum):
 
 
 class DiscordAction(BaseAction):
-    pass
+    type: DiscordActionType
 
 
 class BanAction(DiscordAction):
