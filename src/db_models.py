@@ -122,8 +122,7 @@ class ModeratorDeployments(Base):
     )
     moderator_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("moderators.moderator_id"), nullable=False
-    )
-    server_id: Mapped[str] = mapped_column(String, nullable=True)  # The VPS server ID
+    )    
     platform: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
