@@ -36,6 +36,7 @@ def run_orchestrator(batch_size: int = 1):
     orch = DiscordModeratorOrchestrator(batch_size)
     asyncio.run(orch.run())
 
+
 @silence_keyboard_interrupt
 def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
     pargs = (

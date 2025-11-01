@@ -96,11 +96,7 @@ class BaseModerator(ABC):
             self._guidelines = None
 
             await self._update_status(ModeratorStatus.OFFLINE)
-            event = DeadModeratorEvent(
-                type=ModeratorEventType.DEAD,
-                moderator_id=self._moderator_id,
-                reason=reason,
-            )
+            event = DeadModeratorEvent(moderator_id=self._moderator_id, reason=reason)
             await self._kafka_producer.send(
                 KAFKA_MODERATOR_EVENTS_TOPIC,
                 dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=event)),

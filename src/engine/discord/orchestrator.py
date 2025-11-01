@@ -6,13 +6,17 @@ from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from pydantic import ValidationError
 
 from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
-from core.enums import CoreEventType, MessagePlatformType, ModeratorEventType, ModeratorStatus
+from core.enums import (
+    CoreEventType,
+    MessagePlatformType,
+    ModeratorEventType,
+    ModeratorStatus,
+)
 from core.events import (
     CoreEvent,
     DeadModeratorEvent,
     HeartbeatModeratorEvent,
     KillModeratorEvent,
-    ModeratorEvent,
     StartModeratorEvent,
 )
 from engine.discord.action_handler import DiscordActionHandler
@@ -45,6 +49,32 @@ class DiscordModeratorOrchestrator:
         self._kafka_producer: AIOKafkaProducer | None = None
         self._listen_task: asyncio.Task | None = None
 
+    async def _startup(self):
+        self._task_pool.start()
+        self._listen_task = asyncio.create_task(self._listen())
+        self._kafka_producer = AIOKafkaProducer(
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+        )
+        await self._kafka_producer.start()
+
+    async def _shutdown(self):
+        await self._task_pool.stop()
+
+        coros = []
+        for _, (mod, _) in self._guild_moderators.items():
+            coros.append(mod.stop())
+        await asyncio.gather(*coros)
+
+        if self._listen_task is not None and not self._listen_task.done():
+            try:
+                self._listen_task.cancel()
+                await self._listen_task
+            except asyncio.CancelledError:
+                pass
+
+        await self._kafka_producer.stop()
+        logger.info("Orchestrator dead")
+
     async def run(self):
         """Starts the orchestrator loop.
 
@@ -55,16 +85,14 @@ class DiscordModeratorOrchestrator:
         Raises:
             asyncio.CancelledError: If the orchestrator is stopped externally.
         """
-        self._task_pool.start()
-        self._listen_task = asyncio.create_task(self._listen())
-        self._kafka_producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
-        await self._kafka_producer.start()
+        await self._startup()
+
         logger.info("Orchestrator alive")
 
         try:
             async for msg in self._stream:
                 guild_id = msg.guild.id
-                print(msg)
+
                 if guild_id not in self._guild_moderators:
                     continue
 
@@ -77,7 +105,6 @@ class DiscordModeratorOrchestrator:
                         channel_id=msg.channel.id, guild_id=msg.guild.id
                     ),
                 )
-                print(ctx)
 
                 async with self._lock:
                     moderator, batch = self._guild_moderators[guild_id]
@@ -90,22 +117,18 @@ class DiscordModeratorOrchestrator:
         except Exception as e:
             logger.error(f"{type(e)} - {str(e)}")
         finally:
-            await self._task_pool.stop()
-            if self._listen_task is not None and not self._listen_task.done():
-                self._listen_task.cancel()
-                await self._listen_task
-            
-            await self._kafka_producer.stop()
-            logger.info("Orchestrator dead")
+            await self._shutdown()
 
     async def _listen(self):
         """
         Continuously listens for moderator lifecycle events on Kafka.
         """
-    
-        self._kafka_consumer = AIOKafkaConsumer(KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
+
+        self._kafka_consumer = AIOKafkaConsumer(
+            KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+        )
         await self._kafka_consumer.start()
-        
+
         try:
             async for msg in self._kafka_consumer:
                 try:
@@ -117,7 +140,9 @@ class DiscordModeratorOrchestrator:
                     if ev_type == ModeratorEventType.START:
                         await self._handle_start_event(StartModeratorEvent(**ev.data))
                     if ev_type == ModeratorEventType.HEARTBEAT:
-                        await self._handle_heartbeat_event(HeartbeatModeratorEvent(**ev.data))
+                        await self._handle_heartbeat_event(
+                            HeartbeatModeratorEvent(**ev.data)
+                        )
                     elif ev_type == ModeratorEventType.KILL:
                         await self._handle_kill_event(KillModeratorEvent(**ev.data))
 
@@ -133,7 +158,7 @@ class DiscordModeratorOrchestrator:
             if event.moderator_id in self._moderators:
                 logger.warning(f"Moderator {event.moderator_id} already exists")
                 return
-            print(1)
+
             moderator = DiscordModerator(
                 moderator_id=event.moderator_id,
                 action_handler=DiscordActionHandler(self._stream.client),
@@ -141,15 +166,12 @@ class DiscordModeratorOrchestrator:
                 task_pool=self._task_pool,
                 config=event.conf,
             )
-            print(2)
 
             guild_id = event.conf.guild_id
             self._guild_moderators[guild_id] = (moderator, [])
             self._moderators[event.moderator_id] = guild_id
 
-            print(3)
             await moderator.start()
-            print(4)
 
         logger.info(f"Moderator {event.moderator_id} launched with config")
 
