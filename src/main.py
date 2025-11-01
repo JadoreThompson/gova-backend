@@ -10,9 +10,13 @@ from kafka import KafkaConsumer
 from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
 from core.enums import ModeratorEventType
 from core.events import (
+    DeadModeratorEvent,
     EvaluationCreatedModeratorEvent,
     CoreEvent,
     ActionPerformedModeratorEvent,
+    KillModeratorEvent,
+    ModeratorEvent,
+    StartModeratorEvent,
 )
 from engine.discord.context import DiscordMessageContext
 from engine.discord.models import DiscordAction
@@ -50,29 +54,39 @@ def run_orchestrator(batch_size: int = 1):
 
 def run_event_logger():
     db = smaker_sync()
-    logger = ModeratorEventLogger(db)
+    moderator_logger = ModeratorEventLogger(db)
     consumer = KafkaConsumer(
         KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
     )
+
+    event_class_map = {
+        ModeratorEventType.START: StartModeratorEvent,
+        ModeratorEventType.ALIVE: ModeratorEvent,
+        ModeratorEventType.KILL: KillModeratorEvent,
+        ModeratorEventType.DEAD: DeadModeratorEvent,
+        ModeratorEventType.ACTION_PERFORMED: ActionPerformedModeratorEvent[
+            DiscordAction
+        ],
+        ModeratorEventType.EVALUATION_CREATED: EvaluationCreatedModeratorEvent[
+            DiscordAction, DiscordMessageContext
+        ],
+    }
 
     for msg in consumer:
         try:
             data = json.loads(msg.value.decode())
             ev = CoreEvent(**data)
             ev_type = ev.data.get("type")
-            parsed_ev = None
 
-            if ev_type == ModeratorEventType.EVALUATION_CREATED:
-                parsed_ev = EvaluationCreatedModeratorEvent[
-                    DiscordAction, DiscordMessageContext
-                ](**ev.data)
-            elif ev_type == ModeratorEventType.ACTION_PERFORMED:
-                parsed_ev = ActionPerformedModeratorEvent[DiscordAction](**ev.data)
+            event_cls = event_class_map.get(ev_type)
+            if event_cls:
+                parsed_ev = event_cls(**ev.data)
+                moderator_logger.log_event(parsed_ev)
+            else:
+                logger.warning(f"Unhandled event type: {ev_type}")
 
-            if parsed_ev is not None:
-                logger.log_event(parsed_ev)
         except Exception as e:
-            pass
+            logger.exception(f"Error processing event: {e}")
 
 
 @silence_keyboard_interrupt
