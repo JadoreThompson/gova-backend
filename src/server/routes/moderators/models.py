@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from core.enums import MessagePlatformType
+from core.enums import MessagePlatformType, ModeratorStatus
 from core.models import CustomBaseModel
 from server.shared.models import MessageChartData
 
@@ -25,6 +25,7 @@ class ModeratorUpdate(ModeratorBase):
 
 class ModeratorResponse(ModeratorBase):
     moderator_id: UUID
+    status: ModeratorStatus
     created_at: datetime
     deployment_platforms: list[MessagePlatformType]
 

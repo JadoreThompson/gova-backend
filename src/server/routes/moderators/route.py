@@ -63,6 +63,7 @@ async def create_moderator(
     rsp_body = ModeratorResponse(
         moderator_id=mod_obj.moderator_id,
         name=mod_obj.name,
+        status=mod_obj.status,
         guideline_id=mod_obj.guideline_id,
         created_at=mod_obj.created_at,
         deployment_platforms=platforms if platforms and platforms[0] else [],
@@ -175,6 +176,7 @@ async def list_moderators(
                 moderator_id=m.moderator_id,
                 guideline_id=m.guideline_id,
                 name=m.name,
+                status=m.status,
                 created_at=m.created_at,
                 deployment_platforms=platforms if platforms and platforms[0] else [],
             )
@@ -202,6 +204,7 @@ async def get_moderator(
     return ModeratorResponse(
         moderator_id=mod.moderator_id,
         name=mod.name,
+        status=mod.status,
         guideline_id=mod.guideline_id,
         created_at=mod.created_at,
         deployment_platforms=platforms if platforms and platforms[0] else [],
@@ -387,6 +390,7 @@ async def update_moderator(
     return ModeratorResponse(
         moderator_id=mod_obj.moderator_id,
         name=mod_obj.name,
+        status=mod_obj.status,
         guideline_id=mod_obj.guideline_id,
         created_at=mod_obj.created_at,
         deployment_platforms=platforms if platforms and platforms[0] else [],
