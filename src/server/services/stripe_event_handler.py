@@ -8,16 +8,17 @@ from aiokafka import AIOKafkaProducer
 import stripe
 from sqlalchemy import select, update
 
-from core.events import StopModeratorDeploymentEvent
+from core.events import CoreEvent, KillModeratorEvent
 from utils.kafka import dump_model
 from config import (
     KAFKA_BOOTSTRAP_SERVER,
     KAFKA_DEPLOYMENT_EVENTS_TOPIC,
+    KAFKA_MODERATOR_EVENTS_TOPIC,
     REDIS_CLIENT,
     REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX,
     STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
 )
-from core.enums import ModeratorDeploymentStatus, PricingTierType
+from core.enums import CoreEventType, ModeratorStatus, PricingTierType
 from core.services import EmailService
 from db_models import ModeratorDeployments, Users
 from utils.db import get_db_sess
@@ -111,8 +112,7 @@ class StripeEventHandler:
 
             res = await db_sess.scalars(
                 select(ModeratorDeployments.deployment_id).where(
-                    ModeratorDeployments.status
-                    != ModeratorDeploymentStatus.OFFLINE.value
+                    ModeratorDeployments.status != ModeratorStatus.OFFLINE.value
                 )
             )
             dids = res.all()
@@ -154,9 +154,10 @@ class StripeEventHandler:
             )
 
         for did in deployment_ids:
-            ev = StopModeratorDeploymentEvent(deployment_id=did)
+            ev = KillModeratorEvent(deployment_id=did)
             await cls._kafka_producer.send(
-                KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev)
+                KAFKA_MODERATOR_EVENTS_TOPIC,
+                dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
             )
 
     @classmethod

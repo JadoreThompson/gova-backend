@@ -10,5 +10,5 @@ wheels/
 .venv
 
 .env
-.env.moderator
+.env.orchestrator
 app.log

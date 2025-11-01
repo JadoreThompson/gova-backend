@@ -3,19 +3,19 @@ from sqlalchemy.orm import Session
 
 from db_models import ModeratorDeploymentEventLogs
 from core.enums import (
-    ModeratorDeploymentEventType,
+    ModeratorEventType,
     LogSeverity,
     ActionStatus,
 )
 from core.events import (
-    ModeratorDeploymentEvent,
-    StartModeratorDeploymentEvent,
-    StartedModeratorDeploymentEvent,
-    StopModeratorDeploymentEvent,
-    StoppedModeratorDeploymentEvent,
-    ErrorModeratorDeploymentEvent,
-    ActionModeratorDeploymentEvent,
-    EvaluationModeratorDeploymentEvent,
+    ModeratorEvent,
+    StartModeratorEvent,
+    AliveModeratorEvent,
+    KillModeratorEvent,
+    DeadModeratorEvent,
+    ErrorModeratorEvent,
+    ActionPerformedModeratorEvent,
+    EvaluationCreatedModeratorEvent,
 )
 
 
@@ -25,22 +25,22 @@ class ModeratorDeploymentEventLogger:
     def __init__(self, db: Session):
         self.db = db
         self._handlers = {
-            ModeratorDeploymentEventType.DEPLOYMENT_START: self._handle_start,
-            ModeratorDeploymentEventType.DEPLOYMENT_ALIVE: self._handle_alive,
-            ModeratorDeploymentEventType.DEPLOYMENT_STOP: self._handle_stop,
-            ModeratorDeploymentEventType.DEPLOYMENT_DEAD: self._handle_stopped,
-            ModeratorDeploymentEventType.DEPLOYMENT_FAILED: self._handle_failed,
-            ModeratorDeploymentEventType.DEPLOYMENT_HEARTBEAT: self._handle_heartbeat,
-            ModeratorDeploymentEventType.ACTION_PERFORMED: self._handle_action,
-            ModeratorDeploymentEventType.EVALUATION_CREATED: self._handle_evaluation,
-            ModeratorDeploymentEventType.ERROR: self._handle_error,
-            ModeratorDeploymentEventType.WARNING: self._handle_warning,
+            ModeratorEventType.START: self._handle_start,
+            ModeratorEventType.ALIVE: self._handle_alive,
+            ModeratorEventType.KILL: self._handle_stop,
+            ModeratorEventType.DEAD: self._handle_stopped,
+            ModeratorEventType.FAILED: self._handle_failed,
+            ModeratorEventType.HEARTBEAT: self._handle_heartbeat,
+            ModeratorEventType.ACTION_PERFORMED: self._handle_action,
+            ModeratorEventType.EVALUATION_CREATED: self._handle_evaluation,
+            ModeratorEventType.ERROR: self._handle_error,
+            ModeratorEventType.WARNING: self._handle_warning,
         }
 
     # --------------------------------------------------------------------------
     # Public
     # --------------------------------------------------------------------------
-    def log_event(self, event: ModeratorDeploymentEvent) -> ModeratorDeploymentEventLogs:
+    def log_event(self, event: ModeratorEvent) -> ModeratorDeploymentEventLogs:
         """Log a moderator deployment event."""
         handler = self._handlers.get(event.type)
         if not handler:
@@ -50,17 +50,17 @@ class ModeratorDeploymentEventLogger:
     # --------------------------------------------------------------------------
     # Deployment lifecycle
     # --------------------------------------------------------------------------
-    def _handle_start(self, event: StartModeratorDeploymentEvent):
+    def _handle_start(self, event: StartModeratorEvent):
         return self._create_log(
             moderator_id=event.moderator_id,
             deployment_id=event.deployment_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
             message=f"Deployment started on {event.platform.value}",
-            details={"config": event.moderator_conf.model_dump()},
+            details={"config": event.conf.model_dump()},
         )
 
-    def _handle_alive(self, event: StartedModeratorDeploymentEvent):
+    def _handle_alive(self, event: AliveModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -68,7 +68,7 @@ class ModeratorDeploymentEventLogger:
             message=f"Deployment alive (server_id={event.server_id})",
         )
 
-    def _handle_stop(self, event: StopModeratorDeploymentEvent):
+    def _handle_stop(self, event: KillModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -77,7 +77,7 @@ class ModeratorDeploymentEventLogger:
             details={"reason": event.reason or "unspecified"},
         )
 
-    def _handle_stopped(self, event: StoppedModeratorDeploymentEvent):
+    def _handle_stopped(self, event: DeadModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -86,7 +86,7 @@ class ModeratorDeploymentEventLogger:
             details={"reason": event.reason or "unknown"},
         )
 
-    def _handle_failed(self, event: ModeratorDeploymentEvent):
+    def _handle_failed(self, event: ModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -94,7 +94,7 @@ class ModeratorDeploymentEventLogger:
             message="Deployment failed",
         )
 
-    def _handle_heartbeat(self, event: ModeratorDeploymentEvent):
+    def _handle_heartbeat(self, event: ModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -105,7 +105,7 @@ class ModeratorDeploymentEventLogger:
     # --------------------------------------------------------------------------
     # Actions
     # --------------------------------------------------------------------------
-    def _handle_action(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action(self, event: ActionPerformedModeratorEvent):
         """Handle all action-related events by dispatching based on status."""
         status_handlers = {
             ActionStatus.SUCCESS: self._handle_action_success,
@@ -130,7 +130,7 @@ class ModeratorDeploymentEventLogger:
             action_status=event.status,
         )
 
-    def _handle_action_success(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action_success(self, event: ActionPerformedModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -141,7 +141,7 @@ class ModeratorDeploymentEventLogger:
             action_status=ActionStatus.SUCCESS,
         )
 
-    def _handle_action_failed(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action_failed(self, event: ActionPerformedModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -152,7 +152,7 @@ class ModeratorDeploymentEventLogger:
             action_status=event.status,
         )
 
-    def _handle_action_pending(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action_pending(self, event: ActionPerformedModeratorEvent):
         message = (
             f"Action '{event.action_type}' awaiting approval"
             if event.status == ActionStatus.AWAITING_APPROVAL
@@ -168,7 +168,7 @@ class ModeratorDeploymentEventLogger:
             action_status=event.status,
         )
 
-    def _handle_action_approved(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action_approved(self, event: ActionPerformedModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -179,7 +179,7 @@ class ModeratorDeploymentEventLogger:
             action_status=ActionStatus.APPROVED,
         )
 
-    def _handle_action_declined(self, event: ActionModeratorDeploymentEvent):
+    def _handle_action_declined(self, event: ActionPerformedModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -193,7 +193,7 @@ class ModeratorDeploymentEventLogger:
     # --------------------------------------------------------------------------
     # Evaluations
     # --------------------------------------------------------------------------
-    def _handle_evaluation(self, event: EvaluationModeratorDeploymentEvent):
+    def _handle_evaluation(self, event: EvaluationCreatedModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -208,7 +208,7 @@ class ModeratorDeploymentEventLogger:
     # --------------------------------------------------------------------------
     # Errors / Warnings
     # --------------------------------------------------------------------------
-    def _handle_error(self, event: ErrorModeratorDeploymentEvent):
+    def _handle_error(self, event: ErrorModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -217,7 +217,7 @@ class ModeratorDeploymentEventLogger:
             stack_trace=event.stack_trace,
         )
 
-    def _handle_warning(self, event: ModeratorDeploymentEvent):
+    def _handle_warning(self, event: ModeratorEvent):
         return self._create_log(
             deployment_id=event.deployment_id,
             event_type=event.type,
@@ -228,7 +228,7 @@ class ModeratorDeploymentEventLogger:
     # --------------------------------------------------------------------------
     # Generic / fallback handler
     # --------------------------------------------------------------------------
-    def _create_generic_log(self, event: ModeratorDeploymentEvent):
+    def _create_generic_log(self, event: ModeratorEvent):
         """Fallback for unrecognized event types."""
         return self._create_log(
             deployment_id=event.deployment_id,

@@ -3,7 +3,7 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-import discord
+from aiokafka import AIOKafkaProducer
 from aiohttp import ClientError
 
 import engine.discord.actions as actions_module
@@ -25,54 +25,31 @@ from engine.prompt_validator import PromptValidator
 from engine.task_pool import TaskPool
 from utils.llm import fetch_response, parse_to_json
 from .config import DiscordConfig
-from .stream import DiscordStream
 
 
 class DiscordModerator(BaseModerator):
     def __init__(
         self,
-        deployment_id: UUID,
         moderator_id: UUID,
-        action_handler: DiscordActionHandler = None,
-        logger=None,
-        *,
-        token: str,
         config: DiscordConfig,
-        **kw,
+        action_handler: DiscordActionHandler,
+        kafka_producer: AIOKafkaProducer,
+        task_pool: TaskPool | None = None,
+        max_retries: int = 3,
     ):
-        super().__init__(deployment_id, moderator_id, action_handler, logger, **kw)
-        self._token = token
-        self._config = config
-        self._client: discord.Client | None = None
-        self._stream: DiscordStream | None = None
+        super().__init__(
+            moderator_id, config, action_handler, kafka_producer, task_pool, max_retries
+        )
         self._allowed_action_formats: list[dict] | None = None
 
-    async def moderate(self) -> None:
-        self._logger.info("Launching moderation...")
-
-        self._task_pool = TaskPool(size=20)
-        self._stream = DiscordStream(
-            self._config.guild_id, self._config.allowed_channels
-        )
-
-        async with self._background_executor:
-            async with self._task_pool:
-                async for ctx in self._stream:
-                    if self._client is None:
-                        self._client = self._stream.client
-                        self._action_handler = DiscordActionHandler(
-                            self._client, self._logger
-                        )
-                        
-                    self._message_count += 1
-                    await self._task_pool.submit(self._handle_context(ctx))
-
-    async def _evaluate(
+    async def evaluate(
         self, ctx: DiscordMessageContext, max_attempts: int = 3
     ) -> MessageEvaluation | None:
         self._logger.info("Validating prompt")
-        mal_state = await PromptValidator.validate_prompt(ctx.content)
+        async with self._count_lock:
+            self._count += 1
 
+        mal_state = await PromptValidator.validate_prompt(ctx.content)
         if mal_state == MaliciousState.MALICIOUS:
             self._logger.critical(f'Malicious content "{ctx.content}"')
             return None
@@ -89,64 +66,68 @@ class DiscordModerator(BaseModerator):
 
         self._logger.info("Fetching evaluation.")
         attempt = 0
-        while attempt < max_attempts:
-            try:
-                similars = await self._fetch_similar(ctx.content)
-                topic_scores = (
-                    await self._handle_similars(ctx, similars)
-                    if similars
-                    else await self._fetch_topic_scores(ctx, self._topics)
-                )
-
-                prompt = FINAL_PROMPT_TEMPLATE.format(
-                    guidelines=self._guidelines,
-                    topics=self._topics,
-                    topic_scores=topic_scores,
-                    message=ctx.content,
-                    action_formats=self._allowed_action_formats,
-                    context=ctx.to_serialisable_dict(),
-                )
-
-                content = await fetch_response(
-                    [
-                        {"role": "system", "content": FINAL_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=1,
-                )
-                data = parse_to_json(content["choices"][0]["message"]["content"])
-
-                action_data = data.get("action")
-                action = None
-                if action_data:
-                    action_data["requires_approval"] = (
-                        False  # TODO: Match this with the definition
+        try:
+            while attempt < max_attempts:
+                try:
+                    similars = await self._fetch_similar(ctx.content)
+                    topic_scores = (
+                        await self._handle_similars(ctx, similars)
+                        if similars
+                        else await self._fetch_topic_scores(ctx, self._topics)
                     )
-                    action = self._build_action(action_data)
 
-                return MessageEvaluation(
-                    evaluation_score=data["evaluation_score"],
-                    action=action,
-                    topic_evaluations=[
-                        TopicEvaluation(topic=k, topic_score=v)
-                        for k, v in topic_scores.items()
-                    ],
-                )
+                    prompt = FINAL_PROMPT_TEMPLATE.format(
+                        guidelines=self._guidelines,
+                        topics=self._topics,
+                        topic_scores=topic_scores,
+                        message=ctx.content,
+                        action_formats=self._allowed_action_formats,
+                        context=ctx.to_serialisable_dict(),
+                    )
 
-            except (
-                ClientError,
-                asyncio.TimeoutError,
-                json.JSONDecodeError,
-                ValueError,
-            ) as e:
-                self._logger.warning(
-                    f"Attempt {attempt + 1} failed. Error: {type(e).__name__} - {str(e)}"
-                )
-                import traceback
+                    content = await fetch_response(
+                        [
+                            {"role": "system", "content": FINAL_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=1,
+                    )
+                    data = parse_to_json(content["choices"][0]["message"]["content"])
 
-                traceback.print_exc()
-            finally:
-                attempt += 1
+                    action_data = data.get("action")
+                    action = None
+                    if action_data:
+                        action_data["requires_approval"] = (
+                            False  # TODO: Match this with the definition
+                        )
+                        action = self._build_action(action_data)
+
+                    return MessageEvaluation(
+                        evaluation_score=data["evaluation_score"],
+                        action=action,
+                        topic_evaluations=[
+                            TopicEvaluation(topic=k, topic_score=v)
+                            for k, v in topic_scores.items()
+                        ],
+                    )
+
+                except (
+                    ClientError,
+                    asyncio.TimeoutError,
+                    json.JSONDecodeError,
+                    ValueError,
+                ) as e:
+                    self._logger.warning(
+                        f"Attempt {attempt + 1} failed. Error: {type(e).__name__} - {str(e)}"
+                    )
+                    import traceback
+
+                    traceback.print_exc()
+                finally:
+                    attempt += 1
+        finally:
+            async with self._count_lock:
+                self._count -= 1
 
         return None
 
@@ -180,9 +161,3 @@ class DiscordModerator(BaseModerator):
                     formats.append(ac_cls.model_json_schema())
 
         return formats
-
-    async def __aexit__(self, exc_type, exc_value, tcb):
-        """Cleanup client and stream on shutdown."""
-        self._client = None
-        self._stream = None
-        await super().__aexit__(exc_type, exc_value, tcb)

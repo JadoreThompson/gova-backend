@@ -13,6 +13,7 @@ class KafkaManager:
                 bootstrap_servers=f"{KAFKA_HOST}:{KAFKA_PORT}"
             )
             await cls._producer.start()
+            await cls._producer.send("tmp", b"hello world")
 
     @classmethod
     async def stop(cls) -> None:

@@ -6,9 +6,6 @@ from pydantic import Field
 from core.models import CustomBaseModel
 
 
-# TODO: Fix type errors
-
-
 class BaseAction(CustomBaseModel):
     type: Enum
     requires_approval: bool

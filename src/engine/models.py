@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic import BaseModel
 
 from core.enums import MessagePlatformType
@@ -7,7 +8,10 @@ from engine.base.base_action import BaseAction
 
 class BaseMessageContext(CustomBaseModel):
     platform: MessagePlatformType
+    platform_author_id: str
+    platform_message_id: str
     content: str
+    metadata: Any
 
 
 class TopicEvaluation(BaseModel):

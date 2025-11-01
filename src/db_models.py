@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from core.enums import ModeratorDeploymentStatus, PricingTierType
+from core.enums import ModeratorStatus, PricingTierType
 from utils.db import get_datetime
 
 
@@ -96,6 +96,9 @@ class Moderators(Base):
     guideline_id: Mapped[str] = mapped_column(
         SaUUID(as_uuid=True), ForeignKey("guidelines.guideline_id"), nullable=False
     )
+    status: Mapped[str] = mapped_column(
+        String, default=ModeratorStatus.OFFLINE.value, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )
@@ -125,7 +128,7 @@ class ModeratorDeployments(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(
-        String, nullable=False, default=ModeratorDeploymentStatus.OFFLINE.value
+        String, nullable=False, default=ModeratorStatus.OFFLINE.value
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime

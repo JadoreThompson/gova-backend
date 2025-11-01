@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from core.enums import (
     ActionStatus,
     CoreEventType,
     MessagePlatformType,
-    ModeratorDeploymentEventType,
+    ModeratorEventType,
 )
 from core.models import CustomBaseModel
 from engine.base.base_action import BaseAction
@@ -20,60 +20,69 @@ class CoreEvent(CustomBaseModel):
     data: Any
 
 
-class ModeratorDeploymentEvent(CustomBaseModel):
+# Moderator Events
+
+
+class ModeratorEvent(CustomBaseModel):
     """Base deployment event."""
 
-    type: ModeratorDeploymentEventType
-    deployment_id: UUID
+    type: ModeratorEventType
+    moderator_id: UUID
 
 
-class StartModeratorDeploymentEvent(ModeratorDeploymentEvent):
+class StartModeratorEvent(ModeratorEvent):
     """Deployment start request."""
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.DEPLOYMENT_START
+    type: ModeratorEventType = ModeratorEventType.START
     moderator_id: UUID
     platform: MessagePlatformType
-    moderator_conf: DiscordConfig
+    conf: DiscordConfig
 
 
-class StartedModeratorDeploymentEvent(ModeratorDeploymentEvent):
+class AliveModeratorEvent(ModeratorEvent):
     """Deployment started and alive."""
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.DEPLOYMENT_ALIVE
+    type: ModeratorEventType = ModeratorEventType.ALIVE
     server_id: str
 
 
-class StopModeratorDeploymentEvent(ModeratorDeploymentEvent):
+class KillModeratorEvent(ModeratorEvent):
     """Deployment stop request."""
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.DEPLOYMENT_STOP
+    type: ModeratorEventType = ModeratorEventType.KILL
     reason: str | None = None
 
 
-class StoppedModeratorDeploymentEvent(StopModeratorDeploymentEvent):
+class DeadModeratorEvent(ModeratorEvent):
     """Deployment stopped."""
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.DEPLOYMENT_DEAD
+    type: ModeratorEventType = ModeratorEventType.DEAD
+    reason: str | None = None
 
 
-class ErrorModeratorDeploymentEvent(ModeratorDeploymentEvent):
-    """Deployment error."""
+class HeartbeatModeratorEvent(ModeratorEvent):
+    type: ModeratorEventType = ModeratorEventType.HEARTBEAT
+    role: Literal["moderator", "server"]
+    timestamp: int
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.ERROR
-    stack_trace: str | None = None
 
-
-class ActionModeratorDeploymentEvent(ModeratorDeploymentEvent):
+class ActionPerformedModeratorEvent(ModeratorEvent):
     """Deployment action event."""
 
-    action_type: Any # Enum
+    type: ModeratorEventType = ModeratorEventType.ACTION_PERFORMED
+    action_type: Any  # Enum
     params: BaseAction
     status: ActionStatus
 
 
-class EvaluationModeratorDeploymentEvent(ModeratorDeploymentEvent):
+class EvaluationCreatedModeratorEvent(ModeratorEvent):
     """Message evaluation result."""
 
-    type: ModeratorDeploymentEventType = ModeratorDeploymentEventType.EVALUATION_CREATED
+    type: ModeratorEventType = ModeratorEventType.EVALUATION_CREATED
     evaluation: MessageEvaluation
     context: BaseMessageContext
+
+
+class ErrorModeratorEvent(ModeratorEvent):
+    type: ModeratorEventType = ModeratorEventType.ERROR
+    stack_trace: str | None = None

@@ -6,14 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
+from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
 from core.enums import (
     CoreEventType,
     MessagePlatformType,
-    ModeratorDeploymentStatus,
+    ModeratorStatus,
     PricingTierType,
 )
-from core.events import CoreEvent, StartModeratorDeploymentEvent
+from core.events import CoreEvent, StartModeratorEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
@@ -95,7 +95,7 @@ async def deploy_moderator(
         .join(Moderators, Moderators.moderator_id == ModeratorDeployments.moderator_id)
         .where(
             Moderators.user_id == jwt.sub,
-            ModeratorDeployments.status != ModeratorDeploymentStatus.PENDING.value,
+            ModeratorDeployments.status != ModeratorStatus.PENDING.value,
         )
     )
 
@@ -135,17 +135,17 @@ async def deploy_moderator(
         created_at=dep.created_at,
     )
 
-    event = StartModeratorDeploymentEvent(
-        deployment_id=dep.deployment_id,
+    event = StartModeratorEvent(
         moderator_id=dep.moderator_id,
         platform=body.platform,
-        moderator_conf=conf,
+        conf=conf,
     )
     await db_sess.commit()
 
+    print('yo')
     await kafka_producer.send(
-        KAFKA_DEPLOYMENT_EVENTS_TOPIC,
-        dump_model(CoreEvent(type=CoreEventType.MODERATOR_DEPLOYMENT, data=event)),
+        KAFKA_MODERATOR_EVENTS_TOPIC,
+        dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=event)),
     )
     return rsp_body
 

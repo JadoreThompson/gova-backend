@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import field_validator
 
-from core.enums import ActionStatus, MessagePlatformType, ModeratorDeploymentStatus
+from core.enums import ActionStatus, MessagePlatformType, ModeratorStatus
 from core.models import CustomBaseModel
 from engine.discord.config import DiscordConfig
 from server.exc import CustomValidationError
@@ -33,7 +33,7 @@ class DeploymentResponse(CustomBaseModel):
     platform: MessagePlatformType
     name: str
     conf: DiscordConfigResponse
-    status: ModeratorDeploymentStatus
+    status: ModeratorStatus
     created_at: datetime
 
 

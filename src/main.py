@@ -5,12 +5,10 @@ from multiprocessing import Process
 from types import CoroutineType
 from typing import Any, Callable
 
-from sqlalchemy import select
 import uvicorn
 
-from db_models import ModeratorDeployments
-from engine.deployment_listener import DeploymentListener
-from utils.db import get_db_sess_sync
+from engine.discord.orchestrator import DiscordModeratorOrchestrator
+
 
 logger = logging.getLogger("main")
 
@@ -34,20 +32,14 @@ def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
     uvicorn.run("server.app:app", host=host, port=port, reload=reload)
 
 
-async def run_deployment_listener() -> None:
-    """Run the Kafka deployment listener."""
-    listener = DeploymentListener()
-    listener.listen()
-
-
-def asyncio_run(func: Callable[[], CoroutineType[Any, Any, Any]]) -> None:
-    asyncio.run(func())
-
+def run_orchestrator(batch_size: int = 1):
+    orch = DiscordModeratorOrchestrator(batch_size)
+    asyncio.run(orch.run())
 
 @silence_keyboard_interrupt
 def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
     pargs = (
-        (asyncio_run, (run_deployment_listener,), {}, "Deployment Listener"),
+        (run_orchestrator, (), {}, "Discord Orchestrator"),
         (run_server, (host, port, reload), {}, "Server"),
     )
 
@@ -81,38 +73,6 @@ def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
         logger.info("All processes shut down.")
 
 
-@silence_keyboard_interrupt
-def run_moderator(deployment_id: str):
-    """Run a makeshift moderator function for testing."""
-    from config import DISCORD_BOT_TOKEN
-    from engine.discord.config import DiscordConfig
-    from engine.discord.moderator import DiscordModerator
-
-    async def runner(mod: DiscordModerator):
-        async with mod:
-            await mod.moderate()
-
-    with get_db_sess_sync() as db_sess:
-        dep = db_sess.scalar(
-            select(ModeratorDeployments).where(
-                ModeratorDeployments.deployment_id == deployment_id
-            )
-        )
-        if dep is None:
-            logger.info(f"Faild to find deployment '{deployment_id}'")
-            return
-
-        mod = DiscordModerator(
-            deployment_id,
-            dep.moderator_id,
-            logger=logging.getLogger(f"moderator-{deployment_id}"),
-            token=DISCORD_BOT_TOKEN,
-            config=DiscordConfig(**dep.conf),
-        )
-
-    asyncio.run(runner(mod))
-
-
 if __name__ == "__main__":
     import sys
 
@@ -141,7 +101,3 @@ if __name__ == "__main__":
         run_server(host=host, port=port, reload=reload_flag)
     elif mode == "remote":
         run_remote(host=host, port=port, reload=reload_flag)
-    elif mode == "moderator":
-        if not deployment_id:
-            raise ValueError("Must provide --deployment-id for moderator mode")
-        run_moderator(deployment_id)

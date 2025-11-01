@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, PAGE_SIZE
-from core.enums import MessagePlatformType, ModeratorDeploymentStatus
-from core.events import StartModeratorDeploymentEvent, StopModeratorDeploymentEvent
+from config import KAFKA_DEPLOYMENT_EVENTS_TOPIC, KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE
+from core.enums import CoreEventType, MessagePlatformType, ModeratorStatus
+from core.events import CoreEvent, StartModeratorEvent, KillModeratorEvent
 from db_models import (
     Messages,
     ModeratorDeployments,
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/deployments", tags=["Moderator Deployments"])
 async def list_deployments(
     page: int = Query(ge=1),
     name: str | None = None,
-    status: list[ModeratorDeploymentStatus] | None = None,
+    status: list[ModeratorStatus] | None = None,
     platform: list[MessagePlatformType] | None = None,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
@@ -257,16 +257,19 @@ async def stop_deployment(
     )
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment not found.")
-    if dep.status != ModeratorDeploymentStatus.ONLINE.value:
+    if dep.status != ModeratorStatus.ONLINE.value:
         raise HTTPException(status_code=400, detail="Deployment is not online.")
 
-    ev = StopModeratorDeploymentEvent(
+    ev = KillModeratorEvent(
         type="stop",
         deployment_id=dep.deployment_id,
     )
-    await kafka_producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev))
+    await kafka_producer.send(
+        KAFKA_MODERATOR_EVENTS_TOPIC,
+        dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
+    )
 
-    dep.status = ModeratorDeploymentStatus.PENDING.value
+    dep.status = ModeratorStatus.PENDING.value
     await db_sess.commit()
 
 
@@ -287,13 +290,16 @@ async def stop_deployment(
     )
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment not found.")
-    if dep.status != ModeratorDeploymentStatus.OFFLINE.value:
+    if dep.status != ModeratorStatus.OFFLINE.value:
         raise HTTPException(status_code=400, detail="Deployment is not offline.")
 
-    ev = StopModeratorDeploymentEvent(deployment_id=dep.deployment_id)
-    await kafka_producer.send(KAFKA_DEPLOYMENT_EVENTS_TOPIC, dump_model(ev))
+    ev = KillModeratorEvent(deployment_id=dep.deployment_id)
+    await kafka_producer.send(
+        KAFKA_MODERATOR_EVENTS_TOPIC,
+        dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
+    )
 
-    dep.status = ModeratorDeploymentStatus.PENDING.value
+    dep.status = ModeratorStatus.PENDING.value
     await db_sess.commit()
 
 
