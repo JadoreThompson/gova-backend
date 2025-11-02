@@ -1,8 +1,7 @@
-import logging
-from typing import AsyncGenerator, Type
+from typing import AsyncGenerator, Type, TypeVar
 
 from aiokafka import AIOKafkaProducer
-from fastapi import Request
+from fastapi import Depends, Request
 
 from config import COOKIE_ALIAS
 from core.enums import MessagePlatformType
@@ -11,10 +10,13 @@ from engine.discord.action_handler import DiscordActionHandler
 from infra import DiscordClientManager, KafkaManager
 from infra.discord_client_manager import DiscordClientManager
 from infra.kafka_manager import KafkaManager
-from utils.db import smaker
 from server.exc import JWTError
 from server.services import JWTService
 from server.typing import JWTPayload
+from utils.db import smaker
+
+
+T = TypeVar("T")
 
 
 async def depends_db_sess():
@@ -69,3 +71,11 @@ def depends_action_handler(platform: MessagePlatformType):
 
 
 depends_discord_action_handler = depends_action_handler(MessagePlatformType.DISCORD)
+
+
+def CSVQuery(name: str, Typ: Type[T]):
+    def func(req: Request) -> list[T]:
+        vals = req.query_params.get(name)
+        return [Typ(val.strip()) for val in vals.strip().split(",")]
+
+    return Depends(func)

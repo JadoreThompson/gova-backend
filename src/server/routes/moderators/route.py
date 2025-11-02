@@ -7,10 +7,10 @@ from sqlalchemy import func, select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
-from core.enums import CoreEventType, ModeratorEventType, ModeratorStatus
+from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
 from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
-from server.dependencies import depends_db_sess, depends_jwt, depends_kafka_producer
+from server.dependencies import CSVQuery, depends_db_sess, depends_jwt, depends_kafka_producer
 from server.models import PaginatedResponse
 from server.shared.models import ActionResponse
 from server.typing import JWTPayload
@@ -223,7 +223,8 @@ async def get_moderator_stats(
 
     total_actions = await db_sess.scalar(
         select(func.count(ModeratorEventLogs.log_id)).where(
-            ModeratorEventLogs.moderator_id == moderator_id, ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value
+            ModeratorEventLogs.moderator_id == moderator_id,
+            ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value,
         )
     )
     total_actions = total_actions or 0
@@ -273,13 +274,17 @@ async def get_moderator_stats(
     )
 
 
+from fastapi import Request
 @router.get("/{moderator_id}/actions", response_model=PaginatedResponse[ActionResponse])
 async def list_moderator_actions(
+    req: Request,
     moderator_id: UUID,
     page: int = Query(1, ge=1),
+    status: list[ActionStatus] | None = CSVQuery("status", ActionStatus),
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
+    
     exists = await db_sess.scalar(
         select(Moderators.moderator_id).where(
             Moderators.moderator_id == moderator_id,
@@ -289,18 +294,22 @@ async def list_moderator_actions(
     if not exists:
         raise HTTPException(status_code=404, detail="Moderator not found")
 
-    query = (
-        select(ModeratorEventLogs)
-        .where(
-            ModeratorEventLogs.moderator_id == moderator_id,
-            ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value,
+    query = select(ModeratorEventLogs).where(
+        ModeratorEventLogs.moderator_id == moderator_id,
+        ModeratorEventLogs.event_type == ModeratorEventType.ACTION_PERFORMED.value,
+    )
+
+    if status is not None:
+        query = query.where(
+            ModeratorEventLogs.action_status.in_((s.value for s in status))
         )
-        .order_by(ModeratorEventLogs.created_at.desc())
+
+    res = await db_sess.scalars(
+        query.order_by(ModeratorEventLogs.created_at.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE + 1)
     )
 
-    res = await db_sess.scalars(query)
     logs = res.all()
     n = len(logs)
 
