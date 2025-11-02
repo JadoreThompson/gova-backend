@@ -33,9 +33,9 @@ logger = logging.getLogger("discord_moderator_orchestrator")
 
 
 class DiscordModeratorOrchestrator:
-    def __init__(self, batch_size: int = 1, batch_time: int = 60):
+    def __init__(self, batch_size: int = 1, batch_interval_seconds: int = 60):
         self._batch_size = batch_size
-        self._batch_time = batch_time
+        self._batch_interval_seconds = batch_interval_seconds
         self._stream = DiscordMessageStream()
         self._guild_moderators: dict[
             int, tuple[DiscordModerator, list[BaseMessageContext]]
@@ -128,7 +128,7 @@ class DiscordModeratorOrchestrator:
 
     async def _time_batch(self):
         while True:
-            await asyncio.sleep(self._batch_time)
+            await asyncio.sleep(self._batch_interval_seconds)
             async with self._lock:
                 for guild_id, (moderator, batch) in self._guild_moderators.items():
                     if not batch:

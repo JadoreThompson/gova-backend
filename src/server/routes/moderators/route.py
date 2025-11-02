@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
+from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PRICING_TIER_LIMITS
 from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
 from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
@@ -39,6 +39,10 @@ async def create_moderator(
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
+    count = await db_sess.scalar(select(func.count(Moderators.moderator_id)).where(Moderators.user_id == jwt.sub))
+    if count >= PRICING_TIER_LIMITS[jwt.pricing_tier]['max_moderators']:
+        raise HTTPException(status_code=400, detail="Max moderators reached.")
+    
     mod = await db_sess.scalar(
         insert(Moderators)
         .values(user_id=jwt.sub, **body.model_dump())
@@ -96,7 +100,7 @@ async def start_moderator(
         )
     )
 
-    max_messages = PLAN_LIMITS[jwt.pricing_tier]["max_messages"]
+    max_messages = PRICING_TIER_LIMITS[jwt.pricing_tier]["max_messages"]
     if online_count >= max_messages:
         raise HTTPException(status_code=400, detail="Max deployments reached.")
 
