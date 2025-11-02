@@ -12,10 +12,10 @@ from core.events import CoreEvent, KillModeratorEvent
 from utils.kafka import dump_model
 from config import (
     KAFKA_BOOTSTRAP_SERVER,
-    KAFKA_DEPLOYMENT_EVENTS_TOPIC,
     KAFKA_MODERATOR_EVENTS_TOPIC,
     REDIS_CLIENT,
     REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX,
+    REDIS_USER_MODERATOR_MESSAGES_PREFIX,
     STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
 )
 from core.enums import CoreEventType, ModeratorStatus, PricingTierType
@@ -184,17 +184,20 @@ class StripeEventHandler:
                 return False
 
             user = await db_sess.scalar(select(Users).where(user_lookup_condition))
+            if not user:
+                logger.error(
+                    f"Payment succeeded for invoice {invoice_id}, but no matching user found "
+                    f"with user_id='{user_id}' or stripe_customer_id='{customer_id}'."
+                )
+                return False
+            
             user.pricing_tier = PricingTierType.PRO.value
             user.stripe_customer_id = customer_id
             user_id, username, email = user.user_id, user.username, user.email
             await db_sess.commit()
 
-        if not user_id:
-            logger.error(
-                f"Payment succeeded for invoice {invoice_id}, but no matching user found "
-                f"with user_id='{user_id}' or stripe_customer_id='{customer_id}'."
-            )
-            return False
+        key = f"{REDIS_USER_MODERATOR_MESSAGES_PREFIX}{user_id}"
+        await REDIS_CLIENT.set(key, 0)
 
         # Send a different email for new subscriptions vs. renewals
         billing_reason = invoice.get("billing_reason")

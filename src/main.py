@@ -1,29 +1,10 @@
-import asyncio
-import json
 import logging
+import sys
 import time
 from multiprocessing import Process
+from typing import Type, Any
 
-import uvicorn
-from kafka import KafkaConsumer
-
-from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
-from core.enums import ModeratorEventType
-from core.events import (
-    DeadModeratorEvent,
-    EvaluationCreatedModeratorEvent,
-    CoreEvent,
-    ActionPerformedModeratorEvent,
-    KillModeratorEvent,
-    ModeratorEvent,
-    StartModeratorEvent,
-)
-from engine.discord.actions import DiscActionUnion
-from engine.discord.context import DiscordMessageContext
-from engine.discord.models import DiscordAction
-from engine.discord.orchestrator import DiscordModeratorOrchestrator
-from engine.moderator_event_logger import ModeratorEventLogger
-from utils.db import smaker_sync
+from runners import BaseRunner, ServerRunner, OrchestratorRunner, EventLoggerRunner
 
 
 logger = logging.getLogger("main")
@@ -32,108 +13,75 @@ logger = logging.getLogger("main")
 def silence_keyboard_interrupt(func):
     def wrapper(*args, **kw):
         try:
-            res = func(*args, **kw)
-            return res
+            return func(*args, **kw)
         except KeyboardInterrupt:
             pass
 
     return wrapper
 
 
-# Base runners
+def launch_runner(runner_cls: Type[BaseRunner], *args: Any, **kwargs: Any):
+    runner_instance = runner_cls(*args, **kwargs)
+    runner_instance.run()
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
-    """Run only the FastAPI server."""
-    uvicorn.run("server.app:app", host=host, port=port, reload=reload)
-
-
-def run_orchestrator(batch_size: int = 1):
-    orch = DiscordModeratorOrchestrator(batch_size)
-    asyncio.run(orch.run())
-
-
-def run_event_logger():
-    db = smaker_sync()
-    event_logger = ModeratorEventLogger(db)
-    consumer = KafkaConsumer(
-        KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
-    )
-    logger = logging.getLogger("event_logger")
-
-    event_class_map = {
-        ModeratorEventType.START: StartModeratorEvent,
-        ModeratorEventType.ALIVE: ModeratorEvent,
-        ModeratorEventType.KILL: KillModeratorEvent,
-        ModeratorEventType.DEAD: DeadModeratorEvent,
-        ModeratorEventType.ACTION_PERFORMED: ActionPerformedModeratorEvent[
-            DiscActionUnion, DiscordMessageContext
-        ],
-        ModeratorEventType.EVALUATION_CREATED: EvaluationCreatedModeratorEvent[
-            DiscActionUnion, DiscordMessageContext
-        ],
-    }
-
-    for msg in consumer:
-        try:
-            data = json.loads(msg.value.decode())
-            ev = CoreEvent(**data)
-            ev_type = ev.data.get("type")
-            
-            logger.info(f"Received event '{ev_type}'")
-            event_cls = event_class_map.get(ev_type)
-
-            if event_cls:
-                parsed_ev = event_cls(**ev.data)
-                event_logger.log_event(parsed_ev)
-            else:
-                logger.warning(f"Unhandled event type: {ev_type}")
-
-        except Exception as e:
-            logger.exception(f"Error processing event: {e}")
-
-
-@silence_keyboard_interrupt
 def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
-    pargs = (
-        (run_orchestrator, (), {}, "Discord Orchestrator"),
-        (run_server, (host, port, reload), {}, "Server"),
-        (run_event_logger, (), {}, "Event Logger"),
-    )
-
-    ps = [
-        Process(target=target, args=args, kwargs=kw, name=name)
-        for target, args, kw, name in pargs
+    """
+    Launches, runs, and monitors all services in separate processes.
+    """
+    p_configs: list[tuple[Type[BaseRunner], tuple, dict, str]] = [
+        (OrchestratorRunner, (), {"batch_size": 1}, "Discord Orchestrator"),
+        (ServerRunner, (), {"host": host, "port": port, "reload": reload}, "Server"),
+        (EventLoggerRunner, (), {}, "Event Logger"),
     ]
+
+    ps: list[Process] = []
+    for runner_cls, c_args, c_kwargs, name in p_configs:
+        proc = Process(
+            target=launch_runner, name=name, args=(runner_cls, *c_args), kwargs=c_kwargs
+        )
+        ps.append(proc)
 
     for p in ps:
         p.start()
+        logger.info(f"Started process '{p.name}' (PID: {p.pid}).")
 
     try:
         while True:
-            for idx, p in enumerate(ps):
+            for i, p in enumerate(ps):
                 if not p.is_alive():
-                    logger.critical(f"Process '{p.name}' has died.")
-                    p.kill()
+                    logger.critical(
+                        f"Process '{p.name}' has died (exit code: {p.exitcode})."
+                    )
                     p.join()
-                    target, args, kw, name = pargs[idx]
-                    ps[idx] = Process(target=target, args=args, kwargs=kw, name=name)
-                    ps[idx].start()
-                    logger.critical(f"Process '{p.name}' relaunched successfully.")
-            time.sleep(0.5)
+
+                    runner_cls, c_args, c_kwargs, name = p_configs[i]
+
+                    logger.info(f"Relaunching '{name}'...")
+                    new_process = Process(
+                        target=launch_runner,
+                        name=name,
+                        args=(runner_cls, *c_args),
+                        kwargs=c_kwargs,
+                    )
+                    ps[i] = new_process
+                    new_process.start()
+                    logger.critical(
+                        f"Process '{new_process.name}' relaunched successfully (New PID: {new_process.pid})."
+                    )
+            time.sleep(1)
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt — shutting down all processes.")
     finally:
         for p in ps:
-            logger.info(f"Shutting down process '{p.name}'...")
-            p.kill()
-            p.join()
+            if p.is_alive():
+                logger.info(f"Shutting down process '{p.name}'...")
+                p.kill()
+                p.join()
         logger.info("All processes shut down.")
 
 
 if __name__ == "__main__":
-    import sys
-
     mode = ""
     host = "0.0.0.0"
     port = 8000
@@ -151,8 +99,14 @@ if __name__ == "__main__":
             reload_flag = arg.split("=")[1].lower() == "true"
 
     if not mode:
-        raise ValueError("Must provide --mode")
-    elif mode == "local":
-        run_server(host=host, port=port, reload=reload_flag)
+        raise ValueError("Must provide --mode (e.g., --mode=local or --mode=remote)")
+
+    if mode == "local":
+        logger.info("Starting in local mode...")
+        server = ServerRunner(host=host, port=port, reload=reload_flag)
+        server.run()
     elif mode == "remote":
+        logger.info("Starting in remote mode...")
         run_remote(host=host, port=port, reload=reload_flag)
+    else:
+        logger.error(f"Unknown mode: {mode}")

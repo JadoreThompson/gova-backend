@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 import stripe
 from dotenv import load_dotenv
+from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -47,17 +48,21 @@ KAFKA_MODERATOR_EVENTS_TOPIC = os.getenv("KAFKA_MODERATOR_EVENTS_TOPIC")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "0"))
 REDIS_DB = None
-REDIS_CLIENT = AsyncRedis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    db=REDIS_DB,
-    encoding="utf-8",
-    decode_responses=True,
-)
+kw = {
+    "host": REDIS_HOST,
+    "port": REDIS_PORT,
+    "db": REDIS_DB,
+    "encoding": "utf-8",
+    "decode_responses": True,
+}
+REDIS_CLIENT = AsyncRedis(**kw)
+REDIS_CLIENT_SYNC = Redis(**kw)
+del kw
 REDIS_EMAIL_VERIFICATION_KEY_PREFIX = os.getenv("REDIS_EMAIL_VERIFICATION_KEY_PREFIX")
 REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX = os.getenv(
     "REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX"
 )
+REDIS_USER_MODERATOR_MESSAGES_PREFIX = os.getenv("REDIS_USER_MODERATOR_MESSAGES_PREFIX")
 REDIS_EXPIRY = 900
 
 # Server
@@ -118,18 +123,18 @@ STRIPE_PRICING_PRO_PRICE_ID = os.getenv("STRIPE_PRICING_PRO_PRICE_ID")
 stripe.api_key = STRIPE_API_KEY
 
 # Plans
-PLAN_LIMITS = {
+PRICING_TIER_LIMITS = {
     PricingTierType.FREE: {
         "max_messages": 1000,
-        "max_deployments": 1,
+        "max_moderators": 1,
     },
     PricingTierType.PRO: {
         "max_messages": 10_000,
-        "max_deployments": 5,
+        "max_moderators": 5,
     },
     PricingTierType.ENTERPRISE: {
         "max_messages": 100_000,
-        "max_deployments": 50,
+        "max_moderators": 50,
     },
 }
 
