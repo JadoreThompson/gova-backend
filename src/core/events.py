@@ -66,13 +66,14 @@ class HeartbeatModeratorEvent(ModeratorEvent):
     timestamp: int
 
 
-class ActionPerformedModeratorEvent(ModeratorEvent, Generic[A]):
+class ActionPerformedModeratorEvent(ModeratorEvent, Generic[A, C]):
     """Deployment action event."""
 
     type: ModeratorEventType = ModeratorEventType.ACTION_PERFORMED
     action_type: Any  # Enum
     params: A
     status: ActionStatus
+    context: C
 
 
 class EvaluationCreatedModeratorEvent(ModeratorEvent, Generic[A, C]):

@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 from pydantic import Field
 
@@ -46,3 +47,6 @@ class KickAction(DiscordAction):
 
 class KickActionDefinition(BaseActionDefinition):
     type: DiscordActionType = DiscordActionType.KICK
+
+
+DiscActionUnion = Union[BanAction, MuteAction, KickAction]

@@ -18,6 +18,7 @@ from core.events import (
     ModeratorEvent,
     StartModeratorEvent,
 )
+from engine.discord.actions import DiscActionUnion
 from engine.discord.context import DiscordMessageContext
 from engine.discord.models import DiscordAction
 from engine.discord.orchestrator import DiscordModeratorOrchestrator
@@ -54,10 +55,11 @@ def run_orchestrator(batch_size: int = 1):
 
 def run_event_logger():
     db = smaker_sync()
-    moderator_logger = ModeratorEventLogger(db)
+    event_logger = ModeratorEventLogger(db)
     consumer = KafkaConsumer(
         KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
     )
+    logger = logging.getLogger("event_logger")
 
     event_class_map = {
         ModeratorEventType.START: StartModeratorEvent,
@@ -65,10 +67,10 @@ def run_event_logger():
         ModeratorEventType.KILL: KillModeratorEvent,
         ModeratorEventType.DEAD: DeadModeratorEvent,
         ModeratorEventType.ACTION_PERFORMED: ActionPerformedModeratorEvent[
-            DiscordAction
+            DiscActionUnion, DiscordMessageContext
         ],
         ModeratorEventType.EVALUATION_CREATED: EvaluationCreatedModeratorEvent[
-            DiscordAction, DiscordMessageContext
+            DiscActionUnion, DiscordMessageContext
         ],
     }
 
@@ -77,11 +79,13 @@ def run_event_logger():
             data = json.loads(msg.value.decode())
             ev = CoreEvent(**data)
             ev_type = ev.data.get("type")
-            print("Received event type", ev_type)
+            
+            logger.info(f"Received event '{ev_type}'")
             event_cls = event_class_map.get(ev_type)
+
             if event_cls:
                 parsed_ev = event_cls(**ev.data)
-                moderator_logger.log_event(parsed_ev)
+                event_logger.log_event(parsed_ev)
             else:
                 logger.warning(f"Unhandled event type: {ev_type}")
 

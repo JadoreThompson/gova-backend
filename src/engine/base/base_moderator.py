@@ -29,6 +29,8 @@ from core.events import (
 )
 from db_models import Guidelines, Messages, Moderators, MessagesEvaluations
 from engine.base.base_action_handler import BaseActionHandler
+from engine.discord.actions import DiscActionUnion
+from engine.discord.context import DiscordMessageContext
 from engine.models import BaseMessageContext, MessageEvaluation
 from engine.task_pool import TaskPool
 from utils.db import get_db_sess
@@ -205,14 +207,15 @@ class BaseModerator(ABC):
                 "moderator_id": self._moderator_id,
                 "action_type": action_type,
                 "params": action,
+                'context': ctx
             }
             if action.requires_approval:
-                event = ActionPerformedModeratorEvent(
+                event = ActionPerformedModeratorEvent[DiscActionUnion, DiscordMessageContext](
                     **kw, status=ActionStatus.AWAITING_APPROVAL
                 )
             else:
                 success = await self._action_handler.handle(action, ctx)
-                event = ActionPerformedModeratorEvent(
+                event = ActionPerformedModeratorEvent[DiscActionUnion, DiscordMessageContext](
                     **kw,
                     status=ActionStatus.SUCCESS if success else ActionStatus.FAILED,
                 )
