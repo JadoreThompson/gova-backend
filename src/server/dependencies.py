@@ -62,10 +62,7 @@ def depends_action_handler(platform: MessagePlatformType):
     def wrapper() -> BaseActionHandler:
         nonlocal handlers, platform
         if platform not in handlers:
-            handlers[platform] = handler_cls[platform](
-                DiscordClientManager.client,
-                logging.getLogger(f"global-{platform.value.lower()}-handler"),
-            )
+            handlers[platform] = handler_cls[platform](DiscordClientManager.client)
         return handlers[platform]
 
     return wrapper
