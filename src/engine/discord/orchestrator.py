@@ -33,12 +33,10 @@ logger = logging.getLogger("discord_moderator_orchestrator")
 
 
 class DiscordModeratorOrchestrator:
-    def __init__(
-        self,
-        batch_size: int = 1,
-    ):
-        self._stream = DiscordMessageStream()
+    def __init__(self, batch_size: int = 1, batch_time: int = 60):
         self._batch_size = batch_size
+        self._batch_time = batch_time
+        self._stream = DiscordMessageStream()
         self._guild_moderators: dict[
             int, tuple[DiscordModerator, list[BaseMessageContext]]
         ] = {}
@@ -48,30 +46,32 @@ class DiscordModeratorOrchestrator:
         self._kafka_consumer: AIOKafkaConsumer | None = None
         self._kafka_producer: AIOKafkaProducer | None = None
         self._listen_task: asyncio.Task | None = None
+        self._time_batch_task: asyncio.Task | None = None
 
     async def _startup(self):
         self._task_pool.start()
         self._listen_task = asyncio.create_task(self._listen())
+        self._time_batch_task  = asyncio.create_task(self._time_batch())
         self._kafka_producer = AIOKafkaProducer(
             bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
         )
         await self._kafka_producer.start()
 
     async def _shutdown(self):
+        await asyncio.gather(*[mod.stop() for _, (mod, _) in self._guild_moderators.items()])
+
+        for t in (self._time_batch_task, self._listen_task):
+            if t is not None and not t.done():
+                try:
+                    t.cancel()
+                    await t
+                except asyncio.CancelledError:
+                    pass
+        
+        self._time_batch_task = None
+        self._listen_task = None
+
         await self._task_pool.stop()
-
-        coros = []
-        for _, (mod, _) in self._guild_moderators.items():
-            coros.append(mod.stop())
-        await asyncio.gather(*coros)
-
-        if self._listen_task is not None and not self._listen_task.done():
-            try:
-                self._listen_task.cancel()
-                await self._listen_task
-            except asyncio.CancelledError:
-                pass
-
         await self._kafka_producer.stop()
         logger.info("Orchestrator dead")
 
@@ -109,9 +109,7 @@ class DiscordModeratorOrchestrator:
                     moderator, batch = self._guild_moderators[guild_id]
                     batch.append(ctx)
                     if len(batch) >= self._batch_size:
-                        await self._task_pool.submit(
-                            self._wrapper(moderator, batch)
-                        )  # single for now
+                        await self._task_pool.submit(self._wrapper(moderator, batch))
                         self._guild_moderators[guild_id] = (moderator, [])
         except Exception as e:
             logger.error(f"{type(e)} - {str(e)}")
@@ -122,11 +120,21 @@ class DiscordModeratorOrchestrator:
         self, moderator: DiscordModerator, batch: list[DiscordMessageContext]
     ):
         try:
-            await moderator.moderate(batch[0])
+            await asyncio.gather(*[moderator.moderate(ctx) for ctx in batch], return_exceptions=True)
         except Exception as e:
             logger.error(
                 f"Error during moderate for '{moderator.moderator_id}' {type(e)} - {str(e)}"
             )
+
+    async def _time_batch(self):
+        while True:
+            await asyncio.sleep(self._batch_time)
+            async with self._lock:
+                for guild_id, (moderator, batch) in self._guild_moderators.items():
+                    if not batch:
+                        continue
+                    await self._task_pool.submit(self._wrapper(moderator, batch))
+                    self._guild_moderators[guild_id] = (moderator, [])
 
     async def _listen(self):
         """

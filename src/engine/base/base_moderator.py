@@ -73,6 +73,7 @@ class BaseModerator(ABC):
         return self._status
 
     async def start(self):
+        self._load_embedding_model()
         if self._status == ModeratorStatus.OFFLINE:
             self._status = ModeratorStatus.ONLINE
             await self._update_status(ModeratorStatus.ONLINE)
@@ -117,8 +118,8 @@ class BaseModerator(ABC):
     async def moderate(self, ctx: BaseMessageContext, max_attempts: int = 3) -> None:
         async with self._count_lock:
             self._count += 1
+
         try:
-            self._load_embedding_model()
             if self._status == ModeratorStatus.ONLINE:
                 evaluation = await self.evaluate(ctx, max_attempts)
                 if evaluation is None:
@@ -160,11 +161,13 @@ class BaseModerator(ABC):
     async def _handle_evaluation(
         self, evaluation: MessageEvaluation, ctx: BaseMessageContext
     ) -> None:
-        fut = self._thread_pool.submit(lambda: self._embedding_model.encode([ctx.content])[0])
+        fut = self._thread_pool.submit(
+            lambda: self._embedding_model.encode([ctx.content])[0]
+        )
         while not fut.done():
             await asyncio.sleep(0.1)
         embedding = fut.result()
-        
+
         async with get_db_sess() as db_sess:
             message_id = await db_sess.scalar(
                 insert(Messages)
@@ -177,21 +180,27 @@ class BaseModerator(ABC):
                 )
                 .returning(Messages.message_id)
             )
-            await db_sess.execute(insert(MessagesEvaluations), [
-                {
-                    "message_id": message_id,
-                    "moderator_id": self._moderator_id,
-                    "embedding": embedding,
-                    "topic": topic_eval.topic,
-                    "topic_score": topic_eval.topic_score,
-                }
-                for topic_eval in evaluation.topic_evaluations
-            ])
+            await db_sess.execute(
+                insert(MessagesEvaluations),
+                [
+                    {
+                        "message_id": message_id,
+                        "moderator_id": self._moderator_id,
+                        "embedding": embedding,
+                        "topic": topic_eval.topic,
+                        "topic_score": topic_eval.topic_score,
+                    }
+                    for topic_eval in evaluation.topic_evaluations
+                ],
+            )
 
             await db_sess.commit()
 
         eval_event = EvaluationCreatedModeratorEvent(
-            moderator_id=self._moderator_id, message_id=message_id, evaluation=evaluation, context=ctx
+            moderator_id=self._moderator_id,
+            message_id=message_id,
+            evaluation=evaluation,
+            context=ctx,
         )
         await self._kafka_producer.send(
             KAFKA_MODERATOR_EVENTS_TOPIC,
@@ -207,15 +216,17 @@ class BaseModerator(ABC):
                 "moderator_id": self._moderator_id,
                 "action_type": action_type,
                 "params": action,
-                'context': ctx
+                "context": ctx,
             }
             if action.requires_approval:
-                event = ActionPerformedModeratorEvent[DiscActionUnion, DiscordMessageContext](
-                    **kw, status=ActionStatus.AWAITING_APPROVAL
-                )
+                event = ActionPerformedModeratorEvent[
+                    DiscActionUnion, DiscordMessageContext
+                ](**kw, status=ActionStatus.AWAITING_APPROVAL)
             else:
                 success = await self._action_handler.handle(action, ctx)
-                event = ActionPerformedModeratorEvent[DiscActionUnion, DiscordMessageContext](
+                event = ActionPerformedModeratorEvent[
+                    DiscActionUnion, DiscordMessageContext
+                ](
                     **kw,
                     status=ActionStatus.SUCCESS if success else ActionStatus.FAILED,
                 )
@@ -251,9 +262,10 @@ class BaseModerator(ABC):
         return topic_scores
 
     def _load_embedding_model(self) -> None:
-        if self._embedding_model is not None:
+        if self.__class__._embedding_model is not None:
             return
-        self._embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
+        self.__class__._embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
+        self._embedding_model = self.__class__._embedding_model
 
     async def _update_status(self, status: ModeratorStatus) -> None:
         async with get_db_sess() as db_sess:

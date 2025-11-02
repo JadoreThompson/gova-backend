@@ -14,10 +14,23 @@ class ModeratorBase(CustomBaseModel):
     guideline_id: UUID
 
 
+class DiscordConfigBody(DiscordConfig):
+    guild_id: str
+    allowed_channels: tuple[str, ...]
+
+    @field_validator("guild_id", mode="before")
+    def validate_guild_id(cls, v):
+        if isinstance(v, str):
+            return v
+        if isinstance(v, int):
+            return str(v)
+        raise CustomValidationError(400, f"Invalid type '{type(v)}' for guild_id")
+
+
 class ModeratorCreate(ModeratorBase):
     platform: MessagePlatformType
     platform_server_id: str
-    conf: DiscordConfig
+    conf: DiscordConfigBody
 
 
 class ModeratorResponse(ModeratorBase):
@@ -39,14 +52,3 @@ class ModeratorStats(BaseModel):
     total_actions: int
     message_chart: list[MessageChartData]
 
-
-class DiscordConfigResponse(DiscordConfig):
-    guild_id: str
-
-    @field_validator("guild_id", mode="before")
-    def validate_guild_id(cls, v):
-        if isinstance(v, str):
-            return v
-        if isinstance(v, int):
-            return str(v)
-        raise CustomValidationError(400, f"Invalid type '{type(v)}' for guild_id")

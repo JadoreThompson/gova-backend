@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+from typing import Literal, Union
 
 from pydantic import Field
 
@@ -22,7 +22,7 @@ class BanAction(DiscordAction):
 
 
 class BanActionDefinition(BaseActionDefinition):
-    type: DiscordActionType = DiscordActionType.BAN
+    type: Literal[DiscordActionType.BAN] = DiscordActionType.BAN
 
 
 class MuteAction(DiscordAction):
@@ -34,7 +34,7 @@ class MuteAction(DiscordAction):
 
 
 class MuteActionDefinition(BaseActionDefinition):
-    type: DiscordActionType = DiscordActionType.MUTE
+    type: Literal[DiscordActionType.MUTE] = DiscordActionType.MUTE
     duration: int | None = Field(
         None, ge=0, description="Duration in milliseconds to mute the user."
     )
@@ -46,7 +46,8 @@ class KickAction(DiscordAction):
 
 
 class KickActionDefinition(BaseActionDefinition):
-    type: DiscordActionType = DiscordActionType.KICK
+    type: Literal[DiscordActionType.KICK] = DiscordActionType.KICK
 
 
 DiscActionUnion = Union[BanAction, MuteAction, KickAction]
+DiscActionDefinitionUnion = Union[MuteActionDefinition, BanActionDefinition, KickActionDefinition]

@@ -23,11 +23,11 @@ class Identity(NamedTuple):
 
 # TODO: Convert to base model and move to shared
 class Guild(NamedTuple):
-    id: int
+    id: str
     name: str
     icon: str | None
 
 
 class GuildChannel(NamedTuple):
-    id: int
+    id: str
     name: str

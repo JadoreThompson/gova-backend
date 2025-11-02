@@ -10,7 +10,12 @@ from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PLAN_LIMITS
 from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
 from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
-from server.dependencies import CSVQuery, depends_db_sess, depends_jwt, depends_kafka_producer
+from server.dependencies import (
+    CSVQuery,
+    depends_db_sess,
+    depends_jwt,
+    depends_kafka_producer,
+)
 from server.models import PaginatedResponse
 from server.shared.models import ActionResponse
 from server.typing import JWTPayload
@@ -19,7 +24,7 @@ from utils.kafka import dump_model
 from .models import (
     ModeratorCreate,
     ModeratorResponse,
-    DiscordConfigResponse,
+    DiscordConfigBody,
     MessageChartData,
     ModeratorStats,
 )
@@ -46,7 +51,7 @@ async def create_moderator(
         guideline_id=mod.guideline_id,
         platform=mod.platform,
         platform_server_id=mod.platform_server_id,
-        conf=DiscordConfigResponse(**mod.conf),
+        conf=DiscordConfigBody(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,
     )
@@ -157,7 +162,7 @@ async def list_moderators(
                 guideline_id=mod.guideline_id,
                 platform=mod.platform,
                 platform_server_id=mod.platform_server_id,
-                conf=DiscordConfigResponse(**mod.conf),
+                conf=DiscordConfigBody(**mod.conf),
                 status=mod.status,
                 created_at=mod.created_at,
             )
@@ -187,7 +192,7 @@ async def get_moderator(
         guideline_id=mod.guideline_id,
         platform=mod.platform,
         platform_server_id=mod.platform_server_id,
-        conf=DiscordConfigResponse(**mod.conf),
+        conf=DiscordConfigBody(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,
     )
@@ -274,17 +279,14 @@ async def get_moderator_stats(
     )
 
 
-from fastapi import Request
 @router.get("/{moderator_id}/actions", response_model=PaginatedResponse[ActionResponse])
 async def list_moderator_actions(
-    req: Request,
     moderator_id: UUID,
     page: int = Query(1, ge=1),
     status: list[ActionStatus] | None = CSVQuery("status", ActionStatus),
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    
     exists = await db_sess.scalar(
         select(Moderators.moderator_id).where(
             Moderators.moderator_id == moderator_id,
