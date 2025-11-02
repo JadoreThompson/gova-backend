@@ -105,7 +105,6 @@ class ModeratorEventLogger:
         status_handlers = {
             ActionStatus.SUCCESS: self._handle_action_success,
             ActionStatus.FAILED: self._handle_action_failed,
-            ActionStatus.PENDING: self._handle_action_pending,
             ActionStatus.AWAITING_APPROVAL: self._handle_action_pending,
             ActionStatus.DECLINED: self._handle_action_declined,
             ActionStatus.APPROVED: self._handle_action_approved,
@@ -123,6 +122,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_action_success(self, event: ActionPerformedModeratorEvent):
@@ -134,6 +134,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.SUCCESS,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_action_failed(self, event: ActionPerformedModeratorEvent):
@@ -145,6 +146,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_action_pending(self, event: ActionPerformedModeratorEvent):
@@ -161,6 +163,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=event.status,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_action_approved(self, event: ActionPerformedModeratorEvent):
@@ -172,6 +175,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.APPROVED,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_action_declined(self, event: ActionPerformedModeratorEvent):
@@ -183,6 +187,7 @@ class ModeratorEventLogger:
             action_type=str(event.action_type),
             action_params=event.params.to_serialisable_dict(),
             action_status=ActionStatus.DECLINED,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_evaluation(self, event: EvaluationCreatedModeratorEvent):
@@ -196,6 +201,7 @@ class ModeratorEventLogger:
                 "context": event.context.to_serialisable_dict(),
             },
             message_id=event.message_id,
+            context=event.context.to_serialisable_dict(),
         )
 
     def _handle_error(self, event: ErrorModeratorEvent):

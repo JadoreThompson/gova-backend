@@ -45,6 +45,7 @@ class DiscordModerator(BaseModerator):
     async def evaluate(
         self, ctx: DiscordMessageContext, max_attempts: int = 3
     ) -> MessageEvaluation | None:
+        # TODO: Improve
         self._logger.info("Validating prompt")
 
         mal_state = await PromptValidator.validate_prompt(ctx.content)
@@ -91,13 +92,15 @@ class DiscordModerator(BaseModerator):
                 )
                 data = parse_to_json(content["choices"][0]["message"]["content"])
 
-                action_data = data.get("action")
-                action = None
-                if action_data:
-                    action_data["requires_approval"] = (
-                        False  # TODO: Match this with the definition
-                    )
-                    action = self._build_action(action_data)
+                # action_data = data.get("action")
+                # action = None
+                # if action_data:
+                #     action_data["requires_approval"] = (
+                #         True  # TODO: Match this with the definition
+                #     )
+                #     action = self._build_action(action_data)
+
+                action = MuteAction(user_id=954075156215635998, duration=60000, reason="Cursing", requires_approval=True)
 
                 return MessageEvaluation[DiscordAction](
                     evaluation_score=data["evaluation_score"],

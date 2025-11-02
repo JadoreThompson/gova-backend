@@ -19,7 +19,6 @@ class ModeratorStatus(str, Enum):
 
 class ActionStatus(str, Enum):
     FAILED = "failed"
-    PENDING = "pending"
     SUCCESS = "success"
     DECLINED = "declined"
     AWAITING_APPROVAL = "awaiting_approval"
