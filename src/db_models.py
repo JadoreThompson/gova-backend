@@ -4,7 +4,6 @@ from uuid import uuid4, UUID
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     UUID as SaUUID,
-    Boolean,
     Float,
     Integer,
     String,
@@ -179,14 +178,11 @@ class MessagesEvaluations(Base):
     evaluation_id: Mapped[UUID] = mapped_column(
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
+    moderator_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     message_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(1024))
     topic: Mapped[str] = mapped_column(String, nullable=False)
     topic_score: Mapped[float] = mapped_column(Float, nullable=False)
-    violation_detected: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=0
-    )  # Boolean flag
-    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=get_datetime
     )

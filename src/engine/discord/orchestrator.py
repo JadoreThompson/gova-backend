@@ -110,13 +110,23 @@ class DiscordModeratorOrchestrator:
                     batch.append(ctx)
                     if len(batch) >= self._batch_size:
                         await self._task_pool.submit(
-                            moderator.moderate(batch[0])
+                            self._wrapper(moderator, batch)
                         )  # single for now
                         self._guild_moderators[guild_id] = (moderator, [])
         except Exception as e:
             logger.error(f"{type(e)} - {str(e)}")
         finally:
             await self._shutdown()
+
+    async def _wrapper(
+        self, moderator: DiscordModerator, batch: list[DiscordMessageContext]
+    ):
+        try:
+            await moderator.moderate(batch[0])
+        except Exception as e:
+            logger.error(
+                f"Error during moderate for '{moderator.moderator_id}' {type(e)} - {str(e)}"
+            )
 
     async def _listen(self):
         """
@@ -155,7 +165,7 @@ class DiscordModeratorOrchestrator:
     async def _handle_start_event(self, event: StartModeratorEvent) -> None:
         if event.platform != MessagePlatformType.DISCORD:
             return
-        
+
         async with self._lock:
             if event.moderator_id in self._moderators:
                 logger.warning(f"Moderator {event.moderator_id} already exists")

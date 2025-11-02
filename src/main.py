@@ -77,7 +77,7 @@ def run_event_logger():
             data = json.loads(msg.value.decode())
             ev = CoreEvent(**data)
             ev_type = ev.data.get("type")
-
+            print("Received event type", ev_type)
             event_cls = event_class_map.get(ev_type)
             if event_cls:
                 parsed_ev = event_cls(**ev.data)

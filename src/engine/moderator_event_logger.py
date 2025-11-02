@@ -4,7 +4,6 @@ from core.enums import ModeratorEventType, LogSeverity, ActionStatus
 from core.events import (
     ModeratorEvent,
     StartModeratorEvent,
-    AliveModeratorEvent,
     KillModeratorEvent,
     DeadModeratorEvent,
     ErrorModeratorEvent,
@@ -24,11 +23,10 @@ class ModeratorEventLogger:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-
     def __init__(self, db: Session):
-        if hasattr(self, '_initialised') and self._initialised:
+        if hasattr(self, "_initialised") and self._initialised:
             return
-        
+
         self.db = db
         self._handlers = {
             ModeratorEventType.START: self._handle_start,
@@ -51,23 +49,21 @@ class ModeratorEventLogger:
             self._create_generic_log(event)
         handler(event)
 
-    # Deployment lifecycle
-
     def _handle_start(self, event: StartModeratorEvent):
         return self._create_log(
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
-            message=f"Deployment started on {event.platform.value}",
+            message=f"Moderator started on {event.platform.value}",
             details={"config": event.conf.to_serialisable_dict()},
         )
 
-    def _handle_alive(self, event: AliveModeratorEvent):
+    def _handle_alive(self, event: ModeratorEvent):
         return self._create_log(
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
-            message=f"Deployment alive (server_id={event.server_id})",
+            message=f"Moderator alive",
         )
 
     def _handle_stop(self, event: KillModeratorEvent):
@@ -75,7 +71,7 @@ class ModeratorEventLogger:
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
-            message="Deployment stop requested",
+            message="Moderator stop requested",
             details={"reason": event.reason or "unspecified"},
         )
 
@@ -84,7 +80,7 @@ class ModeratorEventLogger:
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
-            message="Deployment stopped",
+            message="Moderator stopped",
             details={"reason": event.reason or "unknown"},
         )
 
@@ -93,7 +89,7 @@ class ModeratorEventLogger:
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.CRITICAL,
-            message="Deployment failed",
+            message="Moderator failed",
         )
 
     def _handle_heartbeat(self, event: ModeratorEvent):
@@ -101,7 +97,7 @@ class ModeratorEventLogger:
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.INFO,
-            message="Deployment heartbeat received",
+            message="Moderator heartbeat received",
         )
 
     def _handle_action(self, event: ActionPerformedModeratorEvent):
@@ -199,6 +195,7 @@ class ModeratorEventLogger:
                 "evaluation": event.evaluation.to_serialisable_dict(),
                 "context": event.context.to_serialisable_dict(),
             },
+            message_id=event.message_id,
         )
 
     def _handle_error(self, event: ErrorModeratorEvent):
@@ -206,7 +203,7 @@ class ModeratorEventLogger:
             moderator_id=event.moderator_id,
             event_type=event.type,
             severity=LogSeverity.ERROR,
-            message="Deployment error occurred",
+            message="Moderator error occurred",
             stack_trace=event.stack_trace,
         )
 

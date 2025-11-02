@@ -1,19 +1,25 @@
 import asyncio
 import logging
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from uuid import UUID
 
 from aiokafka import AIOKafkaProducer
 from sentence_transformers import SentenceTransformer
-from sqlalchemy import select, update
+from sqlalchemy import insert, select, update
 
 from config import (
     KAFKA_MODERATOR_EVENTS_TOPIC,
     SCORE_PROMPT_TEMPLATE,
     SCORE_SYSTEM_PROMPT,
 )
-from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
+from core.enums import (
+    ActionStatus,
+    CoreEventType,
+    ModeratorEventType,
+    ModeratorStatus,
+)
 from core.events import (
     ActionPerformedModeratorEvent,
     CoreEvent,
@@ -21,7 +27,7 @@ from core.events import (
     EvaluationCreatedModeratorEvent,
     ModeratorEvent,
 )
-from db_models import Guidelines, Moderators, MessagesEvaluations
+from db_models import Guidelines, Messages, Moderators, MessagesEvaluations
 from engine.base.base_action_handler import BaseActionHandler
 from engine.models import BaseMessageContext, MessageEvaluation
 from engine.task_pool import TaskPool
@@ -32,6 +38,7 @@ from utils.llm import fetch_response, parse_to_json
 
 class BaseModerator(ABC):
     _embedding_model: SentenceTransformer | None = None
+    _thread_pool = ThreadPoolExecutor(5)
 
     def __init__(
         self,
@@ -151,8 +158,38 @@ class BaseModerator(ABC):
     async def _handle_evaluation(
         self, evaluation: MessageEvaluation, ctx: BaseMessageContext
     ) -> None:
+        fut = self._thread_pool.submit(lambda: self._embedding_model.encode([ctx.content])[0])
+        while not fut.done():
+            await asyncio.sleep(0.1)
+        embedding = fut.result()
+        
+        async with get_db_sess() as db_sess:
+            message_id = await db_sess.scalar(
+                insert(Messages)
+                .values(
+                    moderator_id=self._moderator_id,
+                    content=ctx.content,
+                    platform=ctx.platform.value,
+                    platform_message_id=ctx.platform_message_id,
+                    platform_author_id=ctx.platform_author_id,
+                )
+                .returning(Messages.message_id)
+            )
+            await db_sess.execute(insert(MessagesEvaluations), [
+                {
+                    "message_id": message_id,
+                    "moderator_id": self._moderator_id,
+                    "embedding": embedding,
+                    "topic": topic_eval.topic,
+                    "topic_score": topic_eval.topic_score,
+                }
+                for topic_eval in evaluation.topic_evaluations
+            ])
+
+            await db_sess.commit()
+
         eval_event = EvaluationCreatedModeratorEvent(
-            moderator_id=self._moderator_id, evaluation=evaluation, context=ctx
+            moderator_id=self._moderator_id, message_id=message_id, evaluation=evaluation, context=ctx
         )
         await self._kafka_producer.send(
             KAFKA_MODERATOR_EVENTS_TOPIC,
@@ -161,9 +198,9 @@ class BaseModerator(ABC):
 
         if evaluation.action is not None:
             action = evaluation.action
-            self._logger.info(f"Performing action '{action.type}'")
             action_type = action.type
-            
+            self._logger.info(f"Performing action '{action_type}'")
+
             kw = {
                 "moderator_id": self._moderator_id,
                 "action_type": action_type,

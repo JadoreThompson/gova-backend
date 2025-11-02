@@ -24,7 +24,7 @@ class CoreEvent(CustomBaseModel):
 
     type: CoreEventType
     data: Any
-    id: UUID = Field(default=uuid4)
+    id: UUID = Field(default_factory=uuid4)
 
 
 # Moderator Events
@@ -44,13 +44,6 @@ class StartModeratorEvent(ModeratorEvent):
     moderator_id: UUID
     platform: MessagePlatformType
     conf: DiscordConfig
-
-
-class AliveModeratorEvent(ModeratorEvent):
-    """Deployment started and alive."""
-
-    type: ModeratorEventType = ModeratorEventType.ALIVE
-    server_id: str
 
 
 class KillModeratorEvent(ModeratorEvent):
@@ -86,6 +79,7 @@ class EvaluationCreatedModeratorEvent(ModeratorEvent, Generic[A, C]):
     """Message evaluation result."""
 
     type: ModeratorEventType = ModeratorEventType.EVALUATION_CREATED
+    message_id: UUID
     evaluation: MessageEvaluation[A]
     context: C
 
