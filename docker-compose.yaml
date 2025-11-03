@@ -4,10 +4,10 @@ services:
     container_name: ai_chat_mod_postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ai_chat_mod
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - 5132:5432
+      - ${DB_PORT}:5432
     volumes:
       - postgres:/var/lib/postgresql/data
     networks:
@@ -23,14 +23,14 @@ services:
         docker-entrypoint.sh postgres &
 
         # Wait for Postgres to be ready
-        until pg_isready -h localhost -p 5432 -U postgres; do
+        until pg_isready -h localhost -p ${DB_PORT} -U postgres; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
 
         echo "Postgres ready, creating pgvector extension..."
-        psql -U postgres -c "CREATE DATABASE ai_chat_mod;"
-        psql -U postgres -d ai_chat_mod -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        psql -U postgres -c "CREATE DATABASE ${DB_NAME};"
+        psql -U postgres -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
         # Keep Postgres running
         wait -n
@@ -65,10 +65,10 @@ services:
     container_name: ai_chat_mod_redis
     restart: always
     ports:
-      - 6793:6379
+      - ${REDIS_PORT}:6379
     volumes:
       - redis:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["bash -c redis-server --appendonly yes --require-pass ${REDIS_PASSWORD}"]
     networks:
       - ai_chat_network
 
