@@ -93,7 +93,7 @@ async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess
     query = select(Users)
     if body.username is not None:
         query = query.where(Users.username == body.username)
-    else:
+    if body.email is not None:
         query = query.where(Users.email == body.email)
 
     user = await db_sess.scalar(query)
