@@ -68,7 +68,7 @@ services:
       - ${REDIS_PORT}:6379
     volumes:
       - redis:/data
-    command: ["bash -c redis-server --appendonly yes --require-pass ${REDIS_PASSWORD}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     networks:
       - ai_chat_network
 

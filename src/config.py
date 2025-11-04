@@ -46,10 +46,12 @@ KAFKA_MODERATOR_EVENTS_TOPIC = os.getenv("KAFKA_MODERATOR_EVENTS_TOPIC")
 # Redis
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "0"))
+REDIS_PASSWOWRD=os.getenv("REDIS_PASSWOWRD")
 REDIS_DB = None
 kw = {
     "host": REDIS_HOST,
     "port": REDIS_PORT,
+    'password': REDIS_PASSWOWRD,
     "db": REDIS_DB,
     "encoding": "utf-8",
     "decode_responses": True,
