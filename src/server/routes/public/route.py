@@ -11,7 +11,7 @@ email_service = EmailService(
 )
 
 
-@router.post("/contact-us", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/contact-us", status_code=202)
 async def contact_us(body: ContactForm, background_tasks: BackgroundTasks):
     subject = f"New Contact Inquiry from {body.name}"
 

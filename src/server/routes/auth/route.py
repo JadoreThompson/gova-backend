@@ -41,7 +41,7 @@ em_service = EmailService("No-Reply", "no-reply@gova.chat")
 pw_hasher = PasswordHasher()
 
 
-@router.post("/register", status_code=202)
+@router.post("/register")
 async def register(
     body: UserCreate,
     bg_tasks: BackgroundTasks,
@@ -75,7 +75,7 @@ async def register(
         f"Your verification code is: {code}",
     )
 
-    rsp = await JWTService.set_user_cookie(user)
+    rsp = await JWTService.set_user_cookie(user, status_code=202)
     await db_sess.commit()
 
     return rsp

@@ -19,7 +19,6 @@ RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
 load_dotenv(os.path.join(BASE_PATH, ".env"))
-
 IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
 # DB
@@ -44,14 +43,14 @@ KAFKA_BOOTSTRAP_SERVER = f"{KAFKA_HOST}:{KAFKA_PORT}"
 KAFKA_MODERATOR_EVENTS_TOPIC = os.getenv("KAFKA_MODERATOR_EVENTS_TOPIC")
 
 # Redis
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "0"))
-REDIS_PASSWOWRD=os.getenv("REDIS_PASSWOWRD")
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = int(os.getenv("REDIS_PORT"))
+REDIS_PASSWOWRD = os.getenv("REDIS_PASSWORD")
 REDIS_DB = None
 kw = {
     "host": REDIS_HOST,
     "port": REDIS_PORT,
-    'password': REDIS_PASSWOWRD,
+    "password": REDIS_PASSWOWRD,
     "db": REDIS_DB,
     "encoding": "utf-8",
     "decode_responses": True,

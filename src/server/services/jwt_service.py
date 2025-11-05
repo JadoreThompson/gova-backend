@@ -54,7 +54,7 @@ class JWTService:
 
     @staticmethod
     async def set_user_cookie(
-        user: Users, db_sess: AsyncSession | None = None, rsp: Response | None = None
+        user: Users, db_sess: AsyncSession | None = None, rsp: Response | None = None, status_code: int | None = None
     ) -> Response:
         token = JWTService.generate_jwt(
             sub=user.user_id,
@@ -64,6 +64,8 @@ class JWTService:
         )
         if rsp is None:
             rsp = Response()
+        if status_code is not None:
+            rsp.status_code = status_code
 
         if db_sess:
             await db_sess.execute(
@@ -75,7 +77,7 @@ class JWTService:
                     update(Users).values(jwt=token).where(Users.user_id == user.user_id)
                 )
             await db_sess.commit()
-
+        
         rsp.set_cookie(
             COOKIE_ALIAS,
             token,
