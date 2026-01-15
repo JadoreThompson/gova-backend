@@ -5,7 +5,7 @@ import logging
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from pydantic import ValidationError
 
-from config import KAFKA_BOOTSTRAP_SERVER, KAFKA_MODERATOR_EVENTS_TOPIC
+from config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_MODERATOR_EVENTS_TOPIC
 from core.enums import (
     CoreEventType,
     MessagePlatformType,
@@ -25,7 +25,7 @@ from engine.discord.message_stream import DiscordMessageStream
 from engine.discord.moderator import DiscordModerator
 from engine.models import BaseMessageContext
 from engine.task_pool import TaskPool
-from utils.db import get_datetime
+from util import get_datetime
 from utils.kafka import dump_model
 
 
@@ -51,14 +51,16 @@ class DiscordModeratorOrchestrator:
     async def _startup(self):
         self._task_pool.start()
         self._listen_task = asyncio.create_task(self._listen())
-        self._time_batch_task  = asyncio.create_task(self._time_batch())
+        self._time_batch_task = asyncio.create_task(self._time_batch())
         self._kafka_producer = AIOKafkaProducer(
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS
         )
         await self._kafka_producer.start()
 
     async def _shutdown(self):
-        await asyncio.gather(*[mod.stop() for _, (mod, _) in self._guild_moderators.items()])
+        await asyncio.gather(
+            *[mod.stop() for _, (mod, _) in self._guild_moderators.items()]
+        )
 
         for t in (self._time_batch_task, self._listen_task):
             if t is not None and not t.done():
@@ -67,7 +69,7 @@ class DiscordModeratorOrchestrator:
                     await t
                 except asyncio.CancelledError:
                     pass
-        
+
         self._time_batch_task = None
         self._listen_task = None
 
@@ -120,7 +122,9 @@ class DiscordModeratorOrchestrator:
         self, moderator: DiscordModerator, batch: list[DiscordMessageContext]
     ):
         try:
-            await asyncio.gather(*[moderator.moderate(ctx) for ctx in batch], return_exceptions=True)
+            await asyncio.gather(
+                *[moderator.moderate(ctx) for ctx in batch], return_exceptions=True
+            )
         except Exception as e:
             logger.error(
                 f"Error during moderate for '{moderator.moderator_id}' {type(e)} - {str(e)}"
@@ -142,7 +146,7 @@ class DiscordModeratorOrchestrator:
         """
 
         self._kafka_consumer = AIOKafkaConsumer(
-            KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+            KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS
         )
         await self._kafka_consumer.start()
 

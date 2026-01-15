@@ -1,15 +1,10 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
 .venv
 
-*.env
-app.log
-
 docker/prod-compose.parsed.yaml
+app.log
+misc
+
+.env
+.env.prod

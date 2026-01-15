@@ -8,7 +8,7 @@ from config import (
     DISCORD_REDIRECT_URI,
 )
 from server.typing import Guild, GuildChannel, Identity
-from utils.db import get_datetime
+from util import get_datetime
 
 
 class DiscordService:

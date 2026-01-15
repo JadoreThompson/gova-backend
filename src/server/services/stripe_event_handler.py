@@ -11,7 +11,7 @@ from sqlalchemy import select, update
 from core.events import CoreEvent, KillModeratorEvent
 from utils.kafka import dump_model
 from config import (
-    KAFKA_BOOTSTRAP_SERVER,
+    KAFKA_BOOTSTRAP_SERVERS,
     KAFKA_MODERATOR_EVENTS_TOPIC,
     REDIS_CLIENT,
     REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX,
@@ -21,7 +21,7 @@ from config import (
 from core.enums import CoreEventType, ModeratorStatus, PricingTierType
 from core.services import EmailService
 from db_models import Moderators, Users
-from utils.db import get_db_sess
+from infra.db import get_db_sess
 
 
 logger = logging.getLogger("payment_service")
@@ -148,11 +148,13 @@ class StripeEventHandler:
     async def _stop_moderator(cls, moderator_id: UUID) -> None:
         if cls._kafka_producer is None:
             cls._kafka_producer = AIOKafkaProducer(
-                bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS
             )
             await cls._kafka_producer.start()
 
-        ev = KillModeratorEvent(moderator_id=moderator_id, reason="Failed billing cycle.")
+        ev = KillModeratorEvent(
+            moderator_id=moderator_id, reason="Failed billing cycle."
+        )
         await cls._kafka_producer.send(
             KAFKA_MODERATOR_EVENTS_TOPIC,
             dump_model(CoreEvent(type=CoreEventType.MODERATOR_EVENT, data=ev)),
@@ -190,7 +192,7 @@ class StripeEventHandler:
                     f"with user_id='{user_id}' or stripe_customer_id='{customer_id}'."
                 )
                 return False
-            
+
             user.pricing_tier = PricingTierType.PRO.value
             user.stripe_customer_id = customer_id
             user_id, username, email = user.user_id, user.username, user.email

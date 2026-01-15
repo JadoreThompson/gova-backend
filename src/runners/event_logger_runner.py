@@ -8,10 +8,9 @@ from sqlalchemy import select
 
 
 from config import (
-    KAFKA_BOOTSTRAP_SERVER,
+    KAFKA_BOOTSTRAP_SERVERS,
     KAFKA_MODERATOR_EVENTS_TOPIC,
     PRICING_TIER_LIMITS,
-    REDIS_CLIENT_SYNC,
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
 )
 from core.enums import ModeratorEventType, ModeratorStatus, PricingTierType
@@ -29,7 +28,8 @@ from engine.discord.actions import DiscActionUnion
 from engine.discord.context import DiscordMessageContext
 from engine.moderator_event_logger import ModeratorEventLogger
 from utils.kafka import dump_model
-from utils.db import get_db_sess_sync, smaker_sync
+from infra.redis import REDIS_CLIENT_SYNC
+from infra.db import get_db_sess_sync, smaker_sync
 from .base_runner import BaseRunner
 
 
@@ -57,9 +57,9 @@ class EventLoggerRunner(BaseRunner):
         db = smaker_sync()
         event_logger = ModeratorEventLogger(db)
         consumer = KafkaConsumer(
-            KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVER
+            KAFKA_MODERATOR_EVENTS_TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS
         )
-        self._kafka_producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
+        self._kafka_producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
 
         self.logger.info("Event logger consumer started.")
         for msg in consumer:

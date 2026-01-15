@@ -19,7 +19,7 @@ from server.dependencies import (
 from server.models import PaginatedResponse
 from server.shared.models import ActionResponse
 from server.typing import JWTPayload
-from utils.db import get_datetime
+from util import get_datetime
 from utils.kafka import dump_model
 from .models import (
     ModeratorCreate,

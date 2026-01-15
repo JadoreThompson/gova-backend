@@ -33,7 +33,7 @@ from engine.discord.actions import DiscActionUnion
 from engine.discord.context import DiscordMessageContext
 from engine.models import BaseMessageContext, MessageEvaluation
 from engine.task_pool import TaskPool
-from utils.db import get_db_sess
+from infra.db import get_db_sess
 from utils.kafka import dump_model
 from utils.llm import fetch_response, parse_to_json
 

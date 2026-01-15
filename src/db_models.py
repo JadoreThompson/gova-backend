@@ -15,7 +15,7 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
 from core.enums import ModeratorStatus, PricingTierType
-from utils.db import get_datetime
+from util import get_datetime
 
 
 def get_uuid():

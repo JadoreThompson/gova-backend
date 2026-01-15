@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, status
 
-from config import PERSONAL_EMAIL
+from config import CUSTOMER_SUPPORT_EMAIL
 from core.services import EmailService
 from .models import ContactForm
 
@@ -27,7 +27,7 @@ Message:\n
 """
     background_tasks.add_task(
         email_service.send_email,
-        recipient=PERSONAL_EMAIL,
+        recipient=CUSTOMER_SUPPORT_EMAIL,
         subject=subject,
         body=em_body.strip(),
     )

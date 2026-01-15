@@ -2,71 +2,103 @@ import logging
 import os
 import sys
 from datetime import timedelta
-from urllib.parse import quote
 
 import stripe
 from dotenv import load_dotenv
-from redis import Redis
-from redis.asyncio import Redis as AsyncRedis
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from core.enums import PricingTierType
 
 
+# Paths & Environment
 BASE_PATH = os.path.dirname(__file__)
+PROJECT_PATH = os.path.dirname(BASE_PATH)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
 load_dotenv(os.path.join(BASE_PATH, ".env"))
-IS_PRODUCTION = bool(os.getenv("IS_PRODUCTION"))
 
-# DB
+IS_PRODUCTION = bool(int(os.getenv("IS_PRODUCTION", "0")))
+
+
+# Database
 DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_USER = os.getenv("DB_USER")
+DB_PORT = int(os.getenv("DB_PORT"))
+DB_USERNAME = os.getenv("DB_USERNAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
-DB_HOST_CREDS = f"{DB_HOST}:{DB_PORT}"
-DB_USER_CREDS = f"{DB_USER}:{quote(DB_PASSWORD)}"
-DB_ENGINE = create_async_engine(
-    f"postgresql+asyncpg://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
-)
-DB_ENGINE_SYNC = create_engine(
-    f"postgresql+psycopg2://{DB_USER_CREDS}@{DB_HOST_CREDS}/{DB_NAME}"
-)
+
 
 # Kafka
 KAFKA_HOST = os.getenv("KAFKA_HOST")
 KAFKA_PORT = int(os.getenv("KAFKA_PORT"))
-KAFKA_BOOTSTRAP_SERVER = f"{KAFKA_HOST}:{KAFKA_PORT}"
+KAFKA_BOOTSTRAP_SERVERS = f"{KAFKA_HOST}:{KAFKA_PORT}"
 KAFKA_MODERATOR_EVENTS_TOPIC = os.getenv("KAFKA_MODERATOR_EVENTS_TOPIC")
+
 
 # Redis
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = int(os.getenv("REDIS_PORT"))
-REDIS_PASSWOWRD = os.getenv("REDIS_PASSWORD")
-REDIS_DB = None
-kw = {
-    "host": REDIS_HOST,
-    "port": REDIS_PORT,
-    "password": REDIS_PASSWOWRD,
-    "db": REDIS_DB,
-    "encoding": "utf-8",
-    "decode_responses": True,
-}
-REDIS_CLIENT = AsyncRedis(**kw)
-REDIS_CLIENT_SYNC = Redis(**kw)
-del kw
+REDIS_USERNAME = os.getenv("REDIS_USERNAME")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+REDIS_DB = os.getenv("REDIS_DB")
+
 REDIS_EMAIL_VERIFICATION_KEY_PREFIX = os.getenv("REDIS_EMAIL_VERIFICATION_KEY_PREFIX")
 REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX = os.getenv(
     "REDIS_STRIPE_INVOICE_METADATA_KEY_PREFIX"
 )
 REDIS_USER_MODERATOR_MESSAGES_PREFIX = os.getenv("REDIS_USER_MODERATOR_MESSAGES_PREFIX")
-REDIS_EXPIRY = 900
+
+REDIS_TTL_SECS = int(os.getenv("REDIS_TTL_SECS"))
+
+
+# Discord
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+
+DISCORD_REDIRECT_URI = (
+    "https://api.gova.chat/auth/discord/oauth"
+    if IS_PRODUCTION
+    else "http://localhost:8000/auth/discord/oauth"
+)
+
+
+# Stripe
+STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
+STRIPE_PRICING_PRO_WEBHOOK_SECRET = os.getenv("STRIPE_PRICING_PRO_WEBHOOOK_SECRET")
+STRIPE_PRICING_PRO_PRICE_ID = os.getenv("STRIPE_PRICING_PRO_PRICE_ID")
+
+stripe.api_key = STRIPE_API_KEY
+
+
+# LLM
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL")
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME")
+
+
+# Prompts
+def load_prompt(filename: str) -> str:
+    with open(os.path.join(PROMPTS_PATH, filename), encoding="utf-8") as f:
+        return f.read()
+
+
+SECURITY_SYSTEM_PROMPT = load_prompt("security-system-prompt.txt")
+TOPICS_SYSTEM_PROMPT = load_prompt("topic-system-prompt.txt")
+SCORE_SYSTEM_PROMPT = load_prompt("score-system-prompt.txt")
+SCORE_PROMPT_TEMPLATE = load_prompt("score-prompt-template.txt")
+FINAL_SYSTEM_PROMPT = load_prompt("final-system-prompt.txt")
+FINAL_PROMPT_TEMPLATE = load_prompt("final-prompt-template.txt")
+
+
+# Email
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+CUSTOMER_SUPPORT_EMAIL = os.getenv("CUSTOMER_SUPPORT_EMAIL")
+
 
 # Server
 PAGE_SIZE = 10
+
 if IS_PRODUCTION:
     SCHEME = "https"
     SUB_DOMAIN = "www."
@@ -76,56 +108,25 @@ else:
     SUB_DOMAIN = ""
     DOMAIN = "localhost:5173"
 
-# Auth
+BASE_URL = f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}"
+
+
+# Authentication & Security
 COOKIE_ALIAS = "app-cookie"
+
 JWT_ALGO = os.getenv("JWT_ALGO")
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY = timedelta(seconds=int(os.getenv("JWT_EXPIRY_SECS")))
 
-# Security
 PW_HASH_SALT = os.getenv("PW_HASH_SALT")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 ENCRYPTION_IV_LEN = int(os.getenv("ENCRYPTION_IV_LEN"))
 
-# LLM
-LLM_API_KEY = os.getenv("LLM_API_KEY")
-LLM_AGENT_ID = os.getenv("LLM_AGENT_ID")
-LLM_BASE_URL = "https://api.mistral.ai/v1/"
-LLM_MODEL_NAME = "open-mixtral-8x22b"
 
-# Prompts
-with open(os.path.join(PROMPTS_PATH, "security-system-prompt.txt")) as f:
-    SECURITY_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "topic-system-prompt.txt")) as f:
-    TOPICS_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "score-system-prompt.txt")) as f:
-    SCORE_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "score-prompt-template.txt")) as f:
-    SCORE_PROMPT_TEMPLATE = f.read()
-with open(os.path.join(PROMPTS_PATH, "final-system-prompt.txt")) as f:
-    FINAL_SYSTEM_PROMPT = f.read()
-with open(os.path.join(PROMPTS_PATH, "final-prompt-template.txt")) as f:
-    FINAL_PROMPT_TEMPLATE = f.read()
-
-# Discord
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-if IS_PRODUCTION:
-    DISCORD_REDIRECT_URI = "https://api.gova.chat/auth/discord/oauth"
-else:
-    DISCORD_REDIRECT_URI = "http://localhost:8000/auth/discord/oauth"
-
-# Stripe
-STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
-STRIPE_PRICING_PRO_WEBHOOOK_SECRET = os.getenv("STRIPE_PRICING_PRO_WEBHOOOK_SECRET")
-STRIPE_PRICING_PRO_PRICE_ID = os.getenv("STRIPE_PRICING_PRO_PRICE_ID")
-stripe.api_key = STRIPE_API_KEY
-
-# Plans
+# Pricing Plans
 PRICING_TIER_LIMITS = {
     PricingTierType.FREE: {
-        "max_messages": 1000,
+        "max_messages": 1_000,
         "max_moderators": 1,
     },
     PricingTierType.PRO: {
@@ -138,44 +139,30 @@ PRICING_TIER_LIMITS = {
     },
 }
 
-# SMTP
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_LOGIN = os.getenv("SMTP_LOGIN")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-
-# Brevo
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-
-# Email
-PERSONAL_EMAIL = os.getenv("PERSONAL_EMAIL")
-
-# Hetzner
-HETZNER_API_KEY = os.getenv("HETZNER_API_KEY")
-HETZNER_IMAGE_ID = os.getenv("HETZNER_IMAGE_ID")
 
 # Logging
+LOG_FORMAT = "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
+
 logging.basicConfig(
     filename="app.log",
     filemode="a",
-    format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s",
+    format=LOG_FORMAT,
+    level=logging.INFO,
 )
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(
-    logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s - %(message)s")
+root_logger = logging.getLogger()
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+root_logger.addHandler(stdout_handler)
+
+logging.getLogger("kafka").setLevel(logging.CRITICAL)
+logging.getLogger("stripe").setLevel(logging.CRITICAL)
+
+root_logger.info(
+    "MODE=%s",
+    "PRODUCTION" if IS_PRODUCTION else "DEV",
 )
-logger.addHandler(handler)
 
-kafka_logger = logging.getLogger("kafka")
-kafka_logger.setLevel(logging.CRITICAL)
-del kafka_logger
-
-stripe_logger = logging.getLogger("stripe")
-stripe_logger.setLevel(logging.CRITICAL)
-del stripe_logger
-
-logger.info(f"PRODUCTION={IS_PRODUCTION}")
-del logger
+del root_logger
+del stdout_handler

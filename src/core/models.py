@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from json import loads
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -14,6 +13,3 @@ class CustomBaseModel(BaseModel):
             Enum: lambda e: e.value,
         }
     }
-
-    def to_serialisable_dict(self) -> dict:
-        return loads(self.model_dump_json())

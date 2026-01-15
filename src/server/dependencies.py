@@ -8,12 +8,12 @@ from core.enums import MessagePlatformType
 from engine.base.base_action_handler import BaseActionHandler
 from engine.discord.action_handler import DiscordActionHandler
 from infra import DiscordClientManager, KafkaManager
+from infra.db import smaker
 from infra.discord_client_manager import DiscordClientManager
 from infra.kafka_manager import KafkaManager
 from server.exc import JWTError
 from server.services import JWTService
 from server.typing import JWTPayload
-from utils.db import smaker
 
 
 T = TypeVar("T")

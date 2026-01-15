@@ -12,7 +12,7 @@ from config import (
     PW_HASH_SALT,
     REDIS_CLIENT,
     REDIS_EMAIL_VERIFICATION_KEY_PREFIX,
-    REDIS_EXPIRY,
+    REDIS_TTL_SECS,
     SCHEME,
     SUB_DOMAIN,
 )
@@ -22,7 +22,7 @@ from db_models import Users
 from server.dependencies import depends_db_sess, depends_jwt
 from server.services import DiscordService, EncryptionService, JWTService
 from server.typing import JWTPayload
-from utils.db import get_datetime
+from util import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (
     UpdatePassword,
@@ -66,7 +66,7 @@ async def register(
     code = gen_verification_code()
     key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(user.user_id)}"
     await REDIS_CLIENT.delete(key)
-    await REDIS_CLIENT.set(key, code, ex=REDIS_EXPIRY)
+    await REDIS_CLIENT.set(key, code, ex=REDIS_TTL_SECS)
 
     bg_tasks.add_task(
         em_service.send_email,
@@ -120,7 +120,7 @@ async def request_email_verification(
     key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(jwt.sub)}"
 
     await REDIS_CLIENT.delete(key)
-    await REDIS_CLIENT.set(key, code, ex=REDIS_EXPIRY)
+    await REDIS_CLIENT.set(key, code, ex=REDIS_TTL_SECS)
 
     bg_tasks.add_task(
         em_service.send_email,
@@ -258,7 +258,7 @@ async def change_username(
     await REDIS_CLIENT.set(
         redis_key,
         payload,
-        ex=REDIS_EXPIRY,
+        ex=REDIS_TTL_SECS,
     )
 
     bg_tasks.add_task(
@@ -301,7 +301,7 @@ async def change_password(
     await REDIS_CLIENT.set(
         f"{prefix}{verification_code}",
         payload,
-        ex=REDIS_EXPIRY,
+        ex=REDIS_TTL_SECS,
     )
 
     bg_tasks.add_task(
