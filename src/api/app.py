@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from config import DOMAIN, SCHEME, SUB_DOMAIN
 from infra import KafkaManager, DiscordClientManager
-from api.exc import JWTError
+from api.exceptions import JWTError
 from api.middlewares import RateLimitMiddleware
 from api.routers.actions.router import router as action_router
 from api.routers.auth.router import router as auth_router

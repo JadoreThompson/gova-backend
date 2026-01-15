@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 import discord
 
 from engineV2.contexts.discord import DiscordMessageContext
-from .exc import IterationInProgressException
+from .exceptions import IterationInProgressException
 
 
 class DiscordMessageStream:

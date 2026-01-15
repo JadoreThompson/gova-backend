@@ -1,20 +1,14 @@
 from enum import Enum
 from typing import Generic, Type, TypeVar
 
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
 
-from engineV2.actions.base import BaseAction, BasePerformedAction
 from engineV2.contexts.discord import DiscordMessageContext
 from models import CustomBaseModel
 from .base import BaseAgent
 
 
-AP = TypeVar("P", bound=BaseAction)
-AT = TypeVar("T", bound=Enum)
-RA = TypeVar("")
-
-# class ReviewAgentOutput(CustomBaseModel, Generic[A]):
-# action: A | None = None
+AT = TypeVar("AT", bound=Enum)
 
 
 class ReviewAgentAction(CustomBaseModel, Generic[AT]):
@@ -25,6 +19,7 @@ class ReviewAgentAction(CustomBaseModel, Generic[AT]):
 class ReviewAgentOutput(CustomBaseModel):
     action: ReviewAgentAction | None = None
     severity_score: float
+    reason: str
 
     @field_validator("severity_score", mode="after")
     def round_values(cls, v):
@@ -32,48 +27,59 @@ class ReviewAgentOutput(CustomBaseModel):
 
 
 class ReviewAgent(BaseAgent):
-    _instance = None
     _SYSTEM_PROMPT = """
-    You're a senior moderator with 5+ years of experience moderating discord
-    communities.
+    You've got 5 years of experience moderating some of the largest discord
+    servers where you've enforced guidelines and mtainied the quality
+    of the chat.
+    
+    The server owners have provided you with a list of actions you can 
+    wield and take advantage of only when necessary. Abuse of power will
+    reuslt in your termination, leaving you with no food on the table.
+    
+    If you're granted the power to reply to messages you're only to 
+    reply to messages when you're enforcing rules, not to answer stray 
+    questions or take part in a conversation in any manner.
+
+    Your task is to score the message on it's severity between 0 and 1.
+    Where 0 signifies compliance with the guidelines and 1 is a strong
+    violation of a guideline. Also the reasoning for your score and / or
+    taking that action.
     """
 
     _USER_PROMPT_TMPL = """
-    Below is a summary of the server you're currently overseeing.
+    Below is a summary of the discord server you're currently moderating.
+    This'll help you understand type of conversations expected within the chat.
 
     <ServerSummary>
     {server_summary}
     </ServerSummary>
 
-    Here are the guidelines for the server that the owner has given you
+    Here are the guidelines for the server you're to enforce.
 
     <ServerGuidelines>
     {guidelines}
     </ServerGuidelines>
 
-    A message has come through and your task is to decide whether or not this
-    message violates the guidelines in anyway and score the severity from 0 to 1
-    where 1 is a complete violation and 0 is no violation of any of the guidelines
-    rounded to 2dp. If you score it low, it's assumed you won't return an action.
-    However if you score it high then it's assumed you will return an action. Below
-    are definitions for the actions availabe to you. If you've chosen an action you're
-    to fill in the necessary values for the params object.
+    Here is the most recent message sent alont with it's metadata.
 
     <Message>
     {message}
     </Message>
 
+    Here's the current summary of the last {n} messages sent within the channel.
+    
+    <ChannelSummary>
+    {channel_summary}
+    </ChannelSummary>
+
+    Below are the definitions of the actions you've granted power to use. Remember
+    that it isn't compulsary to take an action. You're to use it sparingly like a
+    wildcard.
+
     <ActionDefinitions>
-    {action_definitions}
+    {action_params}
     </ActionDefinitions>
-
-    Your output should follow the described
     """
-
-    def __new__(cls, *args, **kw):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
 
     def __init__(self, *, output_type: Type[ReviewAgentOutput]):
         cls = self.__class__
@@ -82,14 +88,16 @@ class ReviewAgent(BaseAgent):
     def build_user_prompt(
         self,
         server_summary: str,
+        channel_summary: str,
         guidelines: str,
         message: DiscordMessageContext,
-        action_definitions: list[dict],
+        action_params: list[dict],
     ):
         cls = self.__class__
         return cls._USER_PROMPT_TMPL.format(
             server_summary=server_summary,
+            channel_summary=channel_summary,
             guidelines=guidelines,
             message=message.model_dump(mode="json"),
-            action_definitions=action_definitions,
+            action_params=action_params,
         )

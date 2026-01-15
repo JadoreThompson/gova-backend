@@ -1,10 +1,11 @@
 import asyncio
 import logging
 
-from engineV2.contexts.discord import DiscordMessageContext
+from config import KAKFA_ACTION_EVENTS_TOPIC
+from engineV2.actions.discord import BaseDiscordPerformedAction
 from engineV2.message_streams.discord import DiscordMessageStream
 from engineV2.moderators.discord import DiscordModerator
-from engineV2.orchestrators.moderator_context_group import ModeratorContextGroup
+from infra.kafka import AsyncKafkaProducer
 
 
 class DiscordModeratorOrchestrator:
@@ -12,25 +13,23 @@ class DiscordModeratorOrchestrator:
         self,
         msg_stream: DiscordMessageStream,
         moderators: list[DiscordModerator] | None = None,
+        kafka_producer: AsyncKafkaProducer | None = None,
         max_moderators: int = 5,
         batch_size: int = 20,
         flush_interval: int = 5,
     ):
         self._msg_stream = msg_stream
         self._moderators = set(moderators) if moderators else set()
-        self._guild_2_moderator = {
-            mod.guild_id: ModeratorContextGroup[
-                DiscordModerator, DiscordMessageContext
-            ](moderator=mod)
-            for mod in self._moderators
-        }
+        self._kafka_producer = kafka_producer
+
+        self._guild_2_moderator = {mod.guild_id: mod for mod in self._moderators}
 
         self.max_moderators = max_moderators
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
         self._flush_task: asyncio.Task | None = None
-        
+
         self._logger = logging.getLogger(type(self).__name__)
 
     def start(self) -> None:
@@ -39,29 +38,11 @@ class DiscordModeratorOrchestrator:
 
     async def _run(self) -> None:
         async for msg in self._msg_stream:
-            mod_ctx = self._guild_2_moderator.get(msg.guild_id)
-            if mod_ctx is None:
+            mod = self._guild_2_moderator.get(msg.guild_id)
+            if mod is None:
                 continue
 
-            async with mod_ctx.lock:
-                mod_ctx.messages.append(msg)
-                if len(mod_ctx.messages) >= self.batch_size:
-                    await mod_ctx.moderator.process_messages(mod_ctx.messages)
-                    mod_ctx.messages = []
-
-    async def _flush(self) -> None:
-        try:
-            while True:
-                await asyncio.sleep(self.flush_interval)
-
-                for mod_ctx in self._guild_2_moderator.values():
-                    async with mod_ctx.lock:
-                        if mod_ctx.messages:
-                            await mod_ctx.moderator.process_messages(mod_ctx.messages)
-                            mod_ctx.messages = []
-
-        except asyncio.CancelledError:
-            pass
+            await mod.process_message(msg)
 
     async def stop(self) -> None:
         if self._run_task is not None and not self._run_task.done():
@@ -81,6 +62,7 @@ class DiscordModeratorOrchestrator:
             moderator not in self._moderators
             and len(self._moderators) < self.max_moderators
         ):
+            moderator.on_action_performed = self._on_action_performed
             self._moderators.add(moderator)
             return True
         return False
@@ -89,3 +71,10 @@ class DiscordModeratorOrchestrator:
         if moderator in self._moderators:
             self._moderators.discard(moderator)
             self._guild_2_moderator.pop(moderator.guild_id)
+
+    async def _on_action_performed(self, action: BaseDiscordPerformedAction) -> None:
+        """Event hook for moderators"""
+        if self._kafka_producer is not None:
+            await self._kafka_producer.send(
+                KAKFA_ACTION_EVENTS_TOPIC, action.model_dump_json().encode()
+            )

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import abstractmethod
 
 from pydantic_ai.agent import Agent
