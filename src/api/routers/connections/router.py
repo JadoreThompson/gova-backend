@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.enums import MessagePlatformType
 from db_models import Users
-from server.dependencies import depends_db_sess, depends_jwt
-from server.services import DiscordService, EncryptionService
-from server.typing import JWTPayload
+from api.dependencies import depends_db_sess, depends_jwt
+from api.services import DiscordService, EncryptionService
+from api.types import JWTPayload
 from .models import Guild, GuildChannel
 
 

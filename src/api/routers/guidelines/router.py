@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import PAGE_SIZE
 from db_models import Guidelines
-from server.dependencies import depends_db_sess, depends_jwt
-from server.models import PaginatedResponse
-from server.typing import JWTPayload
+from api.dependencies import depends_db_sess, depends_jwt
+from api.models import PaginatedResponse
+from api.types import JWTPayload
 from .controllers import get_topics
 from .models import GuidelineCreate, GuidelineUpdate, GuidelineResponse
 

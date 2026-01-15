@@ -6,17 +6,17 @@ from fastapi.responses import JSONResponse
 
 from config import DOMAIN, SCHEME, SUB_DOMAIN
 from infra import KafkaManager, DiscordClientManager
-from server.exc import CustomValidationError, JWTError
-from server.middlewares import RateLimitMiddleware
-from server.routes.actions.route import router as action_router
-from server.routes.auth.route import router as auth_router
-from server.routes.connections.route import router as connections_router
-from server.routes.guidelines.route import router as guidelines_router
-from server.routes.moderators.route import router as moderators_router
-from server.routes.payments.route import router as payments_router
-from server.routes.public.route import router as public_router
-from server.services import DiscordService
-from server.services.encryption_service import EncryptionError
+from api.exc import JWTError
+from api.middlewares import RateLimitMiddleware
+from api.routers.actions.router import router as action_router
+from api.routers.auth.router import router as auth_router
+from api.routers.connections.router import router as connections_router
+from api.routers.guidelines.router import router as guidelines_router
+from api.routers.moderators.router import router as moderators_router
+from api.routers.payments.router import router as payments_router
+from api.routers.public.router import router as public_router
+from api.services import DiscordService
+from api.services.encryption_service import EncryptionError
 
 
 async def lifespan(app: FastAPI):
@@ -54,11 +54,6 @@ app.include_router(guidelines_router)
 app.include_router(moderators_router)
 app.include_router(payments_router)
 app.include_router(public_router)
-
-
-@app.exception_handler(CustomValidationError)
-async def handle_http_exception(req: Request, exc: CustomValidationError):
-    return JSONResponse(status_code=exc.status_code, content={"error": exc.msg})
 
 
 @app.exception_handler(HTTPException)

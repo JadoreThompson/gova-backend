@@ -5,7 +5,7 @@ from multiprocessing import Process
 from typing import Any
 
 from runners import (
-    ServerRunner,
+    APIRunner,
     OrchestratorRunner,
     EventLoggerRunner,
     run_runner,
@@ -28,7 +28,7 @@ def run_remote(host: str = "0.0.0.0", port: int = 8000, reload: bool = True) -> 
             kwargs={"batch_size": 1},
         ),
         RunnerConfig(
-            cls=ServerRunner,
+            cls=APIRunner,
             name="Server",
             kwargs={"host": host, "port": port, "reload": reload},
         ),
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         logger.info("Starting in local mode...")
         run_runner(
             RunnerConfig(
-                cls=ServerRunner,
+                cls=APIRunner,
                 name="Server",
                 kwargs={"host": host, "port": port, "reload": reload_flag},
             )

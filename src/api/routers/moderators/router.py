@@ -10,15 +10,15 @@ from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PRICING_TIER_LIMITS
 from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
 from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
-from server.dependencies import (
+from api.dependencies import (
     CSVQuery,
     depends_db_sess,
     depends_jwt,
     depends_kafka_producer,
 )
-from server.models import PaginatedResponse
-from server.shared.models import ActionResponse
-from server.typing import JWTPayload
+from api.models import PaginatedResponse
+from api.shared.models import ActionResponse
+from api.types import JWTPayload
 from util import get_datetime
 from utils.kafka import dump_model
 from .models import (
@@ -54,7 +54,7 @@ async def create_moderator(
         name=mod.name,
         guideline_id=mod.guideline_id,
         platform=mod.platform,
-        platform_server_id=mod.platform_server_id,
+        platform_api_id=mod.platform_api_id,
         conf=DiscordConfigBody(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,
@@ -83,13 +83,13 @@ async def start_moderator(
     live_count = await db_sess.scalar(
         select(func.count(Moderators.moderator_id)).where(
             Moderators.user_id == jwt.sub,
-            Moderators.platform_server_id == mod.platform_server_id,
+            Moderators.platform_api_id == mod.platform_api_id,
             Moderators.status != ModeratorStatus.OFFLINE.value,
         )
     )
     if live_count:
         raise HTTPException(
-            status_code=400, detail="Moderator already running in server"
+            status_code=400, detail="Moderator already running in api"
         )
 
     # Resitricting access
@@ -165,7 +165,7 @@ async def list_moderators(
                 name=mod.name,
                 guideline_id=mod.guideline_id,
                 platform=mod.platform,
-                platform_server_id=mod.platform_server_id,
+                platform_api_id=mod.platform_api_id,
                 conf=DiscordConfigBody(**mod.conf),
                 status=mod.status,
                 created_at=mod.created_at,
@@ -195,7 +195,7 @@ async def get_moderator(
         name=mod.name,
         guideline_id=mod.guideline_id,
         platform=mod.platform,
-        platform_server_id=mod.platform_server_id,
+        platform_api_id=mod.platform_api_id,
         conf=DiscordConfigBody(**mod.conf),
         status=mod.status,
         created_at=mod.created_at,

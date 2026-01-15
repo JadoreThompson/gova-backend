@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import (
     DOMAIN,
     PW_HASH_SALT,
-    REDIS_CLIENT,
     REDIS_EMAIL_VERIFICATION_KEY_PREFIX,
     REDIS_TTL_SECS,
     SCHEME,
@@ -19,9 +18,10 @@ from config import (
 from core.enums import MessagePlatformType
 from core.services import EmailService
 from db_models import Users
-from server.dependencies import depends_db_sess, depends_jwt
-from server.services import DiscordService, EncryptionService, JWTService
-from server.typing import JWTPayload
+from api.dependencies import depends_db_sess, depends_jwt
+from api.services import DiscordService, EncryptionService, JWTService
+from api.types import JWTPayload
+from infra.redis import REDIS_CLIENT
 from util import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (

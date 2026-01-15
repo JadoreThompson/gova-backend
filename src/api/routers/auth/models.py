@@ -4,7 +4,6 @@ from pydantic import BaseModel, field_validator
 
 from core.enums import MessagePlatformType, PricingTierType
 from core.models import CustomBaseModel
-from server.exc import CustomValidationError
 
 
 class PasswordField(BaseModel):
@@ -18,19 +17,18 @@ class PasswordField(BaseModel):
         status = 400
 
         if len(value) < min_length:
-            raise CustomValidationError(
-                status, f"Password must be at least {min_length} characters long."
+            raise ValueError(
+                f"Password must be at least {min_length} characters long."
             )
 
         if sum(1 for c in value if c.isupper()) < min_uppercase:
-            raise CustomValidationError(
-                status,
+            raise ValueError(
+                
                 f"Password must contain at least {min_uppercase} uppercase letters.",
             )
 
         if sum(1 for c in value if not c.isalnum()) < min_special_chars:
-            raise CustomValidationError(
-                status,
+            raise ValueError(
                 f"Password must contain at least {min_special_chars} special characters.",
             )
 

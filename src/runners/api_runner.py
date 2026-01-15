@@ -2,7 +2,7 @@ import uvicorn
 from .base_runner import BaseRunner
 
 
-class ServerRunner(BaseRunner):
+class APIRunner(BaseRunner):
     """Runs the FastAPI server using uvicorn."""
 
     def __init__(self, **uvicorn_kwargs):

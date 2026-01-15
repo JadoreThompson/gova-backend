@@ -9,13 +9,13 @@ from engine.discord.action_handler import DiscordActionHandler
 from db_models import ModeratorEventLogs, Moderators
 from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
 from engine.discord.context import DiscordMessageContext
-from server.dependencies import (
+from api.dependencies import (
     depends_db_sess,
     depends_jwt,
     depends_discord_action_handler,
 )
-from server.shared.models import ActionResponse
-from server.typing import JWTPayload
+from api.shared.models import ActionResponse
+from api.types import JWTPayload
 from .models import ActionUpdate
 
 
