@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import NamedTuple
 from uuid import UUID
 
-from core.enums import PricingTierType
+from enums import PricingTierType
 
 
 @dataclass

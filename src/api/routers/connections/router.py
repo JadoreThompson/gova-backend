@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.enums import MessagePlatformType
+from enums import MessagePlatform
 from db_models import Users
 from api.dependencies import depends_db_sess, depends_jwt
 from api.services import DiscordService, EncryptionService
@@ -66,7 +66,7 @@ async def get_discord_channels(
 
 @router.delete("/{platform}")
 async def delete_connection(
-    platform: MessagePlatformType,
+    platform: MessagePlatform,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
@@ -75,7 +75,7 @@ async def delete_connection(
         raise HTTPException(status_code=404, detail="User not found.")
 
     query = update(Users).where(Users.user_id == jwt.sub)
-    if platform == MessagePlatformType.DISCORD:
+    if platform == MessagePlatform.DISCORD:
         query = query.values(discord_oauth=None)
 
     await db_sess.execute(query)

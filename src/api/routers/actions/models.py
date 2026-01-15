@@ -1,7 +1,7 @@
 from typing import Literal
 
-from core.enums import ActionStatus
-from core.models import CustomBaseModel
+from enums import ActionStatus
+from models import CustomBaseModel
 
 
 class ActionUpdate(CustomBaseModel):

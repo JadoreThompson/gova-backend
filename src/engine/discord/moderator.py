@@ -8,7 +8,7 @@ from aiokafka import AIOKafkaProducer
 
 import engine.discord.actions as actions_module
 from config import FINAL_PROMPT_TEMPLATE, FINAL_SYSTEM_PROMPT
-from core.models import CustomBaseModel
+from models import CustomBaseModel
 from engine.base.base_moderator import BaseModerator
 from engine.base.base_action import BaseActionDefinition
 from engine.discord.actions import (
@@ -16,7 +16,7 @@ from engine.discord.actions import (
     DiscActionDefinitionUnion,
     DiscActionUnion,
     DiscordAction,
-    DiscordActionType,
+    DiscordAction,
     KickAction,
     MuteAction,
 )
@@ -32,9 +32,9 @@ from .config import DiscordConfig
 
 class DiscordModerator(BaseModerator):
     _action_type_map = {
-        DiscordActionType.MUTE: MuteAction,
-        DiscordActionType.KICK: KickAction,
-        DiscordActionType.BAN: BanAction,
+        DiscordAction.MUTE: MuteAction,
+        DiscordAction.KICK: KickAction,
+        DiscordAction.BAN: BanAction,
     }
 
     def __init__(
@@ -50,8 +50,10 @@ class DiscordModerator(BaseModerator):
             moderator_id, config, action_handler, kafka_producer, task_pool, max_retries
         )
         self._allowed_action_formats: list[dict] | None = None
-        self._allowed_action_types: set[DiscordActionType] | None = None
-        self._allowed_action_definitions: dict[DiscordActionType, DiscActionDefinitionUnion] = None
+        self._allowed_action_types: set[DiscordAction] | None = None
+        self._allowed_action_definitions: dict[
+            DiscordAction, DiscActionDefinitionUnion
+        ] = None
 
     async def start(self):
         await super().start()
@@ -64,7 +66,7 @@ class DiscordModerator(BaseModerator):
         self._allowed_action_formats = []
         self._allowed_action_types = set()
         self._allowed_action_definitions = {}
-        
+
         for action in self._config.allowed_actions:
             action_format = self._get_action_format(action)
             action_type = action.type
@@ -121,7 +123,11 @@ class DiscordModerator(BaseModerator):
                     action_data.get("type")
                 ):
                     action_type = action_data["type"]
-                    for k, v in self._allowed_action_definitions[action_type].model_dump().items():
+                    for k, v in (
+                        self._allowed_action_definitions[action_type]
+                        .model_dump()
+                        .items()
+                    ):
                         if v is not None:
                             action_data[k] = v
                     cls = self._action_type_map.get(action_type)
@@ -159,11 +165,11 @@ class DiscordModerator(BaseModerator):
         """Instantiate the correct DiscordAction subclass based on type."""
         typ = data.get("type")
 
-        if typ == DiscordActionType.BAN:
+        if typ == DiscordAction.BAN:
             return BanAction(**data)
-        if typ == DiscordActionType.MUTE:
+        if typ == DiscordAction.MUTE:
             return MuteAction(**data)
-        if typ == DiscordActionType.KICK:
+        if typ == DiscordAction.KICK:
             return KickAction(**data)
 
         raise NotImplementedError(f"Action type '{typ}' not implemented.")

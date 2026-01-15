@@ -15,14 +15,14 @@ from config import (
     SCHEME,
     SUB_DOMAIN,
 )
-from core.enums import MessagePlatformType
+from enums import MessagePlatform
 from core.services import EmailService
 from db_models import Users
 from api.dependencies import depends_db_sess, depends_jwt
 from api.services import DiscordService, EncryptionService, JWTService
 from api.types import JWTPayload
 from infra.redis import REDIS_CLIENT
-from util import get_datetime
+from utils import get_datetime
 from .controller import gen_verification_code, handle_fetch_discord_identity
 from .models import (
     UpdatePassword,
@@ -194,7 +194,7 @@ async def get_me(
     return UserMe(
         username=username,
         pricing_tier=pricing_tier,
-        connections={MessagePlatformType.DISCORD: conn},
+        connections={MessagePlatform.DISCORD: conn},
     )
 
 

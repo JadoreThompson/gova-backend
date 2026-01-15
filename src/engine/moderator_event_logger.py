@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from core.enums import ModeratorEventType, LogSeverity, ActionStatus
+from enums import ModeratorEventType, LogSeverity, ActionStatus
 from core.events import (
     ModeratorEvent,
     StartModeratorEvent,

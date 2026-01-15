@@ -7,7 +7,7 @@ class PricingTierType(int, Enum):
     ENTERPRISE = 2
 
 
-class MessagePlatformType(str, Enum):
+class MessagePlatform(str, Enum):
     DISCORD = "discord"
 
 

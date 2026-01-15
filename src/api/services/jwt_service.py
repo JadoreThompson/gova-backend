@@ -11,7 +11,7 @@ from db_models import Users
 from server.exc import JWTError
 from server.typing import JWTPayload
 from infra.db import get_db_sess
-from util import get_datetime
+from utils import get_datetime
 
 
 class JWTService:
@@ -55,7 +55,10 @@ class JWTService:
 
     @staticmethod
     async def set_user_cookie(
-        user: Users, db_sess: AsyncSession | None = None, rsp: Response | None = None, status_code: int | None = None
+        user: Users,
+        db_sess: AsyncSession | None = None,
+        rsp: Response | None = None,
+        status_code: int | None = None,
     ) -> Response:
         token = JWTService.generate_jwt(
             sub=user.user_id,
@@ -78,7 +81,7 @@ class JWTService:
                     update(Users).values(jwt=token).where(Users.user_id == user.user_id)
                 )
             await db_sess.commit()
-        
+
         rsp.set_cookie(
             COOKIE_ALIAS,
             token,

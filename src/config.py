@@ -6,7 +6,7 @@ from datetime import timedelta
 import stripe
 from dotenv import load_dotenv
 
-from core.enums import PricingTierType
+from enums import PricingTierType
 
 
 # Paths & Environment
@@ -15,7 +15,7 @@ PROJECT_PATH = os.path.dirname(BASE_PATH)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
-load_dotenv(os.path.join(BASE_PATH, ".env"))
+load_dotenv(os.path.join(PROJECT_PATH, ".env"))
 
 IS_PRODUCTION = bool(int(os.getenv("IS_PRODUCTION", "0")))
 
@@ -75,6 +75,8 @@ stripe.api_key = STRIPE_API_KEY
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL")
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME")
+
+MAX_RETRIES = 5
 
 
 # Prompts

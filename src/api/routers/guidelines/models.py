@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from core.models import CustomBaseModel
+from models import CustomBaseModel
 
 
 class GuidelineBase(CustomBaseModel):

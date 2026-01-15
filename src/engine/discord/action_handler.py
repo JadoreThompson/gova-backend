@@ -6,7 +6,7 @@ import discord
 
 from engine.base.base_action import BaseAction
 from engine.base.base_action_handler import BaseActionHandler
-from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
+from engine.discord.actions import BanAction, DiscordAction, KickAction, MuteAction
 from engine.discord.context import DiscordMessageContext
 from engine.exc import UnkownActionExc
 
@@ -17,7 +17,7 @@ logger = logging.getLogger("discord_action_handler")
 class DiscordActionHandler(BaseActionHandler):
     """Handles moderation actions (ban, mute, kick) for Discord."""
 
-    _instance: "DiscordActionHandler | None"= None
+    _instance: "DiscordActionHandler | None" = None
 
     def __new__(cls, *args, **kw):
         if cls._instance is None:
@@ -29,10 +29,10 @@ class DiscordActionHandler(BaseActionHandler):
             return
         super().__init__()
         self._client: discord.Client = client
-        self._handlers: dict[DiscordActionType, Callable] = {
-            DiscordActionType.BAN: self._handle_ban,
-            DiscordActionType.MUTE: self._handle_mute,
-            DiscordActionType.KICK: self._handle_kick,
+        self._handlers: dict[DiscordAction, Callable] = {
+            DiscordAction.BAN: self._handle_ban,
+            DiscordAction.MUTE: self._handle_mute,
+            DiscordAction.KICK: self._handle_kick,
         }
         self._initialised = True
 

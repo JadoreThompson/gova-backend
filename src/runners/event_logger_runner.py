@@ -13,7 +13,7 @@ from config import (
     PRICING_TIER_LIMITS,
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
 )
-from core.enums import ModeratorEventType, ModeratorStatus, PricingTierType
+from enums import ModeratorEventType, ModeratorStatus, PricingTierType
 from core.events import (
     DeadModeratorEvent,
     EvaluationCreatedModeratorEvent,

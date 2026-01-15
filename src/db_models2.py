@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from enums import ModeratorStatus, PricingTierType
+from enums import MessagePlatform, ModeratorStatus, PricingTierType
 from utils import get_datetime
 
 
@@ -36,7 +36,7 @@ class Users(Base):
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
     jwt: Mapped[str] = mapped_column(String, nullable=True)
-    discord_oauth: Mapped[str] = mapped_column(String, nullable=True)
+    discord_oauth_payload: Mapped[str] = mapped_column(String, nullable=True)
     pricing_tier: Mapped[str] = mapped_column(
         Integer, nullable=False, default=PricingTierType.FREE.value
     )
@@ -52,32 +52,9 @@ class Users(Base):
         default=get_datetime,
         onupdate=get_datetime,
     )
-    authenticated_at: Mapped[datetime] = mapped_column(
+    verified_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-
-    # Relationship
-    moderators: Mapped[list["Moderators"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
-
-
-class Guidelines(Base):
-    __tablename__ = "guidelines"
-
-    guideline_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), primary_key=True, nullable=False, default=get_uuid
-    )
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    user_id: Mapped[UUID] = mapped_column(SaUUID(as_uuid=True), nullable=False)
-    text: Mapped[str] = mapped_column(String, nullable=False)
-    topics: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=get_datetime
-    )
-
-    # Relationships
-    moderators: Mapped[list["Moderators"]] = relationship(back_populates="guideline")
 
 
 class Moderators(Base):
@@ -87,11 +64,12 @@ class Moderators(Base):
         SaUUID(as_uuid=True), primary_key=True, default=get_uuid
     )
     user_id: Mapped[UUID] = mapped_column(
-        SaUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
+        SaUUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
-    platform: Mapped[str] = mapped_column(String, nullable=False)
-    # Telegram group, Discord server
+    platform: Mapped[MessagePlatform] = mapped_column(String, nullable=False)
     platform_server_id: Mapped[str] = mapped_column(String, nullable=False)
     conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
     guideline_id: Mapped[str] = mapped_column(
@@ -109,7 +87,6 @@ class Moderators(Base):
     event_logs: Mapped[list["ModeratorEventLogs"]] = relationship(
         back_populates="moderator", cascade="all, delete-orphan"
     )
-    guideline: Mapped["Guidelines"] = relationship(back_populates="moderators")
 
 
 class ModeratorEventLogs(Base):

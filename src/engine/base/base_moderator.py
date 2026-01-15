@@ -14,7 +14,7 @@ from config import (
     SCORE_PROMPT_TEMPLATE,
     SCORE_SYSTEM_PROMPT,
 )
-from core.enums import (
+from enums import (
     ActionStatus,
     CoreEventType,
     ModeratorEventType,

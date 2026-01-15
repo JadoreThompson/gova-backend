@@ -18,7 +18,7 @@ from config import (
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
     STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
 )
-from core.enums import CoreEventType, ModeratorStatus, PricingTierType
+from enums import CoreEventType, ModeratorStatus, PricingTierType
 from core.services import EmailService
 from db_models import Moderators, Users
 from infra.db import get_db_sess

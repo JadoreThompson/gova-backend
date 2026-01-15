@@ -6,9 +6,9 @@ from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from pydantic import ValidationError
 
 from config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_MODERATOR_EVENTS_TOPIC
-from core.enums import (
+from enums import (
     CoreEventType,
-    MessagePlatformType,
+    MessagePlatform,
     ModeratorEventType,
     ModeratorStatus,
 )
@@ -25,7 +25,7 @@ from engine.discord.message_stream import DiscordMessageStream
 from engine.discord.moderator import DiscordModerator
 from engine.models import BaseMessageContext
 from engine.task_pool import TaskPool
-from util import get_datetime
+from utils import get_datetime
 from utils.kafka import dump_model
 
 
@@ -99,7 +99,7 @@ class DiscordModeratorOrchestrator:
                         continue
 
                     ctx = DiscordMessageContext(
-                        platform=MessagePlatformType.DISCORD,
+                        platform=MessagePlatform.DISCORD,
                         platform_author_id=str(msg.author.id),
                         platform_message_id=str(msg.id),
                         content=msg.content,
@@ -175,7 +175,7 @@ class DiscordModeratorOrchestrator:
             await self._kafka_consumer.stop()
 
     async def _handle_start_event(self, event: StartModeratorEvent) -> None:
-        if event.platform != MessagePlatformType.DISCORD:
+        if event.platform != MessagePlatform.DISCORD:
             return
 
         async with self._lock:

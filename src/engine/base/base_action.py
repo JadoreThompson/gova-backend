@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import Field
 
-from core.models import CustomBaseModel
+from models import CustomBaseModel
 
 
 class BaseAction(CustomBaseModel):

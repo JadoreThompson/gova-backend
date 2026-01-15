@@ -7,7 +7,7 @@ from sqlalchemy import func, select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PRICING_TIER_LIMITS
-from core.enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
+from enums import ActionStatus, CoreEventType, ModeratorEventType, ModeratorStatus
 from core.events import CoreEvent, KillModeratorEvent, StartModeratorEvent
 from db_models import Messages, ModeratorEventLogs, Moderators
 from api.dependencies import (
@@ -19,7 +19,7 @@ from api.dependencies import (
 from api.models import PaginatedResponse
 from api.shared.models import ActionResponse
 from api.types import JWTPayload
-from util import get_datetime
+from utils import get_datetime
 from utils.kafka import dump_model
 from .models import (
     ModeratorCreate,
@@ -39,10 +39,12 @@ async def create_moderator(
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    count = await db_sess.scalar(select(func.count(Moderators.moderator_id)).where(Moderators.user_id == jwt.sub))
-    if count >= PRICING_TIER_LIMITS[jwt.pricing_tier]['max_moderators']:
+    count = await db_sess.scalar(
+        select(func.count(Moderators.moderator_id)).where(Moderators.user_id == jwt.sub)
+    )
+    if count >= PRICING_TIER_LIMITS[jwt.pricing_tier]["max_moderators"]:
         raise HTTPException(status_code=400, detail="Max moderators reached.")
-    
+
     mod = await db_sess.scalar(
         insert(Moderators)
         .values(user_id=jwt.sub, **body.model_dump())
@@ -88,9 +90,7 @@ async def start_moderator(
         )
     )
     if live_count:
-        raise HTTPException(
-            status_code=400, detail="Moderator already running in api"
-        )
+        raise HTTPException(status_code=400, detail="Moderator already running in api")
 
     # Resitricting access
     online_count = await db_sess.scalar(

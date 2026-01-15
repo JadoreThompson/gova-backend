@@ -3,13 +3,13 @@ from uuid import UUID, uuid4
 
 from pydantic import Field
 
-from core.enums import (
+from enums import (
     ActionStatus,
     CoreEventType,
-    MessagePlatformType,
+    MessagePlatform,
     ModeratorEventType,
 )
-from core.models import CustomBaseModel
+from models import CustomBaseModel
 from engine.base.base_action import BaseAction
 from engine.discord.config import DiscordConfig
 from engine.models import BaseMessageContext, MessageEvaluation
@@ -42,7 +42,7 @@ class StartModeratorEvent(ModeratorEvent):
 
     type: ModeratorEventType = ModeratorEventType.START
     moderator_id: UUID
-    platform: MessagePlatformType
+    platform: MessagePlatform
     conf: DiscordConfig
 
 

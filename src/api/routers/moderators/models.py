@@ -3,8 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
-from core.enums import MessagePlatformType, ModeratorStatus
-from core.models import CustomBaseModel
+from enums import MessagePlatform, ModeratorStatus
+from models import CustomBaseModel
 from engine.discord.config import DiscordConfig
 
 
@@ -27,14 +27,14 @@ class DiscordConfigBody(DiscordConfig):
 
 
 class ModeratorCreate(ModeratorBase):
-    platform: MessagePlatformType
+    platform: MessagePlatform
     platform_server_id: str
     conf: DiscordConfigBody
 
 
 class ModeratorResponse(ModeratorBase):
     moderator_id: UUID
-    platform: MessagePlatformType
+    platform: MessagePlatform
     platform_server_id: str
     conf: DiscordConfig
     status: ModeratorStatus
@@ -43,11 +43,10 @@ class ModeratorResponse(ModeratorBase):
 
 class MessageChartData(CustomBaseModel):
     date: date
-    counts: dict[MessagePlatformType, int]
+    counts: dict[MessagePlatform, int]
 
 
 class ModeratorStats(BaseModel):
     total_messages: int
     total_actions: int
     message_chart: list[MessageChartData]
-

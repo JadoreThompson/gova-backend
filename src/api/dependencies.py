@@ -4,7 +4,7 @@ from aiokafka import AIOKafkaProducer
 from fastapi import Depends, Request
 
 from config import COOKIE_ALIAS
-from core.enums import MessagePlatformType
+from enums import MessagePlatform
 from engine.base.base_action_handler import BaseActionHandler
 from engine.discord.action_handler import DiscordActionHandler
 from infra import DiscordClientManager, KafkaManager
@@ -55,11 +55,11 @@ async def depends_kafka_producer() -> AsyncGenerator[AIOKafkaProducer, None]:
     return KafkaManager.get_producer()
 
 
-def depends_action_handler(platform: MessagePlatformType):
-    handler_cls: dict[MessagePlatformType, Type[BaseActionHandler]] = {
-        MessagePlatformType.DISCORD: DiscordActionHandler
+def depends_action_handler(platform: MessagePlatform):
+    handler_cls: dict[MessagePlatform, Type[BaseActionHandler]] = {
+        MessagePlatform.DISCORD: DiscordActionHandler
     }
-    handlers: dict[MessagePlatformType, BaseActionHandler] = {}
+    handlers: dict[MessagePlatform, BaseActionHandler] = {}
 
     def wrapper() -> BaseActionHandler:
         nonlocal handlers, platform
@@ -70,7 +70,7 @@ def depends_action_handler(platform: MessagePlatformType):
     return wrapper
 
 
-depends_discord_action_handler = depends_action_handler(MessagePlatformType.DISCORD)
+depends_discord_action_handler = depends_action_handler(MessagePlatform.DISCORD)
 
 
 def CSVQuery(name: str, Typ: Type[T]):

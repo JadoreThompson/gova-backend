@@ -13,7 +13,6 @@ dependencies = [
     "cryptography>=46.0.3",
     "discord-py>=2.6.4",
     "fastapi>=0.119.0",
-    "hcloud>=2.9.0",
     "kafka-python>=2.2.15",
     "pgvector>=0.4.1",
     "psycopg2-binary>=2.9.11",

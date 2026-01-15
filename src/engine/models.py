@@ -2,14 +2,15 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from core.enums import MessagePlatformType
-from core.models import CustomBaseModel
+from enums import MessagePlatform
+from models import CustomBaseModel
 
 
 T = TypeVar("T")
 
+
 class BaseMessageContext(CustomBaseModel):
-    platform: MessagePlatformType
+    platform: MessagePlatform
     platform_author_id: str
     platform_message_id: str
     content: str

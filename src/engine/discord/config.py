@@ -1,4 +1,4 @@
-from core.models import CustomBaseModel
+from models import CustomBaseModel
 from engine.base.base_action import BaseActionDefinition
 from engine.discord.actions import DiscActionDefinitionUnion
 

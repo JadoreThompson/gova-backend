@@ -4,10 +4,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.enums import ActionStatus, MessagePlatformType
+from enums import ActionStatus, MessagePlatform
 from engine.discord.action_handler import DiscordActionHandler
 from db_models import ModeratorEventLogs, Moderators
-from engine.discord.actions import BanAction, DiscordActionType, KickAction, MuteAction
+from engine.discord.actions import BanAction, DiscordAction, KickAction, MuteAction
 from engine.discord.context import DiscordMessageContext
 from api.dependencies import (
     depends_db_sess,
@@ -45,15 +45,15 @@ async def update_action_status(
         raise HTTPException(status_code=400, detail="Action not awaiting approval.")
 
     if body.status == ActionStatus.APPROVED:
-        if platform == MessagePlatformType.DISCORD:
+        if platform == MessagePlatform.DISCORD:
             params = log.action_params
             act_typ = params.get("type")
 
-            if act_typ == DiscordActionType.BAN:
+            if act_typ == DiscordAction.BAN:
                 action = BanAction(**params)
-            elif act_typ == DiscordActionType.KICK:
+            elif act_typ == DiscordAction.KICK:
                 action = KickAction(**params)
-            elif act_typ == DiscordActionType.MUTE:
+            elif act_typ == DiscordAction.MUTE:
                 action = MuteAction(**params)
             else:
                 raise HTTPException(

@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-from core.enums import MessagePlatformType, PricingTierType
-from core.models import CustomBaseModel
+from enums import MessagePlatform, PricingTierType
+from models import CustomBaseModel
 
 
 class PasswordField(BaseModel):
@@ -17,13 +17,10 @@ class PasswordField(BaseModel):
         status = 400
 
         if len(value) < min_length:
-            raise ValueError(
-                f"Password must be at least {min_length} characters long."
-            )
+            raise ValueError(f"Password must be at least {min_length} characters long.")
 
         if sum(1 for c in value if c.isupper()) < min_uppercase:
             raise ValueError(
-                
                 f"Password must contain at least {min_uppercase} uppercase letters.",
             )
 
@@ -54,7 +51,7 @@ class UserConnection(BaseModel):
 class UserMe(CustomBaseModel):
     username: str
     pricing_tier: PricingTierType
-    connections: dict[MessagePlatformType, UserConnection]
+    connections: dict[MessagePlatform, UserConnection]
 
 
 class UpdateUsername(BaseModel):

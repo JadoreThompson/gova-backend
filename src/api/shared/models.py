@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from core.enums import ActionStatus
-from core.models import CustomBaseModel
+from enums import ActionStatus
+from models import CustomBaseModel
 
 
 class ActionResponse(CustomBaseModel):

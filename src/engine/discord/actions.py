@@ -6,27 +6,27 @@ from pydantic import Field
 from engine.base.base_action import BaseAction, BaseActionDefinition
 
 
-class DiscordActionType(str, Enum):
+class DiscordAction(str, Enum):
     BAN = "ban"
     MUTE = "mute"
     KICK = "kick"
 
 
 class DiscordAction(BaseAction):
-    type: DiscordActionType
+    type: DiscordAction
 
 
 class BanAction(DiscordAction):
-    type: DiscordActionType = DiscordActionType.BAN
+    type: DiscordAction = DiscordAction.BAN
     user_id: int
 
 
 class BanActionDefinition(BaseActionDefinition):
-    type: Literal[DiscordActionType.BAN] = DiscordActionType.BAN
+    type: Literal[DiscordAction.BAN] = DiscordAction.BAN
 
 
 class MuteAction(DiscordAction):
-    type: DiscordActionType = DiscordActionType.MUTE
+    type: DiscordAction = DiscordAction.MUTE
     user_id: int
     duration: int = Field(
         ..., ge=0, description="Duration in milliseconds to mute the user."
@@ -34,20 +34,22 @@ class MuteAction(DiscordAction):
 
 
 class MuteActionDefinition(BaseActionDefinition):
-    type: Literal[DiscordActionType.MUTE] = DiscordActionType.MUTE
+    type: Literal[DiscordAction.MUTE] = DiscordAction.MUTE
     duration: int | None = Field(
         None, ge=0, description="Duration in milliseconds to mute the user."
     )
 
 
 class KickAction(DiscordAction):
-    type: DiscordActionType = DiscordActionType.KICK
+    type: DiscordAction = DiscordAction.KICK
     user_id: int
 
 
 class KickActionDefinition(BaseActionDefinition):
-    type: Literal[DiscordActionType.KICK] = DiscordActionType.KICK
+    type: Literal[DiscordAction.KICK] = DiscordAction.KICK
 
 
 DiscActionUnion = Union[BanAction, MuteAction, KickAction]
-DiscActionDefinitionUnion = Union[MuteActionDefinition, BanActionDefinition, KickActionDefinition]
+DiscActionDefinitionUnion = Union[
+    MuteActionDefinition, BanActionDefinition, KickActionDefinition
+]

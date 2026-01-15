@@ -5,6 +5,7 @@ __pycache__/
 docker/prod-compose.parsed.yaml
 app.log
 misc
+rec.py
 
 .env
 .env.prod
