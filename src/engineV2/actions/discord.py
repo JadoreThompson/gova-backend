@@ -1,12 +1,13 @@
 from enum import Enum
 from typing import Literal
 
-from engineV2.actions.base import BaseAction
-from engineV2.actions.registry import PerformedActionRegistry
+from engineV2.actions.base import BaseAction, BasePerformedAction
 from engineV2.enums import MessagePlatform
 from engineV2.params.discord import (
     DiscordDefaultParamsTimeout,
-    DiscordDefaultParamsReply,
+    DiscordPerformedActionParamsKick,
+    DiscordPerformedActionParamsReply,
+    DiscordPerformedActionParamsTimeout,
 )
 
 
@@ -21,29 +22,36 @@ class BaseDiscordAction(BaseAction):
     platform: Literal[MessagePlatform.DISCORD] = MessagePlatform.DISCORD
 
 
-class BaseDiscordPerformedAction(BaseDiscordAction):
-    pass
+class BaseDiscordPerformedAction(BasePerformedAction):
+    type: DiscordActionType
+    platform: Literal[MessagePlatform.DISCORD] = MessagePlatform.DISCORD
 
 
-class DiscordActionReply(BaseDiscordAction[DiscordDefaultParamsReply]):
+class DiscordActionReply(BaseDiscordAction[None]):
     type: Literal[DiscordActionType.REPLY] = DiscordActionType.REPLY
 
 
-class DiscordPerformedActionReply(DiscordActionReply):
-    pass
+class DiscordPerformedActionReply(
+    BaseDiscordPerformedAction[DiscordPerformedActionParamsReply]
+):
+    type: Literal[DiscordActionType.REPLY] = DiscordActionType.REPLY
 
 
 class DiscordActionTimeout(BaseDiscordAction[DiscordDefaultParamsTimeout]):
     type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
 
 
-class DiscordPerformedActionTimeout(DiscordActionTimeout):
-    pass
+class DiscordPerformedActionTimeout(
+    BaseDiscordPerformedAction[DiscordPerformedActionParamsTimeout]
+):
+    type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
 
 
 class DiscordActionKick(BaseDiscordAction):
     type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
 
 
-class DiscordPerformedActionKick(DiscordActionKick):
-    pass
+class DiscordPerformedActionKick(
+    BaseDiscordPerformedAction[DiscordPerformedActionParamsKick]
+):
+    type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT

@@ -3,12 +3,17 @@ import functools
 import logging
 import uuid
 
-from config import KAKFA_ACTION_EVENTS_TOPIC
+from pydantic import BaseModel
+
+from config import KAFKA_MODERATOR_EVENTS_TOPIC
 from core.events import DeadModeratorEvent
 from engineV2.actions.discord import BaseDiscordPerformedAction
 from engineV2.message_streams.discord import DiscordMessageStream
 from engineV2.moderators.discord import DiscordModerator
-from events.actions import ActionPerformedEvent
+from events.moderator import (
+    ActionPerformedModeratorEvent,
+    EvaluationCreatedModeratorEvent,
+)
 from infra.kafka import AsyncKafkaProducer
 
 
@@ -87,14 +92,28 @@ class DiscordModeratorOrchestrator:
     ) -> None:
         """Event hook for moderators"""
         if self._kafka_producer is not None:
-            event = ActionPerformedEvent(moderator_id=moderator_id, action=action)
-            await self._kafka_producer.send(
-                KAKFA_ACTION_EVENTS_TOPIC, event.model_dump_json().encode()
+            event = ActionPerformedModeratorEvent(
+                moderator_id=moderator_id, action=action
             )
+            await self._emit_event(event)
+
+    async def _on_evaluation_created(
+        self, moderator_id: uuid.UUID, user_id: int, severity_score: float
+    ) -> None:
+        if self._kafka_producer is not None:
+            event = EvaluationCreatedModeratorEvent(
+                moderator_id=moderator_id,
+                user_id=str(user_id),
+                severity_score=severity_score,
+            )
+            await self._emit_event(event)
 
     async def _on_moderator_closed(self, moderator_id: uuid.UUID, reason: str) -> None:
         if self._kafka_producer is not None:
             event = DeadModeratorEvent(moderator_id=moderator_id, reason=reason)
-            await self._kafka_producer.send(
-                KAKFA_ACTION_EVENTS_TOPIC, event.model_dump_json().encode()
-            )
+            await self._emit_event(event)
+
+    async def _emit_event(self, event: BaseModel) -> None:
+        await self._kafka_producer.send(
+            KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json().encode()
+        )

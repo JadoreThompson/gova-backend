@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable
 from engineV2.actions.discord import BaseDiscordPerformedAction, DiscordActionType
 from engineV2.actions.registry import PerformedActionRegistry
 from engineV2.agents.chat_summary import ChatSummaryAgent
-from engineV2.agents.review import ReviewAgentAction, ReviewAgentOutput
+from engineV2.agents.review import ReviewAgent, ReviewAgentAction, ReviewAgentOutput
 from engineV2.configs.discord import DiscordModeratorConfig
 from engineV2.contexts.discord import DiscordMessageContext
 from engineV2.params.discord import (
@@ -48,6 +48,7 @@ class DiscordModerator:
         on_action_performed: (
             Callable[[BaseDiscordPerformedAction], Awaitable[Any]] | None
         ) = None,
+        on_evaluation_created: Callable[[int, float], Awaitable[Any]] | None = None,
         on_closed: Callable[[str | None], Awaitable[Any]] | None = None,
     ):
         self._moderator_id = moderator_id
@@ -55,6 +56,7 @@ class DiscordModerator:
         self._guild_id = config.guild_id
         self._channels = set(config.channel_ids)
         self.on_action_performed = on_action_performed
+        self.on_evaluation_created = on_evaluation_created
         self.on_closed = on_closed
 
         self._channel_msgs: dict[int, deque[DiscordMessageContext]] = defaultdict(
@@ -122,17 +124,20 @@ class DiscordModerator:
                 action_params=self._action_params,
             )
             res = await self._review_agent.run(user_prompt)
-            output = res.output
+            review_output = res.output
 
-            if output.action is None:
+            if review_output.action is None:
                 return
 
-            defined_action = self._type_2_action[output.action.type]
+            defined_action = self._type_2_action[review_output.action.type]
             performed_action = PerformedActionRegistry.build(
-                planned_action=output.action,
+                planned_action=review_output.action,
                 defined_action=defined_action,
-                reason=output.reason,
+                reason=review_output.reason,
             )
+
+        if self.on_evaluation_created is not None:
+            await self.on_evaluation_created(ctx.user_id, review_output.severity_score)
 
         if self.on_action_performed is not None:
             await self.on_action_performed(performed_action)

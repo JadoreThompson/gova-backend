@@ -29,8 +29,6 @@ class CoreEventType(str, Enum):
     MODERATOR_EVENT = "moderator_event"
 
 
-
-
 class LogSeverity(str, Enum):
     INFO = "INFO"
     WARNING = "WARNING"

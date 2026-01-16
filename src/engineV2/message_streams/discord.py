@@ -76,16 +76,3 @@ class DiscordMessageStream:
 
         self._logger.info("Exiting iteration")
 
-    # async def __aiter__(self) -> AsyncGenerator[discord.Message, None]:
-    #     if self._alive:
-    #         raise IterationInProgressException
-
-    #     while True:
-    #         msg = await self._queue.get()
-    #         if msg == self._sentinel:
-    #             self._logger.info("Sentinel received. Exiting loop")
-    #             break
-
-    #         yield msg
-
-    #     self._logger.info("Exiting iteration")

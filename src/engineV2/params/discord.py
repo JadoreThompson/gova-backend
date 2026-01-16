@@ -1,17 +1,12 @@
 from pydantic import BaseModel
 
 
-class DiscordDefaultParamsReply(BaseModel):
-    prefix: str | None = None
-    suffix: str | None = None
-
-
 class DiscordPerformedActionParamsReply(BaseModel):
     content: str
 
 
 class DiscordDefaultParamsTimeout(BaseModel):
-    secs: int | None = None
+    duration: int | None = None
 
 
 class DiscordPerformedActionParamsTimeout(BaseModel):
@@ -21,3 +16,4 @@ class DiscordPerformedActionParamsTimeout(BaseModel):
 
 class DiscordPerformedActionParamsKick(BaseModel):
     user_id: int
+    reason: str | None = None
