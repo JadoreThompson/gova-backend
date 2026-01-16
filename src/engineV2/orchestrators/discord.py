@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from config import KAFKA_MODERATOR_EVENTS_TOPIC
 from core.events import DeadModeratorEvent
 from engineV2.actions.discord import BaseDiscordPerformedAction
+from engineV2.contexts.discord import DiscordMessageContext
 from engineV2.message_streams.discord import DiscordMessageStream
 from engineV2.moderators.discord import DiscordModerator
 from events.moderator import (
@@ -88,23 +89,31 @@ class DiscordModeratorOrchestrator:
             self._guild_2_moderator.pop(moderator.guild_id)
 
     async def _on_action_performed(
-        self, moderator_id: uuid.UUID, action: BaseDiscordPerformedAction
+        self,
+        moderator_id: uuid.UUID,
+        action: BaseDiscordPerformedAction,
+        ctx: DiscordMessageContext,
     ) -> None:
         """Event hook for moderators"""
         if self._kafka_producer is not None:
             event = ActionPerformedModeratorEvent(
-                moderator_id=moderator_id, action=action
+                moderator_id=moderator_id, action=action, ctx=ctx
             )
             await self._emit_event(event)
 
     async def _on_evaluation_created(
-        self, moderator_id: uuid.UUID, user_id: int, severity_score: float
+        self,
+        moderator_id: uuid.UUID,
+        user_id: int,
+        severity_score: float,
+        ctx: DiscordMessageContext,
     ) -> None:
         if self._kafka_producer is not None:
             event = EvaluationCreatedModeratorEvent(
                 moderator_id=moderator_id,
                 user_id=str(user_id),
                 severity_score=severity_score,
+                ctx=ctx,
             )
             await self._emit_event(event)
 

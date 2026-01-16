@@ -8,7 +8,7 @@ from engineV2.actions.discord import (
     DiscordPerformedActionTimeout,
     DiscordPerformedActionKick,
 )
-from engineV2.enums import ActionStatus, MessagePlatform
+from enums import ActionStatus, MessagePlatform
 
 
 class PerformedActionRegistry:

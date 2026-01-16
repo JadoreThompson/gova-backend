@@ -18,11 +18,10 @@ class ModeratorStatus(str, Enum):
 
 
 class ActionStatus(str, Enum):
-    FAILED = "failed"
-    SUCCESS = "success"
-    DECLINED = "declined"
+    COMPLETED = "completed"
     AWAITING_APPROVAL = "awaiting_approval"
-    APPROVED = "approved"
+    FAILED = "failed"
+    REJECTED = "rejected"
 
 
 class CoreEventType(str, Enum):

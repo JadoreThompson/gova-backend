@@ -3,13 +3,14 @@ import json
 import statistics as stats
 import uuid
 from collections import defaultdict, deque
+from datetime import UTC, datetime
 
 from sqlalchemy import insert, select, update
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC
 from db_models import Moderators
-from db_models2 import Evaluations
-from enums import MessagePlatform, ModeratorStatus
+from db_models2 import ActionEvents, EvaluationEvents
+from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import ModeratorEventType
 from infra.db import get_db_sess
 from infra.kafka import AsyncKafkaConsumer
@@ -67,6 +68,8 @@ class ModeratorEventHandler:
                         )
                     elif event_type == ModeratorEventType.EVALUATION_CREATED:
                         await self._persist_evaluation(event_data)
+                    elif event_type == ModeratorEventType.ACTION_PERFORMED:
+                        await self._persist_action(event_data)
 
                 except json.JSONDecodeError:
                     pass
@@ -106,12 +109,12 @@ class ModeratorEventHandler:
             msgs = self._prev_scores[key]
             if not msgs:
                 res = await db_sess.scalars(
-                    select(Evaluations.severity_score)
+                    select(EvaluationEvents.severity_score)
                     .where(
-                        Evaluations.moderator_id == moderator_id,
-                        Evaluations.moderator_id == moderator_id,
+                        EvaluationEvents.moderator_id == moderator_id,
+                        EvaluationEvents.moderator_id == moderator_id,
                     )
-                    .order_by(Evaluations.timestamp)
+                    .order_by(EvaluationEvents.created_at.desc())
                     .limit(self._batch_size)
                 )
 
@@ -122,12 +125,42 @@ class ModeratorEventHandler:
             behaviour_score = round(stats.mean(msgs), 2)
 
             await db_sess.execute(
-                insert(Evaluations).values(
+                insert(EvaluationEvents).values(
+                    event_id=event["id"],
                     moderator_id=moderator_id,
                     platform_user_id=user_id,
                     severity_score=severity_score,
                     behaviour_score=behaviour_score,
-                    timestamp=event['timestamp']
+                    context=event["ctx"],
+                    created_at=datetime.fromtimestamp(event["timestamp"], UTC),
+                )
+            )
+
+            await db_sess.commit()
+
+    async def _persist_action(self, event: dict) -> None:
+        action = event["action"]
+        ctx = event["ctx"]
+
+        async with get_db_sess() as db_sess:
+            created_at = datetime.fromtimestamp(event["timestamp"], UTC)
+            await db_sess.execute(
+                insert(ActionEvents).values(
+                    action_id=event["action_id"],
+                    event_id=event["id"],
+                    moderator_id=event["moderator_id"],
+                    platform_user_id=action["params"].get("user_id"),
+                    action_type=action["type"],
+                    action_params=action.get("params"),
+                    context=ctx,
+                    status=action["status"],
+                    reason=action["reason"],
+                    created_at=created_at,
+                    executed_at=(
+                        created_at
+                        if action["status"] == ActionStatus.COMPLETED
+                        else None
+                    ),
                 )
             )
 

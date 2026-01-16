@@ -3,7 +3,7 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from engineV2.enums import ActionStatus, MessagePlatform
+from enums import ActionStatus, MessagePlatform
 from models import CustomBaseModel
 
 

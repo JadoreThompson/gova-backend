@@ -46,11 +46,24 @@ class DiscordModerator:
         config: DiscordModeratorConfig,
         max_channel_msgs: int = 100,
         on_action_performed: (
-            Callable[[BaseDiscordPerformedAction], Awaitable[Any]] | None
+            Callable[
+                [BaseDiscordPerformedAction, DiscordMessageContext], Awaitable[Any]
+            ]
+            | None
         ) = None,
         on_evaluation_created: Callable[[int, float], Awaitable[Any]] | None = None,
         on_closed: Callable[[str | None], Awaitable[Any]] | None = None,
     ):
+        """Initialize a Discord moderator instance.
+
+        Args:
+            moderator_id: Unique identifier for the moderator.
+            config: Configuration object containing guild, channels, and actions.
+            max_channel_msgs: Maximum number of messages to keep in memory per channel.
+            on_action_performed: Callback triggered when an action is performed.
+            on_evaluation_created: Callback triggered when an evaluation is created.
+            on_closed: Callback triggered when the moderator is closed.
+        """
         self._moderator_id = moderator_id
         self._config = config
         self._guild_id = config.guild_id
@@ -79,17 +92,41 @@ class DiscordModerator:
 
     @property
     def moderator_id(self) -> uuid.UUID:
+        """Get the moderator's unique identifier.
+
+        Returns:
+            The moderator's UUID.
+        """
         return self._moderator_id
 
     @property
     def guild_id(self) -> int:
+        """Get the Discord guild ID this moderator is managing.
+
+        Returns:
+            The Discord guild ID.
+        """
         return self._guild_id
 
     async def is_closed(self) -> bool:
+        """Check if the moderator is closed.
+
+        Returns:
+            True if the moderator is closed, False otherwise.
+        """
         async with self._closed_lock:
             return self._closed
 
     async def process_message(self, ctx: DiscordMessageContext) -> None:
+        """Process a Discord message and determine if moderation action is needed.
+
+        This method analyzes the message in the context of recent messages,
+        generates a channel summary, and uses the review agent to determine
+        if any moderation action should be taken.
+
+        Args:
+            ctx: The Discord message context containing message details.
+        """
         if await self.is_closed():
             return
 
@@ -137,18 +174,25 @@ class DiscordModerator:
             )
 
         if self.on_evaluation_created is not None:
-            await self.on_evaluation_created(ctx.user_id, review_output.severity_score)
+            await self.on_evaluation_created(
+                ctx.user_id, review_output.severity_score, ctx
+            )
 
         if self.on_action_performed is not None:
-            await self.on_action_performed(performed_action)
+            await self.on_action_performed(performed_action, ctx)
 
     async def close(self, reason: str | None = None):
+        """Close the moderator and stop processing messages.
+
+        Args:
+            reason: Optional reason for closing the moderator.
+        """
         async with self._closed_lock:
             self._closed = True
             if self.on_closed is not None:
                 await self.on_closed(reason)
 
-    def __eq__(self, value):
+    def __eq__(self, value) -> bool:
         if not isinstance(value, DiscordModerator):
             return False
         return value._moderator_id == self._moderator_id

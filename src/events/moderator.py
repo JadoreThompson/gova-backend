@@ -2,9 +2,10 @@ import uuid
 from enum import Enum
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from engineV2.actions.base import BasePerformedAction
+from engineV2.contexts.discord import DiscordMessageContext
 from events.base import BaseEvent
 
 
@@ -63,6 +64,7 @@ class EvaluationCreatedModeratorEvent(BaseEvent):
     moderator_id: uuid.UUID
     user_id: str
     severity_score: float
+    ctx: DiscordMessageContext
 
     @field_validator("severity_score", mode="after")
     def round_values(cls, v):
@@ -73,5 +75,7 @@ class ActionPerformedModeratorEvent(BaseEvent):
     type: Literal[ModeratorEventType.ACTION_PERFORMED] = (
         ModeratorEventType.ACTION_PERFORMED
     )
+    action_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     moderator_id: uuid.UUID
     action: BasePerformedAction
+    ctx: DiscordMessageContext
