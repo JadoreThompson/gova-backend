@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: ai_chat_mod_postgres
+    container_name: gova_postgres
     restart: always
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres:/var/lib/postgresql/data
     networks:
-      - ai_chat_network
+      - gova_network
     entrypoint:
       - bash
       - -c
@@ -38,7 +38,7 @@ services:
   kafka:
     image: apache/kafka:4.0.1
     hostname: broker
-    container_name: ai_chat_mod_kafka
+    container_name: gova_kafka
     ports:
       - 9092:9092
     environment:
@@ -58,11 +58,11 @@ services:
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     networks:
-      - ai_chat_network
+      - gova_network
 
   redis:
     image: redis:7
-    container_name: ai_chat_mod_redis
+    container_name: gova_redis
     restart: always
     ports:
       - ${REDIS_PORT}:6379
@@ -70,13 +70,13 @@ services:
       - redis:/data
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     networks:
-      - ai_chat_network
+      - gova_network
 
   backend:
     build:
       dockerfile: dockerfile
       context: .
-    container_name: ai_chat_mod_backend
+    container_name: gova_backend
     depends_on:
       - postgres
       - kafka
@@ -84,20 +84,12 @@ services:
     ports:
       - 8000:8000
     networks:
-      - ai_chat_network
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: ai_chat_mod_cloudflare_tunnel
-    restart: always
-    command: tunnel --no-autoupdate run --token eyJhIjoiMDRiMmY4NDE0M2IyYWQxN2YzNjhhNDg2M2QyNjA5NmEiLCJ0IjoiZjJkMzhkMjEtNDQyMi00YWZmLTk0OGYtNDc2NmU3OWE5NmFlIiwicyI6IllXRmlNalUyTUdRdE5ERXhNQzAwTkRNNExXRmpZVE10TldNMk5tWTVOMk0wTW1ObSJ9
-    networks:
-      - ai_chat_network
+      - gova_network
 
 volumes:
   postgres:
   redis:
 
 networks:
-  ai_chat_network:
+  gova_network:
     driver: bridge
