@@ -17,9 +17,8 @@ class DiscordMessageStream:
                 no max size.
         """
         self._client = client
-        self._alive = False
+        self._closed = False
         self._queue: asyncio.Queue[discord.Message] = asyncio.Queue(max_size)
-        self._sentinel = -1
         self._logger = logging.getLogger(type(self).__name__)
 
     @property
@@ -28,15 +27,17 @@ class DiscordMessageStream:
 
     @property
     def alive(self) -> bool:
-        return self._alive
+        return self._closed
 
-    def start(self) -> None:
-        self._register_events()
+    @property
+    def closed(self):
+        return self._closed
 
-    def stop(self) -> None:
-        self._queue.put_nowait(self._sentinel)
+    def close(self) -> None:
+        self._closed = True
+        self._queue.shutdown(immediate=True)
 
-    def _register_events(self):
+    def register_events(self):
         @self._client.event
         async def on_ready():
             self._logger.info(f"Logged in as {self._client.user}")
@@ -46,13 +47,13 @@ class DiscordMessageStream:
             await self._queue.put(msg)
 
     async def __aiter__(self) -> AsyncGenerator[DiscordMessageContext, None]:
-        if self._alive:
+        if self._closed:
             raise IterationInProgressException
 
-        while True:
-            msg = await self._queue.get()
-            if msg == self._sentinel:
-                self._logger.info("Sentinel received. Exiting loop")
+        while not self._closed:
+            try:
+                msg = await self._queue.get()
+            except asyncio.QueueShutDown:
                 break
 
             reply_to = None
@@ -74,5 +75,4 @@ class DiscordMessageStream:
                 reply_to=reply_to,
             )
 
-        self._logger.info("Exiting iteration")
-
+        self._logger.debug("Moderator closed, exiting iter")

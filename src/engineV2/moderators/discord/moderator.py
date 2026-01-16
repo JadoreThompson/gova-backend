@@ -3,25 +3,21 @@ import asyncio
 from collections import defaultdict, deque
 from typing import Any, Awaitable, Callable
 
+from engineV2.action_handlers.discord.exceptions import DiscordActionHandlerError
 from engineV2.actions.discord import BaseDiscordPerformedAction, DiscordActionType
 from engineV2.actions.registry import PerformedActionRegistry
+from engineV2.action_handlers.discord import DiscordActionHandler
 from engineV2.agents.chat_summary import ChatSummaryAgent
-from engineV2.agents.review import ReviewAgent, ReviewAgentAction, ReviewAgentOutput
+from engineV2.agents.review import ReviewAgent
 from engineV2.configs.discord import DiscordModeratorConfig
 from engineV2.contexts.discord import DiscordMessageContext
 from engineV2.params.discord import (
+    DiscordPerformedActionParamsKick,
     DiscordPerformedActionParamsReply,
     DiscordPerformedActionParamsTimeout,
-    DiscordPerformedActionParamsKick,
 )
-
-
-class DiscordReviewAgentAction(ReviewAgentAction[DiscordActionType]):
-    pass
-
-
-class DiscordReviewAgentOutput(ReviewAgentOutput):
-    action: DiscordReviewAgentAction | None = None
+from enums import ActionStatus
+from .models import DiscordReviewAgentOutput
 
 
 class DiscordModerator:
@@ -44,6 +40,7 @@ class DiscordModerator:
         self,
         moderator_id: uuid.UUID,
         config: DiscordModeratorConfig,
+        action_handler: DiscordActionHandler,
         max_channel_msgs: int = 100,
         on_action_performed: (
             Callable[
@@ -59,6 +56,7 @@ class DiscordModerator:
         Args:
             moderator_id: Unique identifier for the moderator.
             config: Configuration object containing guild, channels, and actions.
+            action_handler: Interface used to perform the actions
             max_channel_msgs: Maximum number of messages to keep in memory per channel.
             on_action_performed: Callback triggered when an action is performed.
             on_evaluation_created: Callback triggered when an evaluation is created.
@@ -66,6 +64,7 @@ class DiscordModerator:
         """
         self._moderator_id = moderator_id
         self._config = config
+        self._action_handler = action_handler
         self._guild_id = config.guild_id
         self._channels = set(config.channel_ids)
         self.on_action_performed = on_action_performed
@@ -178,7 +177,26 @@ class DiscordModerator:
                 ctx.user_id, review_output.severity_score, ctx
             )
 
+        error_msg = None
+        try:
+            action_type = performed_action.type
+            if action_type == DiscordActionType.REPLY:
+                await self._action_handler.handle_reply(performed_action.params, ctx)
+            elif action_type == DiscordActionType.TIMEOUT:
+                await self._action_handler.handle_timeout(performed_action.params, ctx)
+            elif action_type == DiscordActionType.KICK:
+                await self._action_handler.handle_kick(performed_action.params, ctx)
+            else:
+                error_msg = "Handler for action '{action_type}' not configured"
+        except DiscordActionHandlerError as e:
+            error_msg = str(e)
+            pass
+
         if self.on_action_performed is not None:
+            if error_msg:
+                performed_action.status = ActionStatus.FAILED
+                performed_action.error_msg = error_msg
+
             await self.on_action_performed(performed_action, ctx)
 
     async def close(self, reason: str | None = None):

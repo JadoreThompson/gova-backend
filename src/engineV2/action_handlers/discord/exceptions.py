@@ -1,0 +1,2 @@
+class DiscordActionHandlerError(Exception):
+    pass

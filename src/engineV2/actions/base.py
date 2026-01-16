@@ -25,3 +25,4 @@ class BasePerformedAction(CustomBaseModel, Generic[P]):
     params: P
     reason: str
     status: ActionStatus
+    error_msg: str | None = None

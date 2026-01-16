@@ -1,10 +1,15 @@
+import asyncio
 import json
 import uuid
 
-from config import KAFKA_MODERATOR_EVENTS_TOPIC
+import discord
+
+from config import DISCORD_BOT_TOKEN, KAFKA_MODERATOR_EVENTS_TOPIC
 from db_models import Moderators
+from engine.discord.action_handler import DiscordActionHandler
 from engineV2.configs.discord import DiscordModeratorConfig
 from engineV2.enums import MessagePlatform
+from engineV2.message_streams.discord import DiscordMessageStream
 from engineV2.moderators.discord import DiscordModerator
 from engineV2.orchestrators.discord import DiscordModeratorOrchestrator
 from events.moderator import (
@@ -12,7 +17,7 @@ from events.moderator import (
     ConfigUpdatedModeratorEvent,
     ModeratorEventType,
 )
-from infra.db.utils import get_db_sess
+from infra.db import get_db_sess
 from infra.kafka import AsyncKafkaConsumer, AsyncKafkaProducer
 from .base_runner import BaseRunner
 
@@ -25,11 +30,33 @@ class ModeratorOrchestratorRunner(BaseRunner):
     ):
         super().__init__()
         self._platform = platform
-        self._orchestrator = orchestrator
-        self._moderators: dict[uuid.UUID, DiscordModerator] = {}
         self._producer: AsyncKafkaProducer = AsyncKafkaProducer()
+        self._orchestrator = orchestrator
+
+        self._client: discord.Client | None = None
+        self._client_task: asyncio.Task | None = None
+
+        self._moderators: dict[uuid.UUID, DiscordModerator] = {}
+        self._stream: DiscordMessageStream | None = None
+        self._action_handler: DiscordActionHandler | None = None
+
+    def _setup(self):
+        # Configuring discord client
+        intents = discord.Intents.default()
+        intents.message_content = True
+
+        self._client = discord.Client(intents=intents)
+
+        self._stream = DiscordMessageStream(self._client)
+        self._stream.register_events()
+        self._action_handler = DiscordActionHandler(self._client)
+
+        self._client_task = asyncio.create_task(
+            self._client.start(token=DISCORD_BOT_TOKEN)
+        )
 
     async def run(self):
+        self._setup()
         consumer = AsyncKafkaConsumer(KAFKA_MODERATOR_EVENTS_TOPIC)
 
         try:
@@ -61,6 +88,12 @@ class ModeratorOrchestratorRunner(BaseRunner):
 
         finally:
             await consumer.stop()
+            if not self._client_task.done():
+                self._client_task.cancel()
+                try:
+                    await self._client_task
+                except asyncio.CancelledError:
+                    pass
 
     async def _ensure_platform(self, moderator_id: uuid.UUID):
         async with get_db_sess() as db_sess:
@@ -78,7 +111,10 @@ class ModeratorOrchestratorRunner(BaseRunner):
             return
 
         mod = DiscordModerator(
-            moderator_id, DiscordModeratorConfig(**db_mod.conf), max_channel_msgs=100
+            moderator_id,
+            DiscordModeratorConfig(**db_mod.conf),
+            self._action_handler,
+            max_channel_msgs=100,
         )
         success = self._orchestrator.add(mod)
         if success:
