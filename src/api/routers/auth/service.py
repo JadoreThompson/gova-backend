@@ -1,4 +1,5 @@
 import json
+
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error
 from fastapi import HTTPException, BackgroundTasks
@@ -6,16 +7,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import (
-    BREVO_API_KEY,
-    PW_HASH_SALT,
-    REDIS_EMAIL_VERIFICATION_KEY_PREFIX,
-)
-from api.services import JWTService
+from config import PW_HASH_SALT, REDIS_EMAIL_VERIFICATION_KEY_PREFIX
 from db_models import Users
 from infra.redis import REDIS_CLIENT
-from services.email import BrevoEmailService
 from utils import get_datetime
+from services.email import BrevoEmailService
+from services.jwt import JWTService
 from .controller import gen_verification_code
 from .exceptions import MaxEmailVerificationAttemptsException
 from .models import UserCreate, UserLogin, VerifyAction
@@ -23,11 +20,9 @@ from .models import UserCreate, UserLogin, VerifyAction
 
 class AuthService:
     _pw_hasher = PasswordHasher()
-    _em_service = BrevoEmailService(
-        "No-Reply", "no-reply@gova.chat"
-    )
+    _em_service = BrevoEmailService("No-Reply", "no-reply@gova.chat")
     _MAX_EMAIL_VERIFICATION_ATTEMPTS = 5
-    _REDIS_EXPIRY_SECS =900
+    _REDIS_EXPIRY_SECS = 900
 
     def __init__(self):
         raise RuntimeWarning(f"Cannot instantiate an instance of {type(self).__name__}")
@@ -129,9 +124,7 @@ class AuthService:
                 "last_timestamp": ts,
             }
 
-        await REDIS_CLIENT.set(
-            key, json.dumps(payload), ex=cls._REDIS_EXPIRY_SECS
-        )
+        await REDIS_CLIENT.set(key, json.dumps(payload), ex=cls._REDIS_EXPIRY_SECS)
 
         bg_tasks.add_task(
             cls._em_service.send_email,
@@ -146,14 +139,10 @@ class AuthService:
         payload = await REDIS_CLIENT.get(key)
 
         if payload is None:
-            raise HTTPException(
-                status_code=400, detail="Expired verification code."
-            ) 
-        
+            raise HTTPException(status_code=400, detail="Expired verification code.")
+
         if json.loads(payload).get("code") != code:
-            raise HTTPException(
-                status_code=400, detail="Invalid verification code."
-            )
+            raise HTTPException(status_code=400, detail="Invalid verification code.")
 
         await REDIS_CLIENT.delete(key)
         user = await db_sess.scalar(select(Users).where(Users.user_id == user_id))
@@ -205,9 +194,7 @@ class AuthService:
             }
         )
         redis_key = f"{prefix}{verification_code}"
-        await REDIS_CLIENT.set(
-            redis_key, payload, ex=cls._REDIS_EXPIRY_SECS
-        )
+        await REDIS_CLIENT.set(redis_key, payload, ex=cls._REDIS_EXPIRY_SECS)
 
         bg_tasks.add_task(
             cls._em_service.send_email,

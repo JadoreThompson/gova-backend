@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from enums import ActionStatus, MessagePlatform, ModeratorStatus
+from enums import MessagePlatform, ModeratorStatus
 from models import CustomBaseModel
 
 
@@ -37,23 +37,6 @@ class ModeratorUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=200)
     conf: dict[str, Any] | None = None
-
-
-class ActionResponse(CustomBaseModel):
-    """Response model for action data."""
-
-    action_id: UUID
-    event_id: UUID
-    moderator_id: UUID
-    platform_user_id: str | None
-    action_type: str
-    action_params: dict[str, Any] | None
-    context: dict[str, Any]
-    status: ActionStatus
-    reason: str | None
-    created_at: datetime
-    updated_at: datetime
-    executed_at: datetime | None
 
 
 class BarChartData(BaseModel):

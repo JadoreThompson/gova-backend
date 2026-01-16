@@ -12,24 +12,19 @@ from api.routers.moderators.router import router as moderators_router
 from api.routers.payments.router import router as payments_router
 from api.routers.public.router import router as public_router
 from config import DOMAIN, SCHEME, SUB_DOMAIN
-from infra import KafkaManager, DiscordClientManager
 from services.discord import DiscordService
 from services.encryption import EncryptionError
 from services.jwt import JWTError
+from services.kafka import KafkaManager
 
 
 async def lifespan(app: FastAPI):
     DiscordService.start()
-    await asyncio.gather(
-        DiscordClientManager.start(),
-        KafkaManager.start(),
-    )
+    await asyncio.gather(KafkaManager.start())
 
-    yield
+    yield app.state
 
-    await asyncio.gather(
-        DiscordClientManager.stop(), KafkaManager.stop(), DiscordService.stop()
-    )
+    await asyncio.gather(DiscordService.stop(), KafkaManager.stop())
 
 
 app = FastAPI(lifespan=lifespan)

@@ -1,4 +1,8 @@
+import asyncio
+import discord
+import logging
 from typing import Any
+
 from aiohttp import BasicAuth, ClientError, ClientSession
 
 from config import (
@@ -14,14 +18,41 @@ from .models import Identity, Guild, GuildChannel
 class DiscordService:
     _http_sess: ClientSession | None = None
     _cdn_base_url: str = "https://cdn.discordapp.com"
+    client: discord.Client | None = None
+    _task: asyncio.Task | None = None
+    _logger: logging.Logger | None = None
 
     @classmethod
     def start(cls) -> None:
+        if cls._logger is None:
+            cls._logger = cls.__name__
+
+        intents = discord.Intents.default()
+        cls.client = discord.Client(intents=intents)
+        cls._register_events()
+        cls._task = asyncio.create_task(cls.client.start(token=DISCORD_BOT_TOKEN))
+
         cls._http_sess = ClientSession()
 
     @classmethod
+    def _register_events(cls) -> None:
+        @cls.client.event
+        async def on_ready():
+            cls._logger.info(f"Discord Manager logged in as {cls.client.user}.")
+
+    @classmethod
     async def stop(cls):
-        await cls._http_sess.close()
+        if cls._http_sess is not None and not cls._http_sess.closed:
+            await cls._http_sess.close()
+            cls._http_sess = None
+
+        if cls._task is not None and not cls._task.done():
+            cls._task.cancel()
+            try:
+                await cls._task
+            except asyncio.CancelledError:
+                pass
+            cls._task = None
 
     @classmethod
     async def fetch_discord_oauth_payload(cls, auth_code: str) -> dict[str, Any]:

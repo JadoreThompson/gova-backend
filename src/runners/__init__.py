@@ -1,7 +1,6 @@
 from .api_runner import APIRunner
 from .base_runner import BaseRunner
 from .event_handler_runner import EventHandlerRunner
-from .event_logger_runner import EventLoggerRunner
 from .moderator_orchestrator_runner import ModeratorOrchestratorRunner
 from .runner_config import RunnerConfig
 from .utils import run_runner

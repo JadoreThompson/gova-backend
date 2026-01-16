@@ -1,0 +1,2 @@
+class StripeVerificationError(Exception):
+    pass

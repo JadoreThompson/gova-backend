@@ -4,14 +4,9 @@ from aiokafka import AIOKafkaProducer
 from fastapi import Depends, Request
 
 from config import COOKIE_ALIAS
-from enums import MessagePlatform
-from engine.base.base_action_handler import BaseActionHandler
-from engine.discord.action_handler import DiscordActionHandler
-from infra import DiscordClientManager, KafkaManager
 from infra.db import smaker
-from infra.discord_client_manager import DiscordClientManager
-from infra.kafka_manager import KafkaManager
 from services.jwt import JWTService, JWTError
+from services.kafka import KafkaManager
 from .types import JWTPayload
 
 
@@ -52,24 +47,6 @@ def depends_jwt(is_verified: bool = True):
 
 async def depends_kafka_producer() -> AsyncGenerator[AIOKafkaProducer, None]:
     return KafkaManager.get_producer()
-
-
-def depends_action_handler(platform: MessagePlatform):
-    handler_cls: dict[MessagePlatform, Type[BaseActionHandler]] = {
-        MessagePlatform.DISCORD: DiscordActionHandler
-    }
-    handlers: dict[MessagePlatform, BaseActionHandler] = {}
-
-    def wrapper() -> BaseActionHandler:
-        nonlocal handlers, platform
-        if platform not in handlers:
-            handlers[platform] = handler_cls[platform](DiscordClientManager.client)
-        return handlers[platform]
-
-    return wrapper
-
-
-depends_discord_action_handler = depends_action_handler(MessagePlatform.DISCORD)
 
 
 def CSVQuery(name: str, Typ: Type[T]):

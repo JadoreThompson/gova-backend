@@ -14,9 +14,10 @@ from api.dependencies import (
     depends_kafka_producer,
 )
 from api.models import PaginatedResponse
+from api.routers.actions.models import ActionResponse
 from api.types import JWTPayload
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PricingTierLimits
-from db_models2 import Moderators, EvaluationEvents, ActionEvents
+from db_models import Moderators, EvaluationEvents, ActionEvents
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import (
     StartModeratorEvent,
@@ -30,7 +31,6 @@ from .models import (
     ModeratorCreate,
     ModeratorResponse,
     ModeratorUpdate,
-    ActionResponse,
     ModeratorStats,
     BarChartData,
 )

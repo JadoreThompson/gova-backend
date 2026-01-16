@@ -10,4 +10,3 @@ class BaseRunner(ABC):
     @abstractmethod
     def run(self) -> None:
         """The main entry point for the process."""
-        ...

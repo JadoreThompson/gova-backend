@@ -1,2 +1,0 @@
-class UnkownActionExc(Exception):
-    pass

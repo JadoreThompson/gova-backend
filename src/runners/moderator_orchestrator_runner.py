@@ -6,12 +6,12 @@ import discord
 
 from config import DISCORD_BOT_TOKEN, KAFKA_MODERATOR_EVENTS_TOPIC
 from db_models import Moderators
-from engine.discord.action_handler import DiscordActionHandler
-from engineV2.configs.discord import DiscordModeratorConfig
-from engineV2.enums import MessagePlatform
-from engineV2.message_streams.discord import DiscordMessageStream
-from engineV2.moderators.discord import DiscordModerator
-from engineV2.orchestrators.discord import DiscordModeratorOrchestrator
+from engine.action_handlers.discord import DiscordActionHandler
+from engine.configs.discord import DiscordModeratorConfig
+from engine.enums import MessagePlatform
+from engine.message_streams.discord import DiscordMessageStream
+from engine.moderators.discord import DiscordModerator
+from engine.orchestrators.discord import DiscordModeratorOrchestrator
 from events.moderator import (
     AliveModeratorEvent,
     ConfigUpdatedModeratorEvent,

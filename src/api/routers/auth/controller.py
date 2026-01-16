@@ -3,8 +3,10 @@ import string
 from typing import Any
 
 from db_models import Users
-from api.services import DiscordService, EncryptionService
+
 from api.types import Identity 
+from services.discord import DiscordService
+from services.encryption import EncryptionService
 
 
 def gen_verification_code(k: int = 6):

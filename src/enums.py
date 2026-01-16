@@ -21,14 +21,3 @@ class ActionStatus(str, Enum):
     AWAITING_APPROVAL = "awaiting_approval"
     FAILED = "failed"
     REJECTED = "rejected"
-
-
-class CoreEventType(str, Enum):
-    MODERATOR_EVENT = "moderator_event"
-
-
-class LogSeverity(str, Enum):
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
