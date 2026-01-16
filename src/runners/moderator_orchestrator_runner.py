@@ -25,17 +25,15 @@ from .base_runner import BaseRunner
 class ModeratorOrchestratorRunner(BaseRunner):
     """Runs the Discord Moderator Orchestrator."""
 
-    def __init__(
-        self, platform: MessagePlatform, orchestrator: DiscordModeratorOrchestrator
-    ):
+    def __init__(self, platform: MessagePlatform):
         super().__init__()
         self._platform = platform
         self._producer: AsyncKafkaProducer = AsyncKafkaProducer()
-        self._orchestrator = orchestrator
 
         self._client: discord.Client | None = None
         self._client_task: asyncio.Task | None = None
 
+        self._orchestrator: DiscordModeratorOrchestrator | None = None
         self._moderators: dict[uuid.UUID, DiscordModerator] = {}
         self._stream: DiscordMessageStream | None = None
         self._action_handler: DiscordActionHandler | None = None
@@ -50,6 +48,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
         self._stream = DiscordMessageStream(self._client)
         self._stream.register_events()
         self._action_handler = DiscordActionHandler(self._client)
+        self._orchestrator = DiscordModeratorOrchestrator(self._stream)
 
         self._client_task = asyncio.create_task(
             self._client.start(token=DISCORD_BOT_TOKEN)

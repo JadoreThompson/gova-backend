@@ -8,8 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import insert, select, update
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC
-from db_models import Moderators
-from db_models2 import ActionEvents, EvaluationEvents
+from db_models2 import Moderators, ActionEvents, EvaluationEvents
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import ModeratorEventType
 from infra.db import get_db_sess
@@ -18,8 +17,7 @@ from infra.kafka import AsyncKafkaConsumer
 
 class ModeratorEventHandler:
     def __init__(self, batch_size: int = 100):
-        """_summary_
-
+        """
         Args:
             batch_size (int, optional): The quantity of messages to be taken into account
                 when calculating the user's behaviour score. Defaults to 100.
