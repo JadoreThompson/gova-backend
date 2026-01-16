@@ -6,6 +6,7 @@ docker/prod-compose.parsed.yaml
 app.log
 misc
 rec.py
+alembic.ini
 
 .env
 .env.prod
