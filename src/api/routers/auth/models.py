@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-from enums import MessagePlatform, PricingTierType
+from enums import MessagePlatform, PricingTier
 from models import CustomBaseModel
 
 
@@ -42,6 +42,11 @@ class UserLogin(CustomBaseModel):
     email: str | None = None
     password: str
 
+    def model_post_init(self, context):
+        if not self.username and not self.email:
+            raise ValueError("Either email or username must be provided.")
+        return self
+
 
 class UserConnection(BaseModel):
     username: str
@@ -50,7 +55,7 @@ class UserConnection(BaseModel):
 
 class UserMe(CustomBaseModel):
     username: str
-    pricing_tier: PricingTierType
+    pricing_tier: PricingTier
     connections: dict[MessagePlatform, UserConnection]
 
 

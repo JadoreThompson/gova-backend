@@ -1,52 +1,72 @@
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 
-from enums import MessagePlatform, ModeratorStatus
+from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from models import CustomBaseModel
-from engine.discord.config import DiscordConfig
 
 
-class ModeratorBase(CustomBaseModel):
-    name: str
-    guideline_id: UUID
+class ModeratorCreate(BaseModel):
+    """Request model for creating a new moderator."""
 
-
-class DiscordConfigBody(DiscordConfig):
-    guild_id: str
-    allowed_channels: tuple[str, ...]
-
-    @field_validator("guild_id", mode="before")
-    def validate_guild_id(cls, v):
-        if isinstance(v, str):
-            return v
-        if isinstance(v, int):
-            return str(v)
-        raise ValueError(f"Invalid type '{type(v)}' for guild_id")
-
-
-class ModeratorCreate(ModeratorBase):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=200)
     platform: MessagePlatform
     platform_server_id: str
-    conf: DiscordConfigBody
+    conf: dict[str, Any]
 
 
-class ModeratorResponse(ModeratorBase):
+class ModeratorResponse(CustomBaseModel):
+    """Response model for moderator data."""
+
     moderator_id: UUID
+    name: str
+    description: str | None
     platform: MessagePlatform
     platform_server_id: str
-    conf: DiscordConfig
+    conf: dict[str, Any]
     status: ModeratorStatus
     created_at: datetime
 
 
-class MessageChartData(CustomBaseModel):
+class ModeratorUpdate(BaseModel):
+    """Request model for updating a moderator."""
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=200)
+    conf: dict[str, Any] | None = None
+
+
+class ActionResponse(CustomBaseModel):
+    """Response model for action data."""
+
+    action_id: UUID
+    event_id: UUID
+    moderator_id: UUID
+    platform_user_id: str | None
+    action_type: str
+    action_params: dict[str, Any] | None
+    context: dict[str, Any]
+    status: ActionStatus
+    reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    executed_at: datetime | None
+
+
+class BarChartData(BaseModel):
+    """Bar chart data point for stats."""
+
     date: date
-    counts: dict[MessagePlatform, int]
+    evaluations_count: int
+    actions_count: int
 
 
 class ModeratorStats(BaseModel):
-    total_messages: int
-    total_actions: int
-    message_chart: list[MessageChartData]
+    """Stats response for a moderator."""
+
+    evaluations_count: int
+    actions_count: int
+    bar_chart: list[BarChartData]

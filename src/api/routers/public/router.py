@@ -1,12 +1,12 @@
-from fastapi import APIRouter, BackgroundTasks, status
+from fastapi import APIRouter, BackgroundTasks
 
 from config import CUSTOMER_SUPPORT_EMAIL
-from core.services import EmailService
+from services.email import BrevoEmailService
 from .models import ContactForm
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
-email_service = EmailService(
+email_service = BrevoEmailService(
     sender_name="Gova Support", sender_email="support@gova.chat"
 )
 

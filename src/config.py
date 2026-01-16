@@ -2,11 +2,12 @@ import logging
 import os
 import sys
 from datetime import timedelta
+from typing import NamedTuple
 
 import stripe
 from dotenv import load_dotenv
 
-from enums import PricingTierType
+from enums import PricingTier
 
 
 # Paths & Environment
@@ -33,7 +34,7 @@ KAFKA_HOST = os.getenv("KAFKA_HOST")
 KAFKA_PORT = int(os.getenv("KAFKA_PORT"))
 KAFKA_BOOTSTRAP_SERVERS = f"{KAFKA_HOST}:{KAFKA_PORT}"
 KAFKA_MODERATOR_EVENTS_TOPIC = os.getenv("KAFKA_MODERATOR_EVENTS_TOPIC")
-KAKFA_ACTION_EVENTS_TOPIC =  os.getenv("KAKFA_ACTION_EVENTS_TOPIC")
+KAKFA_ACTION_EVENTS_TOPIC = os.getenv("KAKFA_ACTION_EVENTS_TOPIC")
 
 
 # Redis
@@ -119,28 +120,35 @@ COOKIE_ALIAS = "app-cookie"
 
 JWT_ALGO = os.getenv("JWT_ALGO")
 JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY = timedelta(seconds=int(os.getenv("JWT_EXPIRY_SECS")))
+JWT_EXPIRY_SECS = timedelta(seconds=int(os.getenv("JWT_EXPIRY_SECS")))
 
 PW_HASH_SALT = os.getenv("PW_HASH_SALT")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 ENCRYPTION_IV_LEN = int(os.getenv("ENCRYPTION_IV_LEN"))
 
 
-# Pricing Plans
-PRICING_TIER_LIMITS = {
-    PricingTierType.FREE: {
-        "max_messages": 1_000,
-        "max_moderators": 1,
-    },
-    PricingTierType.PRO: {
-        "max_messages": 10_000,
-        "max_moderators": 5,
-    },
-    PricingTierType.ENTERPRISE: {
-        "max_messages": 100_000,
-        "max_moderators": 50,
-    },
-}
+# Pricing Tiers
+class TierLimit(NamedTuple):
+    max_messages: int
+    max_moderators: int
+    max_concurrent: int
+
+
+class PricingTierLimits:
+    _TIER_LIMITS = {
+        PricingTier.FREE: TierLimit(
+            max_messages=1000, max_moderators=3, max_concurrent=1
+        ),
+        PricingTier.PRO: TierLimit(
+            max_messages=1000, max_moderators=3, max_concurrent=1
+        ),
+    }
+
+    @classmethod
+    def get(cls, pricing_tier: PricingTier) -> TierLimit:
+        if pricing_tier not in cls._TIER_LIMITS:
+            raise ValueError(f"Missing tier limits for {pricing_tier}")
+        return cls._TIER_LIMITS[pricing_tier]
 
 
 # Logging

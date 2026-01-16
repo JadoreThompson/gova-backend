@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
-from enums import PricingTierType
+from enums import PricingTier
 from db_models import Users
 from api.dependencies import depends_db_sess, depends_jwt
 from api.services import StripeEventHandler
@@ -27,7 +27,7 @@ async def get_payment_link(
     """Generate a Stripe Checkout link for a given user and pricing tier."""
 
     # Prevent upgrading to the same tier
-    if jwt.pricing_tier == PricingTierType.PRO:
+    if jwt.pricing_tier == PricingTier.PRO:
         raise HTTPException(status_code=400, detail="User already has PRO access.")
 
     user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
@@ -76,7 +76,9 @@ async def get_payment_link(
     return {"url": checkout_session.url}
 
 
-@router.post("/stripe/webhook",)
+@router.post(
+    "/stripe/webhook",
+)
 async def stripe_webhook(req: Request):
     """Stripe webhook endpoint for handling subscription events."""
     sig_header = req.headers.get("stripe-signature")

@@ -1,10 +1,9 @@
 from enum import Enum
 
 
-class PricingTierType(int, Enum):
+class PricingTier(int, Enum):
     FREE = 0
     PRO = 1
-    ENTERPRISE = 2
 
 
 class MessagePlatform(str, Enum):

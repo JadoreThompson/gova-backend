@@ -11,9 +11,8 @@ from infra import DiscordClientManager, KafkaManager
 from infra.db import smaker
 from infra.discord_client_manager import DiscordClientManager
 from infra.kafka_manager import KafkaManager
-from server.exc import JWTError
-from server.services import JWTService
-from server.typing import JWTPayload
+from services.jwt import JWTService, JWTError
+from .types import JWTPayload
 
 
 T = TypeVar("T")
@@ -28,7 +27,7 @@ async def depends_db_sess():
             raise
 
 
-def depends_jwt(is_authenticated: bool = True):
+def depends_jwt(is_verified: bool = True):
     """Verify the JWT token from the request cookies and validate it."""
 
     async def func(req: Request) -> JWTPayload:
@@ -46,7 +45,7 @@ def depends_jwt(is_authenticated: bool = True):
         if not token:
             raise JWTError("Authentication token is missing")
 
-        return await JWTService.validate_jwt(token, is_authenticated=is_authenticated)
+        return await JWTService.validate_jwt(token, is_authenticated=is_verified)
 
     return func
 

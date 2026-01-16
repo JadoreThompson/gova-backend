@@ -1,12 +1,14 @@
 import aiohttp
 import requests
 
+from config import BREVO_API_KEY
+
 from .base import BaseEmailService
 from .exc import EmailServiceException
 
 
 class BrevoEmailService(BaseEmailService):
-    def __init__(self, sender_name, sender_email, *, api_key: str):
+    def __init__(self, sender_name, sender_email, *, api_key: str = BREVO_API_KEY):
         super().__init__(sender_name, sender_email)
 
         self._http_sess: aiohttp.ClientSession | None = None

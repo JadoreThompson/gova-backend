@@ -13,7 +13,7 @@ from config import (
     PRICING_TIER_LIMITS,
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
 )
-from enums import ModeratorEventType, ModeratorStatus, PricingTierType
+from enums import ModeratorEventType, ModeratorStatus, PricingTier
 from core.events import (
     DeadModeratorEvent,
     EvaluationCreatedModeratorEvent,
@@ -38,7 +38,7 @@ class EventLoggerRunner(BaseRunner):
         super().__init__("Event Logger")
         self.logger = logging.getLogger("event_logger")
         self._message_counts: dict[UUID, int] = {}
-        self._moderator_users: dict[UUID, (UUID, PricingTierType)] = {}
+        self._moderator_users: dict[UUID, (UUID, PricingTier)] = {}
         self._event_class_map: dict[ModeratorEventType, Type[ModeratorEvent]] = {
             ModeratorEventType.START: StartModeratorEvent,
             ModeratorEventType.ALIVE: ModeratorEvent,
@@ -125,7 +125,7 @@ class EventLoggerRunner(BaseRunner):
             return res.all()
 
     @staticmethod
-    def _fetch_user(moderator_id: UUID) -> tuple[UUID, PricingTierType] | None:
+    def _fetch_user(moderator_id: UUID) -> tuple[UUID, PricingTier] | None:
         with get_db_sess_sync() as db_sess:
             return db_sess.scalar(
                 select(Moderators.user_id).where(

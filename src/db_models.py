@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from enums import ModeratorStatus, PricingTierType
+from enums import ModeratorStatus, PricingTier
 from utils import get_datetime
 
 
@@ -38,7 +38,7 @@ class Users(Base):
     jwt: Mapped[str] = mapped_column(String, nullable=True)
     discord_oauth: Mapped[str] = mapped_column(String, nullable=True)
     pricing_tier: Mapped[str] = mapped_column(
-        Integer, nullable=False, default=PricingTierType.FREE.value
+        Integer, nullable=False, default=PricingTier.FREE.value
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
@@ -52,7 +52,7 @@ class Users(Base):
         default=get_datetime,
         onupdate=get_datetime,
     )
-    authenticated_at: Mapped[datetime] = mapped_column(
+    verified_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

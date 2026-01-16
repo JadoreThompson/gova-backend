@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from enums import MessagePlatform
-from db_models import Users
 from api.dependencies import depends_db_sess, depends_jwt
-from api.services import DiscordService, EncryptionService
 from api.types import JWTPayload
-from .models import Guild, GuildChannel
+from db_models import Users
+from enums import MessagePlatform
+from services.discord import DiscordService, Guild, GuildChannel
+from services.encryption import EncryptionService
 
 
 router = APIRouter(prefix="/connections", tags=["Connections"])

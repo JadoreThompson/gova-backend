@@ -5,7 +5,7 @@ from sqlalchemy import UUID, Float, Integer, String, DateTime, ForeignKey, text
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from enums import ActionStatus, MessagePlatform, ModeratorStatus, PricingTierType
+from enums import ActionStatus, MessagePlatform, ModeratorStatus, PricingTier
 from utils import get_datetime
 
 
@@ -39,7 +39,7 @@ class Users(Base):
     jwt: Mapped[str] = mapped_column(String, nullable=True)
     discord_oauth_payload: Mapped[str] = mapped_column(String, nullable=True)
     pricing_tier: Mapped[str] = mapped_column(
-        Integer, nullable=False, default=PricingTierType.FREE.value
+        Integer, nullable=False, default=PricingTier.FREE.value
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
@@ -72,12 +72,10 @@ class Moderators(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(String(200), nullable=True)
     platform: Mapped[MessagePlatform] = mapped_column(String, nullable=False)
     platform_server_id: Mapped[str] = mapped_column(String, nullable=False)
     conf: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    guideline_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("guidelines.guideline_id"), nullable=False
-    )
     status: Mapped[str] = mapped_column(
         String, default=ModeratorStatus.OFFLINE.value, nullable=False
     )

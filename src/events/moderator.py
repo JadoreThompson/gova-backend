@@ -45,7 +45,7 @@ class DeadModeratorEvent(BaseEvent):
     reason: str | None = None
 
 
-class UpdateModeratorConfigEvent(BaseEvent, Generic[C]):
+class UpdateConfigModeratorEvent(BaseEvent, Generic[C]):
     type: Literal[ModeratorEventType.UPDATE_CONFIG] = ModeratorEventType.UPDATE_CONFIG
     moderator_id: uuid.UUID
     config: C

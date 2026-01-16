@@ -4,19 +4,18 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from config import DOMAIN, SCHEME, SUB_DOMAIN
-from infra import KafkaManager, DiscordClientManager
-from api.exceptions import JWTError
 from api.middlewares import RateLimitMiddleware
 from api.routers.actions.router import router as action_router
 from api.routers.auth.router import router as auth_router
 from api.routers.connections.router import router as connections_router
-from api.routers.guidelines.router import router as guidelines_router
 from api.routers.moderators.router import router as moderators_router
 from api.routers.payments.router import router as payments_router
 from api.routers.public.router import router as public_router
-from api.services import DiscordService
-from api.services.encryption_service import EncryptionError
+from config import DOMAIN, SCHEME, SUB_DOMAIN
+from infra import KafkaManager, DiscordClientManager
+from services.discord import DiscordService
+from services.encryption import EncryptionError
+from services.jwt import JWTError
 
 
 async def lifespan(app: FastAPI):
@@ -50,7 +49,6 @@ app.add_middleware(RateLimitMiddleware)
 app.include_router(action_router)
 app.include_router(auth_router)
 app.include_router(connections_router)
-app.include_router(guidelines_router)
 app.include_router(moderators_router)
 app.include_router(payments_router)
 app.include_router(public_router)

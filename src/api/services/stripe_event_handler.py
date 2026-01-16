@@ -18,7 +18,7 @@ from config import (
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
     STRIPE_PRICING_PRO_WEBHOOOK_SECRET,
 )
-from enums import CoreEventType, ModeratorStatus, PricingTierType
+from enums import CoreEventType, ModeratorStatus, PricingTier
 from core.services import EmailService
 from db_models import Moderators, Users
 from infra.db import get_db_sess
@@ -105,7 +105,7 @@ class StripeEventHandler:
 
             user = await db_sess.scalar(
                 update(Users)
-                .values(pricing_tier=PricingTierType.FREE.value)
+                .values(pricing_tier=PricingTier.FREE.value)
                 .where(user_lookup_condition)
                 .returning(Users)
             )
@@ -193,7 +193,7 @@ class StripeEventHandler:
                 )
                 return False
 
-            user.pricing_tier = PricingTierType.PRO.value
+            user.pricing_tier = PricingTier.PRO.value
             user.stripe_customer_id = customer_id
             user_id, username, email = user.user_id, user.username, user.email
             await db_sess.commit()
@@ -289,7 +289,7 @@ class StripeEventHandler:
         async with get_db_sess() as db_sess:
             user = await db_sess.scalar(
                 update(Users)
-                .values(pricing_tier=PricingTierType.FREE.value)
+                .values(pricing_tier=PricingTier.FREE.value)
                 .where(Users.stripe_customer_id == customer_id)
                 .returning(Users)
             )

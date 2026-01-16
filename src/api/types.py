@@ -1,33 +1,19 @@
-from dataclasses import dataclass
-from datetime import datetime
 from typing import NamedTuple
 from uuid import UUID
 
-from enums import PricingTierType
+from enums import PricingTier
+from models import CustomBaseModel
 
 
-@dataclass
-class JWTPayload:
+class JWTPayload(CustomBaseModel):
     sub: UUID
     em: str
-    exp: datetime
-    pricing_tier: PricingTierType
-    authenticated: bool
+    exp: int
+    pricing_tier: PricingTier
+    is_verified: bool
 
 
 class Identity(NamedTuple):
     username: str | None
     avatar: str | None
     success: bool
-
-
-# TODO: Convert to base model and move to shared
-class Guild(NamedTuple):
-    id: str
-    name: str
-    icon: str | None
-
-
-class GuildChannel(NamedTuple):
-    id: str
-    name: str
