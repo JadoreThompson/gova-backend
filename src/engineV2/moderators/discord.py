@@ -5,7 +5,6 @@ from typing import Any, Awaitable, Callable
 
 from engineV2.actions.discord import BaseDiscordPerformedAction, DiscordActionType
 from engineV2.actions.registry import PerformedActionRegistry
-from engineV2.agents import ReviewAgent
 from engineV2.agents.chat_summary import ChatSummaryAgent
 from engineV2.agents.review import ReviewAgentAction, ReviewAgentOutput
 from engineV2.configs.discord import DiscordModeratorConfig
@@ -45,16 +44,18 @@ class DiscordModerator:
         self,
         moderator_id: uuid.UUID,
         config: DiscordModeratorConfig,
-        on_action_performed: Callable[
-            [BaseDiscordPerformedAction], Awaitable[Any]
-        ] = None,
         max_channel_msgs: int = 100,
+        on_action_performed: (
+            Callable[[BaseDiscordPerformedAction], Awaitable[Any]] | None
+        ) = None,
+        on_closed: Callable[[str | None], Awaitable[Any]] | None = None,
     ):
         self._moderator_id = moderator_id
         self._config = config
         self._guild_id = config.guild_id
         self._channels = set(config.channel_ids)
         self.on_action_performed = on_action_performed
+        self.on_closed = on_closed
 
         self._channel_msgs: dict[int, deque[DiscordMessageContext]] = defaultdict(
             lambda: deque(maxlen=max_channel_msgs)
@@ -136,9 +137,11 @@ class DiscordModerator:
         if self.on_action_performed is not None:
             await self.on_action_performed(performed_action)
 
-    async def close(self):
+    async def close(self, reason: str | None = None):
         async with self._closed_lock:
             self._closed = True
+            if self.on_closed is not None:
+                await self.on_closed(reason)
 
     def __eq__(self, value):
         if not isinstance(value, DiscordModerator):

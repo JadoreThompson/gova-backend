@@ -29,17 +29,6 @@ class CoreEventType(str, Enum):
     MODERATOR_EVENT = "moderator_event"
 
 
-class ModeratorEventType(str, Enum):
-    START = "start"
-    ALIVE = "alive"
-    KILL = "stop"
-    DEAD = "dead"
-    FAILED = "failed"
-    HEARTBEAT = "heartbeat"
-    ACTION_PERFORMED = "action"
-    EVALUATION_CREATED = "evaluation"
-    ERROR = "error"
-    WARNING = "warning"
 
 
 class LogSeverity(str, Enum):

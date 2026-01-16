@@ -1,10 +1,14 @@
 import asyncio
+import functools
 import logging
+import uuid
 
 from config import KAKFA_ACTION_EVENTS_TOPIC
+from core.events import DeadModeratorEvent
 from engineV2.actions.discord import BaseDiscordPerformedAction
 from engineV2.message_streams.discord import DiscordMessageStream
 from engineV2.moderators.discord import DiscordModerator
+from events.actions import ActionPerformedEvent
 from infra.kafka import AsyncKafkaProducer
 
 
@@ -28,13 +32,10 @@ class DiscordModeratorOrchestrator:
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
-        self._flush_task: asyncio.Task | None = None
-
         self._logger = logging.getLogger(type(self).__name__)
 
     def start(self) -> None:
         self._run_task = asyncio.create_task(self._run())
-        self._flush_task = asyncio.create_task(self._flush())
 
     async def _run(self) -> None:
         async for msg in self._msg_stream:
@@ -42,7 +43,15 @@ class DiscordModeratorOrchestrator:
             if mod is None:
                 continue
 
-            await mod.process_message(msg)
+            try:
+                await mod.process_message(msg)
+            except Exception:
+                error_msg = (
+                    "An error occured whilst processing message "
+                    f"for moderator '{mod.moderator_id}'"
+                )
+                self._logger.error(error_msg, exc_info=True)
+                await mod.close(mod.moderator_id, error_msg)
 
     async def stop(self) -> None:
         if self._run_task is not None and not self._run_task.done():
@@ -53,16 +62,17 @@ class DiscordModeratorOrchestrator:
                 pass
             self._run_task = None
 
-        if self._flush_task is not None and not self._flush_task.done():
-            self._flush_task.cancel()
-            await self._flush_task
-
     def add(self, moderator: DiscordModerator) -> bool:
         if (
             moderator not in self._moderators
             and len(self._moderators) < self.max_moderators
         ):
-            moderator.on_action_performed = self._on_action_performed
+            moderator.on_action_performed = functools.partial(
+                self._on_action_performed, moderator.moderator_id
+            )
+            moderator.on_closed = functools.partial(
+                self._on_moderator_closed, moderator.moderator_id
+            )
             self._moderators.add(moderator)
             return True
         return False
@@ -72,9 +82,19 @@ class DiscordModeratorOrchestrator:
             self._moderators.discard(moderator)
             self._guild_2_moderator.pop(moderator.guild_id)
 
-    async def _on_action_performed(self, action: BaseDiscordPerformedAction) -> None:
+    async def _on_action_performed(
+        self, moderator_id: uuid.UUID, action: BaseDiscordPerformedAction
+    ) -> None:
         """Event hook for moderators"""
         if self._kafka_producer is not None:
+            event = ActionPerformedEvent(moderator_id=moderator_id, action=action)
             await self._kafka_producer.send(
-                KAKFA_ACTION_EVENTS_TOPIC, action.model_dump_json().encode()
+                KAKFA_ACTION_EVENTS_TOPIC, event.model_dump_json().encode()
+            )
+
+    async def _on_moderator_closed(self, moderator_id: uuid.UUID, reason: str) -> None:
+        if self._kafka_producer is not None:
+            event = DeadModeratorEvent(moderator_id=moderator_id, reason=reason)
+            await self._kafka_producer.send(
+                KAKFA_ACTION_EVENTS_TOPIC, event.model_dump_json().encode()
             )

@@ -1,7 +1,10 @@
+import uuid
 from enum import Enum
-from .base import BaseEvent
+from typing import Literal
 
 from engineV2.actions.base import BasePerformedAction
+from .base import BaseEvent
+
 
 
 class ActionEventType(str, Enum):
@@ -9,6 +12,6 @@ class ActionEventType(str, Enum):
 
 
 class ActionPerformedEvent(BaseEvent):
-    type: ActionEventType.ACTION_PERFORMED
+    type: Literal[ActionEventType.ACTION_PERFORMED] = ActionEventType.ACTION_PERFORMED
+    moderator_id: uuid.UUID
     action: BasePerformedAction
-    reason: str  # Reason the action was taken
