@@ -11,5 +11,5 @@ from utils import get_datetime
 class BaseEvent(CustomBaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     type: Enum
-    timestamp: int = Field(default_factory=int(get_datetime().timestamp()))
+    timestamp: int = Field(default_factory=lambda: int(get_datetime().timestamp()))
     details: dict[str, Any] | None = None

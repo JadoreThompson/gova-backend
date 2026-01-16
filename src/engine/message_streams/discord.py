@@ -44,11 +44,14 @@ class DiscordMessageStream:
 
         @self._client.event
         async def on_message(msg: discord.Message):
+            self._logger.info(msg)
+            if msg.author.id == self._client.user.id:
+                return
             await self._queue.put(msg)
 
     async def __aiter__(self) -> AsyncGenerator[DiscordMessageContext, None]:
         if self._closed:
-            raise IterationInProgressException
+            raise IterationInProgressException()
 
         while not self._closed:
             try:
@@ -63,6 +66,7 @@ class DiscordMessageStream:
                     reply_to = DiscordMessageContext(
                         guild_id=ref.guild.id,
                         channel_id=ref.channel.id,
+                        channel_name=ref.channel.name,
                         user_id=ref.author.id,
                         content=msg.content,
                     )
@@ -70,6 +74,7 @@ class DiscordMessageStream:
             yield DiscordMessageContext(
                 guild_id=msg.guild.id,
                 channel_id=msg.channel.id,
+                channel_name=msg.channel.name,
                 user_id=msg.author.id,
                 content=msg.content,
                 reply_to=reply_to,

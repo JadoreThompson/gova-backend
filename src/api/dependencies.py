@@ -40,7 +40,7 @@ def depends_jwt(is_verified: bool = True):
         if not token:
             raise JWTError("Authentication token is missing")
 
-        return await JWTService.validate_jwt(token, is_authenticated=is_verified)
+        return await JWTService.validate_jwt(token, is_verified=is_verified)
 
     return func
 
@@ -52,6 +52,7 @@ async def depends_kafka_producer() -> AsyncGenerator[AIOKafkaProducer, None]:
 def CSVQuery(name: str, Typ: Type[T]):
     def func(req: Request) -> list[T]:
         vals = req.query_params.get(name)
-        return [Typ(val.strip()) for val in vals.strip().split(",")]
+        if vals:
+            return [Typ(val.strip()) for val in vals.strip().split(",")]
 
     return Depends(func)

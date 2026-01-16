@@ -16,4 +16,4 @@ WORKDIR /app
 
 RUN uv sync --locked
 
-CMD ["bash", "-c", "uv run src/main.py --mode=remote --reload=false"]
+ENTRYPOINT ["uv", "run", "src/main.py"]

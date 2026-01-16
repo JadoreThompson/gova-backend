@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     container_name: gova_postgres
     restart: always
     environment:
@@ -9,31 +9,9 @@ services:
     ports:
       - ${DB_PORT}:5432
     volumes:
-      - postgres:/var/lib/postgresql/data
+      - postgres:/var/lib/postgresql
     networks:
       - gova_network
-    entrypoint:
-      - bash
-      - -c
-      - |
-        # Install pgvector
-        apt-get update && apt-get install -y postgresql-16-pgvector && rm -rf /var/lib/apt/lists/*
-
-        # Start Postgres in the background
-        docker-entrypoint.sh postgres &
-
-        # Wait for Postgres to be ready
-        until pg_isready -h localhost -p ${DB_PORT} -U postgres; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-
-        echo "Postgres ready, creating pgvector extension..."
-        psql -U postgres -c "CREATE DATABASE ${DB_NAME};"
-        psql -U postgres -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-        # Keep Postgres running
-        wait -n
 
   kafka:
     image: apache/kafka:4.0.1
@@ -72,10 +50,11 @@ services:
     networks:
       - gova_network
 
-  backend:
+  orchestrator:
+    image: gova-backend-dev
     build:
-      dockerfile: dockerfile
-      context: .
+      dockerfile: docker/Dockerfile
+      context: ..
     container_name: gova_backend
     depends_on:
       - postgres
@@ -85,6 +64,7 @@ services:
       - 8000:8000
     networks:
       - gova_network
+    command: orchestrator run
 
 volumes:
   postgres:

@@ -3,7 +3,7 @@ import click
 from runners import RunnerConfig, run_runner, EventHandlerRunner
 
 
-@click.group()
+@click.group(name="event_handler")
 def event_handler():
     return
 

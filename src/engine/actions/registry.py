@@ -1,4 +1,5 @@
 from typing import Any, Type
+import uuid
 
 from engine.actions.base import BaseAction, BasePerformedAction
 from engine.agents.review import ReviewAgentAction
@@ -77,5 +78,5 @@ class PerformedActionRegistry:
             **defined_action.model_dump(exclude={"default_params"}),
             params=planned_action.params,
             reason=reason,
-            status=status,
+            status=status
         )

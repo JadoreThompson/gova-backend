@@ -8,9 +8,9 @@ from api.dependencies import depends_db_sess, depends_jwt
 from api.types import JWTPayload
 from db_models import ActionEvents, Moderators
 from enums import ActionStatus, MessagePlatform
-from engineV2.actions.discord import DiscordActionType
-from engineV2.contexts.discord import DiscordMessageContext
-from engineV2.params.discord import (
+from engine.actions.discord import DiscordActionType
+from engine.contexts.discord import DiscordMessageContext
+from engine.params.discord import (
     DiscordPerformedActionParamsReply,
     DiscordPerformedActionParamsTimeout,
     DiscordPerformedActionParamsKick,

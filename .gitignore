@@ -9,4 +9,5 @@ rec.py
 alembic.ini
 
 .env
+.env.dev
 .env.prod

@@ -1,6 +1,6 @@
 import click
 
-from engineV2.enums import MessagePlatform
+from engine.enums import MessagePlatform
 from runners import RunnerConfig, run_runner
 from runners.moderator_orchestrator_runner import ModeratorOrchestratorRunner
 

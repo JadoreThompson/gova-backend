@@ -4,8 +4,8 @@ from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
-from engineV2.actions.base import BasePerformedAction
-from engineV2.contexts.discord import DiscordMessageContext
+from engine.actions.base import BasePerformedAction
+from engine.contexts.discord import DiscordMessageContext
 from events.base import BaseEvent
 
 
@@ -77,5 +77,6 @@ class ActionPerformedModeratorEvent(BaseEvent):
     )
     action_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     moderator_id: uuid.UUID
+    evaluation_id: uuid.UUID
     action: BasePerformedAction
     ctx: DiscordMessageContext

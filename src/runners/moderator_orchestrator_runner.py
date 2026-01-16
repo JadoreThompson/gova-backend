@@ -1,8 +1,10 @@
 import asyncio
 import json
+import logging
 import uuid
 
 import discord
+from pydantic import BaseModel
 
 from config import DISCORD_BOT_TOKEN, KAFKA_MODERATOR_EVENTS_TOPIC
 from db_models import Moderators
@@ -15,6 +17,7 @@ from engine.orchestrators.discord import DiscordModeratorOrchestrator
 from events.moderator import (
     AliveModeratorEvent,
     ConfigUpdatedModeratorEvent,
+    DeadModeratorEvent,
     ModeratorEventType,
 )
 from infra.db import get_db_sess
@@ -28,7 +31,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
     def __init__(self, platform: MessagePlatform):
         super().__init__()
         self._platform = platform
-        self._producer: AsyncKafkaProducer = AsyncKafkaProducer()
+        self._kafka_producer: AsyncKafkaProducer | None = None
 
         self._client: discord.Client | None = None
         self._client_task: asyncio.Task | None = None
@@ -37,6 +40,8 @@ class ModeratorOrchestratorRunner(BaseRunner):
         self._moderators: dict[uuid.UUID, DiscordModerator] = {}
         self._stream: DiscordMessageStream | None = None
         self._action_handler: DiscordActionHandler | None = None
+
+        self._logger = logging.getLogger(type(self).__name__)
 
     def _setup(self):
         # Configuring discord client
@@ -54,12 +59,18 @@ class ModeratorOrchestratorRunner(BaseRunner):
             self._client.start(token=DISCORD_BOT_TOKEN)
         )
 
-    async def run(self):
+    def run(self):
+        asyncio.run(self._run())
+
+    async def _run(self):
         self._setup()
         consumer = AsyncKafkaConsumer(KAFKA_MODERATOR_EVENTS_TOPIC)
+        self._kafka_producer = AsyncKafkaProducer()
 
         try:
             await consumer.start()
+            await self._kafka_producer.start()
+            self._orchestrator.start()
 
             async for msg in consumer:
                 try:
@@ -77,7 +88,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
                         event = ConfigUpdatedModeratorEvent(
                             moderator_id=moderator_id, config=event_data["config"]
                         )
-                        await self._producer.send(
+                        await self._kafka_producer.send(
                             KAFKA_MODERATOR_EVENTS_TOPIC,
                             event.model_dump_json().encode(),
                         )
@@ -87,6 +98,14 @@ class ModeratorOrchestratorRunner(BaseRunner):
 
         finally:
             await consumer.stop()
+            await self._orchestrator.stop()
+
+            for mod in list(self._moderators.values()):
+                event = {"moderator_id": mod.moderator_id, "reason": "Service crashed"}
+                await self._handle_stop_moderator(event)
+
+            await self._kafka_producer.stop()
+
             if not self._client_task.done():
                 self._client_task.cancel()
                 try:
@@ -113,17 +132,16 @@ class ModeratorOrchestratorRunner(BaseRunner):
             moderator_id,
             DiscordModeratorConfig(**db_mod.conf),
             self._action_handler,
+            self._kafka_producer,
             max_channel_msgs=100,
         )
         success = self._orchestrator.add(mod)
         if success:
             self._moderators[moderator_id] = mod
+        self._logger.info(f"Moderator id={moderator_id} added")
 
         event = AliveModeratorEvent(moderator_id=moderator_id)
-
-        await self._producer.send(
-            KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json().encode()
-        )
+        await self._emit_event(event)
 
     async def _handle_stop_moderator(self, event):
         moderator_id = event["moderator_id"]
@@ -133,3 +151,10 @@ class ModeratorOrchestratorRunner(BaseRunner):
         mod = self._moderators.pop(moderator_id)
         self._orchestrator.remove(mod)
         await mod.close(event["reason"])
+        event = DeadModeratorEvent(moderator_id=moderator_id, reason=event["reason"])
+        await self._emit_event(event)
+
+    async def _emit_event(self, event: BaseModel) -> None:
+        await self._kafka_producer.send(
+            KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json().encode()
+        )

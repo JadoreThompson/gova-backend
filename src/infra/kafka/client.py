@@ -1,5 +1,5 @@
-import kafka
 import aiokafka
+import kafka
 
 from config import KAFKA_BOOTSTRAP_SERVERS
 

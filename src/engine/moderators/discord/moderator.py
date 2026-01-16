@@ -2,10 +2,12 @@ import logging
 import uuid
 import asyncio
 from collections import defaultdict, deque
-from typing import Any, Awaitable, Callable
 
+from pydantic import BaseModel
+
+from config import KAFKA_MODERATOR_EVENTS_TOPIC
 from engine.action_handlers.discord.exceptions import DiscordActionHandlerError
-from engine.actions.discord import BaseDiscordPerformedAction, DiscordActionType
+from engine.actions.discord import DiscordActionType
 from engine.actions.registry import PerformedActionRegistry
 from engine.action_handlers.discord import DiscordActionHandler
 from engine.agents.chat_summary import ChatSummaryAgent
@@ -18,6 +20,12 @@ from engine.params.discord import (
     DiscordPerformedActionParamsTimeout,
 )
 from enums import ActionStatus
+from events.moderator import (
+    ActionPerformedModeratorEvent,
+    DeadModeratorEvent,
+    EvaluationCreatedModeratorEvent,
+)
+from infra.kafka.client import AsyncKafkaProducer
 from .models import DiscordReviewAgentOutput
 
 
@@ -42,15 +50,8 @@ class DiscordModerator:
         moderator_id: uuid.UUID,
         config: DiscordModeratorConfig,
         action_handler: DiscordActionHandler,
+        kafka_producer: AsyncKafkaProducer | None = None,
         max_channel_msgs: int = 100,
-        on_action_performed: (
-            Callable[
-                [BaseDiscordPerformedAction, DiscordMessageContext], Awaitable[Any]
-            ]
-            | None
-        ) = None,
-        on_evaluation_created: Callable[[int, float], Awaitable[Any]] | None = None,
-        on_closed: Callable[[str | None], Awaitable[Any]] | None = None,
     ):
         """Initialize a Discord moderator instance.
 
@@ -58,19 +59,15 @@ class DiscordModerator:
             moderator_id: Unique identifier for the moderator.
             config: Configuration object containing guild, channels, and actions.
             action_handler: Interface used to perform the actions
-            max_channel_msgs: Maximum number of messages to keep in memory per channel.
-            on_action_performed: Callback triggered when an action is performed.
-            on_evaluation_created: Callback triggered when an evaluation is created.
-            on_closed: Callback triggered when the moderator is closed.
+            max_channel_msgs: Maximum number of messages to keep in memory per channel            
         """
         self._moderator_id = moderator_id
         self._config = config
         self._action_handler = action_handler
+        self._kafka_producer = kafka_producer
+
         self._guild_id = config.guild_id
         self._channels = set(config.channel_ids)
-        self.on_action_performed = on_action_performed
-        self.on_evaluation_created = on_evaluation_created
-        self.on_closed = on_closed
 
         self._channel_msgs: dict[int, deque[DiscordMessageContext]] = defaultdict(
             lambda: deque(maxlen=max_channel_msgs)
@@ -92,7 +89,7 @@ class DiscordModerator:
         self._closed = False
         self._closed_lock = asyncio.Lock()
 
-        self._logger = logging.getLogger(f"{type(self).__name__-{moderator_id}}")
+        self._logger = logging.getLogger(f"{type(self).__name__}-{moderator_id}")
 
     @property
     def moderator_id(self) -> uuid.UUID:
@@ -150,9 +147,11 @@ class DiscordModerator:
             user_prompt = self._chat_summary_agent.build_user_prompt(
                 server_summary=server_summary,
                 messages=list(msgs),
-                channel_summary=self._channel_summaries.get(channel_id),
+                chat_summary=self._channel_summaries.get(channel_id),
             )
             res = await self._chat_summary_agent.run(user_prompt)
+            self._logger.info(f"\nChannel Summary\n{res.output}")
+            print("\n\n")
             channel_summary = res.output.summary
             self._channel_summaries[channel_id] = channel_summary
 
@@ -165,11 +164,22 @@ class DiscordModerator:
                 action_params=self._action_params,
             )
             res = await self._review_agent.run(user_prompt)
+            print(user_prompt)
+            self._logger.info(f"\nReview Agent\n{res.output}")
             review_output = res.output
 
-            if review_output.action is None:
-                return
+            
+        eval_event = EvaluationCreatedModeratorEvent(
+            moderator_id=self._moderator_id,
+            user_id=str(ctx.user_id),
+            severity_score=review_output.severity_score,
+            ctx=ctx,
+        )
+        await self._emit_event(eval_event)
 
+        if review_output.action is None:
+            return
+        
         # Performing action
         action_type = review_output.action.type
         if action_type == DiscordActionType.REPLY:
@@ -186,11 +196,6 @@ class DiscordModerator:
             return
 
         defined_action = self._type_2_defined_action[review_output.action.type]
-
-        if self.on_evaluation_created is not None:
-            await self.on_evaluation_created(
-                ctx.user_id, review_output.severity_score, ctx
-            )
 
         error_msg = None
         if defined_action.requires_approval:
@@ -211,8 +216,15 @@ class DiscordModerator:
         )
         performed_action.error_msg = error_msg
 
-        if self.on_action_performed is not None:
-            await self.on_action_performed(performed_action, ctx)
+        action_event = ActionPerformedModeratorEvent(
+            moderator_id=self._moderator_id, action=performed_action, ctx=ctx, evaluation_id=eval_event.id
+        )
+        await self._emit_event(action_event)
+
+    async def _emit_event(self, event: BaseModel) -> None:
+        await self._kafka_producer.send(
+            KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json().encode()
+        )
 
     async def close(self, reason: str | None = None):
         """Close the moderator and stop processing messages.
@@ -222,10 +234,5 @@ class DiscordModerator:
         """
         async with self._closed_lock:
             self._closed = True
-            if self.on_closed is not None:
-                await self.on_closed(reason)
-
-    def __eq__(self, value) -> bool:
-        if not isinstance(value, DiscordModerator):
-            return False
-        return value._moderator_id == self._moderator_id
+            event = DeadModeratorEvent(moderator_id=self._moderator_id, reason=reason)
+            await self._emit_event(event)

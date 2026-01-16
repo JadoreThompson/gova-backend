@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from engineV2.configs.discord import DiscordModeratorConfig
+from engine.configs.discord import DiscordModeratorConfig
 from enums import MessagePlatform
 
 

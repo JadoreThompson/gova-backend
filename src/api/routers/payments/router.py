@@ -12,6 +12,7 @@ from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
 from db_models import Users
 from enums import PricingTier
 from services.stripe import StripeService, StripeVerificationError
+from utils import get_datetime
 
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -64,7 +65,7 @@ async def get_payment_link(
             mode="subscription",
             success_url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/profile",
             cancel_url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/profile",
-            expires_at=int(datetime.now().timestamp() + 3600),
+            expires_at=int(get_datetime().timestamp() + 3600),
             metadata={"user_id": str(jwt.sub)},
         )
     except Exception as e:

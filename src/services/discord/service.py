@@ -25,7 +25,7 @@ class DiscordService:
     @classmethod
     def start(cls) -> None:
         if cls._logger is None:
-            cls._logger = cls.__name__
+            cls._logger = logging.getLogger(cls.__name__)
 
         intents = discord.Intents.default()
         cls.client = discord.Client(intents=intents)

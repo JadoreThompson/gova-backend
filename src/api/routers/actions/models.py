@@ -10,7 +10,6 @@ class ActionResponse(CustomBaseModel):
     """Response model for action data."""
 
     action_id: UUID
-    event_id: UUID
     moderator_id: UUID
     platform_user_id: str | None
     action_type: str

@@ -19,35 +19,14 @@ services:
           - node.role == manager # Swarm manager node
 
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     networks:
       - gova_network
     volumes:
-      - postgres:/var/lib/postgresql/data
-    entrypoint:
-      - bash
-      - -c
-      - |
-        # Install pgvector
-        apt-get update && apt-get install -y postgresql-16-pgvector && rm -rf /var/lib/apt/lists/*
-
-        # Start Postgres in the background
-        docker-entrypoint.sh postgres &
-
-        until pg_isready; do
-          echo "Postgres is unavailable - sleeping"
-          sleep 2
-        done
-
-        echo "Postgres ready, creating database and pgvector extension..."
-        psql -U postgres -c "CREATE DATABASE ${DB_NAME};" 2>/dev/null || echo "Database already exists"
-        psql -U postgres -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-        # Keep Postgres running
-        wait -n
+      - postgres:/var/lib/postgresql
 
   kafka:
     image: apache/kafka:4.0.1

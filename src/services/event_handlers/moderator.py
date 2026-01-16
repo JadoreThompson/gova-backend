@@ -126,7 +126,7 @@ class ModeratorEventHandler:
                 insert(EvaluationEvents).values(
                     event_id=event["id"],
                     moderator_id=moderator_id,
-                    platform_user_id=user_id,
+                    platform_user_id=str(user_id),
                     severity_score=severity_score,
                     behaviour_score=behaviour_score,
                     context=event["ctx"],
@@ -142,12 +142,17 @@ class ModeratorEventHandler:
 
         async with get_db_sess() as db_sess:
             created_at = datetime.fromtimestamp(event["timestamp"], UTC)
+            platform_user_id = action["params"].get("user_id")
+            if platform_user_id:
+                platform_user_id = str(platform_user_id)
+
             await db_sess.execute(
                 insert(ActionEvents).values(
                     action_id=event["action_id"],
                     event_id=event["id"],
+                    evaluation_id=event['evaluation_id'],
                     moderator_id=event["moderator_id"],
-                    platform_user_id=action["params"].get("user_id"),
+                    platform_user_id=platform_user_id,
                     action_type=action["type"],
                     action_params=action.get("params"),
                     context=ctx,

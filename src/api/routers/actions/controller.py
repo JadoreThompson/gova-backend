@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from engineV2.action_handlers.discord import DiscordActionHandler
+from engine.action_handlers.discord import DiscordActionHandler
 from services.discord import DiscordService
 
 

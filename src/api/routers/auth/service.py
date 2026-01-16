@@ -45,7 +45,6 @@ class AuthService:
         code = gen_verification_code()
         key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(user.user_id)}"
         await REDIS_CLIENT.delete(key)
-        # await REDIS_CLIENT.set(key, code, ex=REDIS_EXPIRY_SECS)
         ts = int(get_datetime().timestamp())
         await REDIS_CLIENT.set(
             key,
@@ -62,7 +61,7 @@ class AuthService:
             f"Your verification code is: {code}",
         )
 
-        rsp = await JWTService.set_user_cookie(user, db_sess)
+        rsp = await JWTService.set_persistant_jwt_cookie(user, db_sess)
         rsp.status_code = 202
         return rsp
 
@@ -83,7 +82,7 @@ class AuthService:
         except Argon2Error:
             raise HTTPException(status_code=400, detail="Invalid password.")
 
-        rsp = await JWTService.set_user_cookie(user, db_sess)
+        rsp = await JWTService.set_persistant_jwt_cookie(user, db_sess)
         if user.verified_at is None:
             rsp.status_code = 403
         return rsp
@@ -96,7 +95,6 @@ class AuthService:
         key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{user_id}"
         ts = int(get_datetime().timestamp())
 
-        # await REDIS_CLIENT.delete(key)
         prev = await REDIS_CLIENT.get(key)
         payload = None
 
@@ -147,7 +145,7 @@ class AuthService:
         await REDIS_CLIENT.delete(key)
         user = await db_sess.scalar(select(Users).where(Users.user_id == user_id))
         user.verified_at = get_datetime()
-        return await JWTService.set_user_cookie(user, db_sess)
+        return await JWTService.set_persistant_jwt_cookie(user, db_sess)
 
     @classmethod
     async def initiate_change_action(
@@ -264,7 +262,7 @@ class AuthService:
         await db_sess.execute(
             update(Users).where(Users.user_id == user_id).values(email=new_email)
         )
-        return await JWTService.set_user_cookie(user, db_sess)
+        return await JWTService.set_persistant_jwt_cookie(user, db_sess)
 
     @classmethod
     async def _handle_change_password(

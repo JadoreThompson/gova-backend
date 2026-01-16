@@ -16,7 +16,7 @@ PROJECT_PATH = os.path.dirname(BASE_PATH)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
-load_dotenv(os.path.join(PROJECT_PATH, ".env"))
+load_dotenv(os.path.join(PROJECT_PATH, ".env.dev"))
 
 IS_PRODUCTION = bool(int(os.getenv("IS_PRODUCTION", "0")))
 
@@ -81,20 +81,6 @@ LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME")
 MAX_RETRIES = 5
 
 
-# Prompts
-def load_prompt(filename: str) -> str:
-    with open(os.path.join(PROMPTS_PATH, filename), encoding="utf-8") as f:
-        return f.read()
-
-
-SECURITY_SYSTEM_PROMPT = load_prompt("security-system-prompt.txt")
-TOPICS_SYSTEM_PROMPT = load_prompt("topic-system-prompt.txt")
-SCORE_SYSTEM_PROMPT = load_prompt("score-system-prompt.txt")
-SCORE_PROMPT_TEMPLATE = load_prompt("score-prompt-template.txt")
-FINAL_SYSTEM_PROMPT = load_prompt("final-system-prompt.txt")
-FINAL_PROMPT_TEMPLATE = load_prompt("final-prompt-template.txt")
-
-
 # Email
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 CUSTOMER_SUPPORT_EMAIL = os.getenv("CUSTOMER_SUPPORT_EMAIL")
@@ -116,11 +102,11 @@ BASE_URL = f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}"
 
 
 # Authentication & Security
-COOKIE_ALIAS = "app-cookie"
+COOKIE_ALIAS = "gova-cookie"
 
 JWT_ALGO = os.getenv("JWT_ALGO")
 JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY_SECS = timedelta(seconds=int(os.getenv("JWT_EXPIRY_SECS")))
+JWT_EXPIRY_SECS = int(os.getenv("JWT_EXPIRY_SECS"))
 
 PW_HASH_SALT = os.getenv("PW_HASH_SALT")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")

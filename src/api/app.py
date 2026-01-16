@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     DiscordService.start()
     await asyncio.gather(KafkaManager.start())
 
-    yield app.state
+    yield
 
     await asyncio.gather(DiscordService.stop(), KafkaManager.stop())
 

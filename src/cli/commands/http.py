@@ -14,7 +14,7 @@ def http_run():
     config = RunnerConfig(
         cls=APIRunner,
         name="Server",
-        kwargs={"host": "localhost", "port": 8000, "reload": True},
+        kwargs={"host": "localhost", "port": 8000, "reload": False},
     )
 
     run_runner(config)

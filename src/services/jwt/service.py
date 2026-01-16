@@ -19,7 +19,7 @@ class JWTService:
         """Generates a JWT token"""
         if kwargs.get("exp") is None:
             kwargs["exp"] = int(
-                (datetime.now() + timedelta(seconds=JWT_EXPIRY_SECS)).timestamp()
+                (get_datetime() + timedelta(seconds=JWT_EXPIRY_SECS)).timestamp()
             )
         kwargs["sub"] = str(kwargs["sub"])
         payload = JWTPayload(**kwargs)
@@ -65,7 +65,8 @@ class JWTService:
         token = JWTService.generate_jwt(
             sub=user.user_id,
             em=user.email,
-            authenticated=user.verified_at is not None,
+            pricing_tier=user.pricing_tier,
+            is_verified=user.verified_at is not None,
             **kw,
         )
         if rsp is None:

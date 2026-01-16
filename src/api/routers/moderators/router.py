@@ -69,7 +69,6 @@ async def create_moderator(
     )
     db_sess.add(moderator)
     await db_sess.commit()
-    await db_sess.refresh(moderator)
 
     return ModeratorResponse(
         moderator_id=moderator.moderator_id,
@@ -180,9 +179,9 @@ async def get_moderator_stats(
 
     now = get_datetime()
     period_map = {
-        "1w": (now - timedelta(days=7), "day"),
-        "1m": (now - timedelta(weeks=4), "week"),
-        "1y": (now - timedelta(days=365), "month"),
+        "1w": (now - timedelta(days=6), "day"),
+        "1m": (now - timedelta(days=29), "week"),
+        "1y": (now - timedelta(days=364), "month"),
     }
     start_date, bucket_type = period_map[timeframe]
 
@@ -230,7 +229,7 @@ async def get_moderator_stats(
 
     act_buckets_query = (
         select(
-            date_trunc.label("bucket"),
+            func.date_trunc(bucket_type, ActionEvents.created_at).label("bucket"),
             func.count(ActionEvents.action_id).label("count"),
         )
         .where(
@@ -240,10 +239,8 @@ async def get_moderator_stats(
         .group_by("bucket")
     )
     act_result = await db_sess.execute(act_buckets_query)
-    act_buckets = {
-        row.bucket.date() if hasattr(row.bucket, "date") else row.bucket: row.count
-        for row in act_result
-    }
+
+    act_buckets = {row.bucket.date(): row.count for row in act_result}
 
     bar_chart = []
     for d in date_range:
@@ -337,21 +334,19 @@ async def update_moderator(
     if not moderator:
         raise HTTPException(status_code=404, detail="Moderator not found")
 
-    if moderator.status != ModeratorStatus.OFFLINE.value:
-        raise HTTPException(
-            status_code=400, detail="Moderator must be offline to update"
-        )
-
     event = None
     if body.conf is not None:
-        try:
-            validated_config = validate_config(moderator.platform, body.conf)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        if moderator.status != ModeratorStatus.OFFLINE:
+            try:
+                validated_config = validate_config(moderator.platform, body.conf)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
 
-        event = UpdateConfigModeratorEvent(
-            moderator_id=moderator_id, config=validated_config
-        )
+            event = UpdateConfigModeratorEvent(
+                moderator_id=moderator_id, config=validated_config
+            )
+        else:
+            moderator.conf = body.conf
 
     if body.name is not None:
         moderator.name = body.name
@@ -359,7 +354,6 @@ async def update_moderator(
         moderator.description = body.description
 
     await db_sess.commit()
-    await db_sess.refresh(moderator)
 
     if event is not None:
         await kafka_producer.send(KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json())

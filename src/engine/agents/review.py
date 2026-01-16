@@ -66,7 +66,7 @@ class ReviewAgent(BaseAgent):
     {message}
     </Message>
 
-    Here's the current summary of the last {n} messages sent within the channel.
+    Here's the current summary of the messages sent within the channel.
     
     <ChannelSummary>
     {channel_summary}
