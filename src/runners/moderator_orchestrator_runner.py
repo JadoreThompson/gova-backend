@@ -10,10 +10,10 @@ from config import DISCORD_BOT_TOKEN, KAFKA_MODERATOR_EVENTS_TOPIC
 from db_models import Moderators
 from engine.action_handlers.discord import DiscordActionHandler
 from engine.configs.discord import DiscordModeratorConfig
-from engine.enums import MessagePlatform
 from engine.message_streams.discord import DiscordMessageStream
 from engine.moderators.discord import DiscordModerator
 from engine.orchestrators.discord import DiscordModeratorOrchestrator
+from enums import MessagePlatform
 from events.moderator import (
     AliveModeratorEvent,
     ConfigUpdatedModeratorEvent,

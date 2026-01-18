@@ -165,7 +165,7 @@ class AuthService:
                 raise HTTPException(status_code=400, detail="Username already exists.")
             subject = "Confirm Your Username Change"
             target_email = email
-        if action == "change_email":
+        elif action == "change_email":
             existing_user = await db_sess.scalar(
                 select(Users).where(Users.email == new_value)
             )

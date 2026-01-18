@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Literal
 
-from engine.enums import MessagePlatform
+from enums import MessagePlatform
 from models import CustomBaseModel
 
 

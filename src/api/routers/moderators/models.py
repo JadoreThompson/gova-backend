@@ -8,7 +8,7 @@ from enums import MessagePlatform, ModeratorStatus
 from models import CustomBaseModel
 
 
-class ModeratorCreate(BaseModel):
+class ModeratorCreate(CustomBaseModel):
     """Request model for creating a new moderator."""
 
     name: str = Field(..., min_length=1, max_length=100)

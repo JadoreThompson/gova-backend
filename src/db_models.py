@@ -39,7 +39,7 @@ class Users(Base):
     jwt: Mapped[str] = mapped_column(String, nullable=True)
     discord_oauth_payload: Mapped[str] = mapped_column(String, nullable=True)
     pricing_tier: Mapped[str] = mapped_column(
-        Integer, nullable=False, default=PricingTier.FREE.value
+        String, nullable=False, default=PricingTier.FREE.value
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True

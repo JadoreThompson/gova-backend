@@ -2,13 +2,13 @@ from enum import Enum
 from typing import Literal
 
 from engine.actions.base import BaseAction, BasePerformedAction
-from engine.enums import MessagePlatform
 from engine.params.discord import (
     DiscordDefaultParamsTimeout,
     DiscordPerformedActionParamsKick,
     DiscordPerformedActionParamsReply,
     DiscordPerformedActionParamsTimeout,
 )
+from enums import MessagePlatform
 
 
 class DiscordActionType(str, Enum):
