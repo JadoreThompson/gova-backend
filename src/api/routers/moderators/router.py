@@ -374,6 +374,32 @@ async def update_moderator(
     )
 
 
+@router.delete("/{moderator_id}", status_code=204)
+async def delete_moderator(
+    moderator_id: UUID,
+    jwt: JWTPayload = Depends(depends_jwt()),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    """Delete a moderator. Only allowed if moderator is offline."""
+    moderator = await db_sess.scalar(
+        select(Moderators).where(
+            Moderators.moderator_id == moderator_id,
+            Moderators.user_id == jwt.sub,
+        )
+    )
+    if not moderator:
+        raise HTTPException(status_code=404, detail="Moderator not found")
+
+    if moderator.status != ModeratorStatus.OFFLINE.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete moderator that is not offline. Stop the moderator first."
+        )
+
+    await db_sess.delete(moderator)
+    await db_sess.commit()
+
+
 @router.post("/{moderator_id}/start", status_code=202)
 async def start_moderator(
     moderator_id: UUID,
