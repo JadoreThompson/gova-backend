@@ -22,15 +22,15 @@ async def get_owned_discord_guilds(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    if user.discord_oauth is None:
+    if user.discord_oauth_payload is None:
         return []
 
     decrypted = EncryptionService.decrypt(
-        user.discord_oauth, expected_aad=str(user.user_id)
+        user.discord_oauth_payload, expected_aad=str(user.user_id)
     )
     refreshed = await DiscordService.refresh_token(decrypted)
     if refreshed != decrypted:
-        user.discord_oauth = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
+        user.discord_oauth_payload = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
         await db_sess.commit()
 
     owned_guilds = await DiscordService.fetch_owned_guilds(refreshed["access_token"])
@@ -48,11 +48,13 @@ async def get_discord_channels(
         raise HTTPException(status_code=404, detail="User not found.")
 
     decrypted = EncryptionService.decrypt(
-        user.discord_oauth, expected_aad=str(user.user_id)
+        user.discord_oauth_payload, expected_aad=str(user.user_id)
     )
     refreshed = await DiscordService.refresh_token(decrypted)
     if refreshed != decrypted:
-        user.discord_oauth = EncryptionService.encrypt(refreshed, aad=str(user.user_id))
+        user.discord_oauth_payload = EncryptionService.encrypt(
+            refreshed, aad=str(user.user_id)
+        )
         await db_sess.commit()
 
     try:
@@ -76,7 +78,7 @@ async def delete_connection(
 
     query = update(Users).where(Users.user_id == jwt.sub)
     if platform == MessagePlatform.DISCORD:
-        query = query.values(discord_oauth=None)
+        query = query.values(discord_oauth_payload=None)
 
     await db_sess.execute(query)
     await db_sess.commit()

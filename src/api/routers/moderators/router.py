@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from uuid import UUID
 from typing import Literal
@@ -17,14 +18,16 @@ from api.models import PaginatedResponse
 from api.routers.actions.models import ActionResponse
 from api.types import JWTPayload
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PricingTierLimits
-from db_models import Moderators, EvaluationEvents, ActionEvents
+from db_models import Moderators, EvaluationEvents, ActionEvents, Users
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
+from services.discord import DiscordService
 from events.moderator import (
     StartModeratorEvent,
     StopModeratorEvent,
     UpdateConfigModeratorEvent,
 )
 from infra.kafka import AsyncKafkaProducer
+from services.encryption.service import EncryptionService
 from utils import get_datetime
 from .controller import validate_config
 from .models import (
@@ -33,6 +36,7 @@ from .models import (
     ModeratorUpdate,
     ModeratorStats,
     BarChartData,
+    BehaviorScoreResponse,
 )
 
 
@@ -441,3 +445,167 @@ async def stop_moderator(
     )
 
     return {"message": "Moderator stop request sent"}
+
+
+@router.get("/{moderator_id}/scores", response_model=PaginatedResponse[BehaviorScoreResponse])
+async def list_behavior_scores(
+    moderator_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(PAGE_SIZE, ge=1, le=100),
+    order: Literal["asc", "desc"] | None = Query(None),
+    jwt: JWTPayload = Depends(depends_jwt()),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    """List behavior scores for all users in a moderator's guild with pagination."""
+    moderator = await db_sess.scalar(
+        select(Moderators).where(
+            Moderators.moderator_id == moderator_id,
+            Moderators.user_id == jwt.sub,
+        )
+    )
+    if not moderator:
+        raise HTTPException(status_code=404, detail="Moderator not found")
+
+    user = await db_sess.scalar(
+        select(Users).where(Users.user_id == jwt.sub)
+    )
+    if not user or not user.discord_oauth_payload:
+        raise HTTPException(status_code=400, detail="Discord OAuth not configured")
+    
+    oauth_payload = EncryptionService.decrypt(user.discord_oauth_payload, str(user.user_id))
+    refreshed_payload = await DiscordService.refresh_token(oauth_payload)
+
+    if refreshed_payload != oauth_payload:
+        user.discord_oauth_payload = json.dumps(refreshed_payload)
+        await db_sess.commit()
+
+    access_token = refreshed_payload.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Invalid OAuth token")
+
+    subquery = (
+        select(
+            EvaluationEvents.platform_user_id,
+            func.max(EvaluationEvents.created_at).label("latest_created_at")
+        )
+        .where(EvaluationEvents.moderator_id == moderator_id)
+        .group_by(EvaluationEvents.platform_user_id)
+        .subquery()
+    )
+
+    query = (
+        select(
+            EvaluationEvents.platform_user_id,
+            EvaluationEvents.behaviour_score
+        )
+        .join(
+            subquery,
+            (EvaluationEvents.platform_user_id == subquery.c.platform_user_id) &
+            (EvaluationEvents.created_at == subquery.c.latest_created_at)
+        )
+        .where(EvaluationEvents.moderator_id == moderator_id)
+    )
+
+    if order == "asc":
+        query = query.order_by(EvaluationEvents.behaviour_score.asc())
+    elif order == "desc":
+        query = query.order_by(EvaluationEvents.behaviour_score.desc())
+
+    query = query.offset(skip).limit(limit + 1)
+
+    result = await db_sess.execute(query)
+    scores = result.all()
+
+    has_next = len(scores) > limit
+    scores_data = scores[:limit]
+
+    data = []
+    for score in scores_data:
+        username = "Unknown"
+
+        if moderator.platform == MessagePlatform.DISCORD.value:
+            member_data = await DiscordService.fetch_guild_member_by_bot(
+                moderator.platform_server_id,
+                score.platform_user_id
+            )
+            if member_data and "user" in member_data:
+                username = member_data["user"].get("username", "Unknown")
+
+        data.append(
+            BehaviorScoreResponse(
+                user_id=score.platform_user_id,
+                username=username,
+                behaviour_score=score.behaviour_score,
+            )
+        )
+
+    return PaginatedResponse[BehaviorScoreResponse](
+        page=(skip // limit) + 1 if limit > 0 else 1,
+        size=len(data),
+        has_next=has_next,
+        data=data,
+    )
+
+
+@router.get("/{moderator_id}/scores/{user_id}", response_model=BehaviorScoreResponse)
+async def get_user_behavior_score(
+    moderator_id: UUID,
+    user_id: str,
+    jwt: JWTPayload = Depends(depends_jwt()),
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    """Get behavior score for a specific user in a moderator's guild."""
+    moderator = await db_sess.scalar(
+        select(Moderators).where(
+            Moderators.moderator_id == moderator_id,
+            Moderators.user_id == jwt.sub,
+        )
+    )
+    if not moderator:
+        raise HTTPException(status_code=404, detail="Moderator not found")
+
+    user = await db_sess.scalar(
+        select(Users).where(Users.user_id == jwt.sub)
+    )
+    if not user or not user.discord_oauth_payload:
+        raise HTTPException(status_code=400, detail="Discord OAuth not configured")
+
+    oauth_payload = EncryptionService.decrypt(user.discord_oauth_payload, str(user.user_id))
+    refreshed_payload = await DiscordService.refresh_token(oauth_payload)
+
+    if refreshed_payload != oauth_payload:
+        user.discord_oauth_payload = json.dumps(refreshed_payload)
+        await db_sess.commit()
+
+    access_token = refreshed_payload.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Invalid OAuth token")
+
+    latest_evaluation = await db_sess.scalar(
+        select(EvaluationEvents)
+        .where(
+            EvaluationEvents.moderator_id == moderator_id,
+            EvaluationEvents.platform_user_id == user_id,
+        )
+        .order_by(EvaluationEvents.created_at.desc())
+        .limit(1)
+    )
+
+    if latest_evaluation is None:
+        raise HTTPException(status_code=404, detail="User score not found")
+
+    username = "Unknown"
+
+    if moderator.platform == MessagePlatform.DISCORD.value:
+        member_data = await DiscordService.fetch_guild_member_by_bot(
+            moderator.platform_server_id,
+            user_id
+        )
+        if member_data and "user" in member_data:
+            username = member_data["user"].get("username", "Unknown")
+
+    return BehaviorScoreResponse(
+        user_id=user_id,
+        username=username,
+        behaviour_score=latest_evaluation.behaviour_score,
+    )

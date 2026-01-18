@@ -96,7 +96,7 @@ class Moderators(Base):
 class EvaluationEvents(Base):
     __tablename__ = "evaluation_events"
 
-    event_id: Mapped[uuid.UUID] = uuid_pk()
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, primary_key=True)
     moderator_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("moderators.moderator_id", ondelete="CASCADE"),

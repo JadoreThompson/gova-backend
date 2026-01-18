@@ -1,4 +1,5 @@
 import asyncio
+from datetime import timedelta
 import discord
 import logging
 from typing import Any
@@ -10,6 +11,7 @@ from config import (
     DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET,
     DISCORD_REDIRECT_URI,
+    DISCORD_BOT_REDIRECT_URI,
 )
 from utils import get_datetime
 from .models import Identity, Guild, GuildChannel
@@ -41,7 +43,7 @@ class DiscordService:
             cls._logger.info(f"Discord Manager logged in as {cls.client.user}.")
 
     @classmethod
-    async def stop(cls):
+    async def stop(cls) -> None:
         if cls._http_sess is not None and not cls._http_sess.closed:
             await cls._http_sess.close()
             cls._http_sess = None
@@ -60,6 +62,23 @@ class DiscordService:
             "grant_type": "authorization_code",
             "code": auth_code,
             "redirect_uri": DISCORD_REDIRECT_URI,
+        }
+
+        rsp = await cls._http_sess.post(
+            "https://discord.com/api/oauth2/token",
+            auth=BasicAuth(DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data=data,
+        )
+        rsp_data = await rsp.json()
+        return rsp_data
+
+    @classmethod
+    async def fetch_discord_bot_oauth_payload(cls, auth_code: str) -> dict[str, Any]:
+        data = {
+            "grant_type": "authorization_code",
+            "code": auth_code,
+            "redirect_uri": DISCORD_BOT_REDIRECT_URI,
         }
 
         rsp = await cls._http_sess.post(
@@ -136,6 +155,52 @@ class DiscordService:
             return []
 
     @classmethod
+    async def fetch_guild_member(
+        cls, guild_id: str, user_id: str, access_token: str
+    ) -> dict[str, Any] | None:
+        """
+        Fetch a guild member's information using user's OAuth token.
+
+        Returns member data including user info, or None if not found/error.
+        """
+        if cls._http_sess is None:
+            raise RuntimeError("HTTP session not started")
+
+        try:
+            rsp = await cls._http_sess.get(
+                f"https://discord.com/api/v10/users/@me/guilds/{guild_id}/member",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            rsp.raise_for_status()
+            member_data = await rsp.json()
+            return member_data
+        except ClientError:
+            return None
+
+    @classmethod
+    async def fetch_guild_member_by_bot(
+        cls, guild_id: str, user_id: str
+    ) -> dict[str, Any] | None:
+        """
+        Fetch a guild member's information using bot token.
+
+        Returns member data including user info, or None if not found/error.
+        """
+        if cls._http_sess is None:
+            raise RuntimeError("HTTP session not started")
+
+        try:
+            rsp = await cls._http_sess.get(
+                f"https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}",
+                headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
+            )
+            rsp.raise_for_status()
+            member_data = await rsp.json()
+            return member_data
+        except ClientError:
+            return None
+
+    @classmethod
     async def refresh_token(cls, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Refresh the Discord OAuth2 token if expired.
@@ -153,7 +218,8 @@ class DiscordService:
 
         if (
             "expires_at" in payload
-            and get_datetime().timestamp() < payload["expires_at"]
+            and (get_datetime() + timedelta(minutes=5)).timestamp()
+            < payload["expires_at"]
         ):
             return payload
 

@@ -53,3 +53,11 @@ class ModeratorStats(BaseModel):
     evaluations_count: int
     actions_count: int
     bar_chart: list[BarChartData]
+
+
+class BehaviorScoreResponse(CustomBaseModel):
+    """Response model for user behavior score."""
+
+    user_id: str
+    username: str
+    behaviour_score: float

@@ -141,9 +141,26 @@ async def discord_oauth_callback(
     encrypted = EncryptionService.encrypt(payload, aad=str(jwt.sub))
 
     await db_sess.execute(
-        update(Users).values(discord_oauth=encrypted).where(Users.user_id == jwt.sub)
+        update(Users).values(discord_oauth_payload=encrypted).where(Users.user_id == jwt.sub)
     )
     await db_sess.commit()
+
+    return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
+
+
+@router.get("/discord/oauth/bot")
+async def discord_oauth_bot_callback(
+    code: str,
+    jwt: JWTPayload = Depends(depends_jwt()),
+):
+    """Handle Discord bot OAuth callback to add bot to guild."""
+    payload = await DiscordService.fetch_discord_bot_oauth_payload(code)
+
+    if "error" in payload:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Discord OAuth error: {payload.get('error_description', payload['error'])}"
+        )
 
     return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
 

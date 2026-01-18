@@ -16,7 +16,7 @@ PROJECT_PATH = os.path.dirname(BASE_PATH)
 RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
 PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
-load_dotenv(os.path.join(PROJECT_PATH, ".env.dev"))
+load_dotenv(os.path.join(PROJECT_PATH, ".env"))
 
 IS_PRODUCTION = bool(int(os.getenv("IS_PRODUCTION", "0")))
 
@@ -62,6 +62,12 @@ DISCORD_REDIRECT_URI = (
     "https://api.gova.chat/auth/discord/oauth"
     if IS_PRODUCTION
     else "http://localhost:8000/auth/discord/oauth"
+)
+
+DISCORD_BOT_REDIRECT_URI = (
+    "https://api.gova.chat/auth/discord/oauth/bot"
+    if IS_PRODUCTION
+    else "http://localhost:8000/auth/discord/oauth/bot"
 )
 
 

@@ -24,7 +24,12 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    await asyncio.gather(DiscordService.stop(), KafkaManager.stop())
+    result = await asyncio.gather(
+        DiscordService.stop(), KafkaManager.stop(), return_exceptions=True
+    )
+    excs = [r for r in result if isinstance(r, Exception)]
+    if excs:
+        raise ExceptionGroup("Errors occured whilst stopping lifespan services", excs)
 
 
 app = FastAPI(lifespan=lifespan)
