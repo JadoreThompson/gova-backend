@@ -1,2 +1,0 @@
-class StripeVerificationError(Exception):
-    pass

@@ -107,9 +107,9 @@ async def get_me(
 
     connections = {}
 
-    if user.discord_oauth:
+    if user.discord_oauth_payload:
         decrypted = EncryptionService.decrypt(
-            user.discord_oauth, expected_aad=str(user.user_id)
+            user.discord_oauth_payload, expected_aad=str(user.user_id)
         )
         identity = await handle_fetch_discord_identity(decrypted, user)
         await db_sess.commit()

@@ -1,8 +1,7 @@
 import logging
-from datetime import datetime
 
 import stripe
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,12 +10,14 @@ from api.types import JWTPayload
 from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
 from db_models import Users
 from enums import PricingTier
-from services.stripe import StripeService, StripeVerificationError
+from services.event_handlers import StripeEventHandler
+from services.event_handlers.exceptions import VerificationError
 from utils import get_datetime
 
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
-logger = logging.getLogger("paymnents_router")
+stripe_handler = StripeEventHandler()
+logger = logging.getLogger("payments.router")
 
 
 @router.get("/payment-link")
@@ -76,16 +77,47 @@ async def get_payment_link(
     return {"url": checkout_session.url}
 
 
-@router.post(
-    "/stripe/webhook",
-)
-async def stripe_webhook(req: Request):
+@router.post("/stripe/webhook")
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str = Header(None, alias="stripe-signature"),
+):
     """Stripe webhook endpoint for handling subscription events."""
-    sig_header = req.headers.get("stripe-signature")
+    payload = await request.body()
+
+    # Verify webhook signature
     try:
-        success = await StripeService.handle_event(
-            await req.body(), sig_header=sig_header
+        event = stripe_handler.verify_webhook_signature(payload, stripe_signature)
+    except VerificationError as e:
+        logger.error(f"Webhook signature verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    event_id = event.get("id")
+    event_type = event.get("type")
+
+    try:
+        if event_type == "checkout.session.completed":
+            await stripe_handler.handle_checkout_session_completed(event)
+        elif event_type == "invoice.payment_failed":
+            await stripe_handler.handle_invoice_payment_failed(event)
+        elif event_type == "invoice.payment_succeeded":
+            await stripe_handler.handle_invoice_payment_succeeded(event)
+        elif event_type == "invoice.upcoming":
+            await stripe_handler.handle_invoice_upcoming(event)
+        elif event_type == "customer.subscription.deleted":
+            await stripe_handler.handle_customer_subscription_deleted(event)
+        else:
+            logger.info(
+                f"Received unhandled Stripe event type: {event_type} (event_id: {event_id})"
+            )
+
+        return {"status": "success", "event_type": event_type}
+
+    except Exception as e:
+        logger.error(
+            f"Error processing Stripe webhook event {event_id} (type: {event_type}): {e}",
+            exc_info=True,
         )
-        return {"success": success}
-    except StripeVerificationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Internal server error processing webhook"
+        )
