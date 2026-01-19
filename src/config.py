@@ -61,13 +61,13 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 DISCORD_REDIRECT_URI = (
     "https://symphonious-cheesecake-8fe5e1.netlify.app/auth/discord/oauth?type=user"
     if IS_PRODUCTION
-    else "http://localhost:8000/auth/discord/oauth"
+    else "http://localhost:5173/auth/discord/oauth?type=user"
 )
 
 DISCORD_BOT_REDIRECT_URI = (
     "https://symphonious-cheesecake-8fe5e1.netlify.app/auth/discord/oauth?type=bot"
     if IS_PRODUCTION
-    else "http://localhost:8000/auth/discord/oauth/bot"
+    else "http://localhost:5173/auth/discord/oauth/bot?type=bot"
 )
 
 

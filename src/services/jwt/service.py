@@ -91,7 +91,7 @@ class JWTService:
     def remove_jwt(rsp: Response | None = None) -> Response:
         if rsp is None:
             rsp = Response()
-        rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION)
+        rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION, samesite="none")
         return rsp
 
     @classmethod
