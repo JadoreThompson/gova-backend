@@ -22,7 +22,7 @@ def db_upgrade():
         if os.path.exists(example_fp):
             platform = sys.platform
 
-            if platform == "windows":
+            if platform in ("windows", "win32"):
                 command = ["cmd", "/c", "copy", example_fp, fp]
             elif platform == "linux":
                 command = ["cp", example_fp, fp]
