@@ -150,8 +150,6 @@ class DiscordModerator:
                 chat_summary=self._channel_summaries.get(channel_id),
             )
             res = await self._chat_summary_agent.run(user_prompt)
-            self._logger.info(f"\nChannel Summary\n{res.output}")
-            print("\n\n")
             channel_summary = res.output.summary
             self._channel_summaries[channel_id] = channel_summary
 
@@ -164,7 +162,6 @@ class DiscordModerator:
                 action_params=self._action_params,
             )
             res = await self._review_agent.run(user_prompt)
-            print(user_prompt)
             self._logger.info(f"\nReview Agent\n{res.output}")
             review_output = res.output
 

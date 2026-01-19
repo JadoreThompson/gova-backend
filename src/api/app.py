@@ -33,10 +33,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-print(
-    f"{SCHEME}://{DOMAIN}",
-    f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}",
-)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

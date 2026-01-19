@@ -134,7 +134,6 @@ async def discord_oauth_callback(
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     payload = await DiscordService.fetch_discord_oauth_payload(code)
-    print('Discord oauth payload:', payload)
 
     payload["created_at"] = get_datetime().timestamp()
     payload["expires_at"] = payload["created_at"] + payload["expires_in"]

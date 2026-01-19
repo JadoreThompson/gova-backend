@@ -59,7 +59,7 @@ DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 DISCORD_REDIRECT_URI = (
-    "https://api.gova.chat/auth/discord/oauth"
+    "https://symphonious-cheesecake-8fe5e1.netlify.app/auth/discord/oauth"
     if IS_PRODUCTION
     else "http://localhost:8000/auth/discord/oauth"
 )
