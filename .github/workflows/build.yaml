@@ -35,6 +35,12 @@ jobs:
           sudo docker build -f docker/Dockerfile -t wifimemes/gova-backend:latest .
           sudo docker push wifimemes/gova-backend:latest
 
+      - name: Create network
+        run: |
+          sudo docker network create \
+          --driver overlay \
+          --attachable gova_network
+
       - name: Apply DB Migrations
         run: |
           sudo docker run \
@@ -54,12 +60,6 @@ jobs:
           if [ ! -f docker/docker-compose.yaml ]; then
             exit 1
           fi
-
-      - name: Create network
-        run: \
-          sudo docker network create \
-          --driver overlay \
-          --attachable gova_network
 
       - name: Deploy stack
         run: |
