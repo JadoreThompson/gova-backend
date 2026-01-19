@@ -44,7 +44,7 @@ jobs:
           fi
 
       - name: Initialise swarm manager
-        run: sudo docker swarm init || 0
+        run: sudo docker swarm init || true
 
       - name: Create docker compose
         run: |
