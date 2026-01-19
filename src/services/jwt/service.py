@@ -81,7 +81,9 @@ class JWTService:
             token,
             httponly=True,
             secure=IS_PRODUCTION,
+            samesite="none",
             expires=get_datetime() + timedelta(seconds=JWT_EXPIRY_SECS),
+
         )
         return rsp
 
