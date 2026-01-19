@@ -32,7 +32,11 @@ jobs:
 
       - name: Build Image
         run: |
-          sudo docker build -f docker/Dockerfile -t wifimemes/gova-backend:latest .
+          sudo docker build \
+            -f docker/Dockerfile \
+            -t wifimemes/gova-backend:latest \
+            --no-cache \
+            .
           sudo docker push wifimemes/gova-backend:latest
 
       - name: Create network
