@@ -1,6 +1,7 @@
 import asyncio
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -67,3 +68,22 @@ async def handle_jwt_error(req: Request, exc: JWTError):
 @app.exception_handler(EncryptionError)
 async def handle_encryption_error(req: Request, exc: EncryptionError):
     return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(req: Request, exc: RequestValidationError):
+    err = exc.errors()[0]
+    err_type = err.get("type", "")
+    msg = err.get("msg", "")
+
+    if not err_type or not msg:
+        error_msg = "Failed to validate request"
+    else:
+        msg_lower = msg.lower()
+        sub = err_type.replace("_", " ") + ","
+        idx = msg_lower.find(sub)
+        error_msg = "".join(
+            char for i, char in enumerate(msg) if idx + len(sub) <= i or i < idx
+        )
+
+    return JSONResponse(status_code=422, content={"error": str(error_msg)})

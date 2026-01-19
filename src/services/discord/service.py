@@ -146,12 +146,14 @@ class DiscordService:
             )
             rsp.raise_for_status()
             channels = await rsp.json()
+            print("Discord channels", channels)
             return [
                 GuildChannel(id=ch["id"], name=ch["name"])
                 for ch in channels
                 if ch.get("type") == 0
             ]
-        except ClientError:
+        except ClientError as e:
+            print('Client error', e)
             return []
 
     @classmethod
