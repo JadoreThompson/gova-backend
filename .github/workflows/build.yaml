@@ -32,7 +32,8 @@ jobs:
 
       - name: Build Image
         run: |
-          sudo docker buildx build -f docker/Dockerfile -t wifimemes/gova-backend:latest --push .
+          sudo docker build -f docker/Dockerfile -t wifimemes/gova-backend:latest .
+          sudo docker push wifimemes/gova-backend:latest
 
       - name: Apply DB Migrations
         run: |
