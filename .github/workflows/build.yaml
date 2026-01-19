@@ -65,4 +65,4 @@ jobs:
             gova_stack
 
       - name: Cleanup
-        run: docker system prune -af
+        run: sudo docker system prune -af
