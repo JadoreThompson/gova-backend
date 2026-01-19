@@ -13,6 +13,7 @@ from config import (
     DISCORD_REDIRECT_URI,
     DISCORD_BOT_REDIRECT_URI,
 )
+from services.discord.exception import DiscordServiceException
 from utils import get_datetime
 from .models import Identity, Guild, GuildChannel
 
@@ -152,9 +153,8 @@ class DiscordService:
                 for ch in channels
                 if ch.get("type") == 0
             ]
-        except ClientError as e:
-            print('Client error', e)
-            return []
+        except ClientError:
+            raise DiscordServiceException("Bot must be in server")
 
     @classmethod
     async def fetch_guild_member(

@@ -6,7 +6,7 @@ from api.dependencies import depends_db_sess, depends_jwt
 from api.types import JWTPayload
 from db_models import Users
 from enums import MessagePlatform
-from services.discord import DiscordService, Guild, GuildChannel
+from services.discord import DiscordService, Guild, GuildChannel, DiscordServiceException
 from services.encryption import EncryptionService
 
 
@@ -62,8 +62,11 @@ async def get_discord_channels(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid guild id.")
 
-    channels = await DiscordService.fetch_guild_channels(parsed_id)
-    return [GuildChannel(id=str(ch.id), name=ch.name) for ch in channels]
+    try:
+        channels = await DiscordService.fetch_guild_channels(parsed_id)
+        return [GuildChannel(id=str(ch.id), name=ch.name) for ch in channels]
+    except DiscordServiceException as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{platform}")
