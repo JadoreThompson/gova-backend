@@ -2,6 +2,7 @@ import configparser
 import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import AsyncGenerator, Generator
+from urllib.parse import quote
 
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +36,7 @@ def get_db_sess_sync() -> Generator[Session, None, None]:
 
 
 def write_db_url_alembic_ini():
-    db_password = DB_PASSWORD.replace("%", "%%")
+    db_password = quote(DB_PASSWORD).replace("%", "%%")
     db_url = f"postgresql+psycopg2://{DB_USERNAME}:{db_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
     config = configparser.ConfigParser()
