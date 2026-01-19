@@ -83,7 +83,6 @@ class JWTService:
             secure=IS_PRODUCTION,
             samesite="none",
             expires=get_datetime() + timedelta(seconds=JWT_EXPIRY_SECS),
-
         )
         return rsp
 
@@ -91,7 +90,9 @@ class JWTService:
     def remove_jwt(rsp: Response | None = None) -> Response:
         if rsp is None:
             rsp = Response()
-        rsp.delete_cookie(COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION, samesite="none")
+        rsp.delete_cookie(
+            COOKIE_ALIAS, httponly=True, secure=IS_PRODUCTION, samesite="none"
+        )
         return rsp
 
     @classmethod
@@ -117,7 +118,7 @@ class JWTService:
 
         async with get_db_sess() as db_sess:
             user = await db_sess.scalar(
-                select(Users).where(Users.user_id == payload.sub)
+                select(Users).where(Users.user_id == payload.sub, Users.jwt == token)
             )
 
             if user is None:
