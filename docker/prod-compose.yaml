@@ -59,12 +59,13 @@ services:
       - redis:/data
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
 
-  backend:
+  http_server:
     image: wifimemes/gova-backend
     ports:
       - 8000:8000
     networks:
       - gova_network
+    command: http run
     deploy:
       labels:
         - "traefik.enable=true"
@@ -77,6 +78,18 @@ services:
         failure_action: rollback
         monitor: 1m
         order: start-first
+
+  moderator_orchestrator:
+    image: wifimemes/gova-backend
+    networks:
+      - gova_network
+    command: orchestrator run
+
+  event_handler:
+    image: wifimemes/gova-backend
+    networks:
+      - gova_network
+    command: event_handler run
 
 volumes:
   postgres:

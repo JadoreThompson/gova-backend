@@ -1,0 +1,61 @@
+name: Build image
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create .env
+        run: |
+          set -e
+
+          cat <<'EOF' > .env
+          ${{ secrets.ENV_FILE }}
+          EOF
+
+          if [ ! -f .env ]; then
+            exit 1
+          fi
+
+      - name: Build Image
+        run: |
+          sudo docker buildx build -f docker/Dockerfile -t wifimemes/gova-backend:latest --push .
+
+      - name: Apply DB Migrations
+        run: |
+          sudo docker run \
+            --rm \
+            --name gova-db-migrations \
+            --network gova_network \
+            wifimemes/gova-backend:latest db upgrade
+
+      - name: Create docker compose
+        run: |
+          set -e
+
+          cat <<'EOF' > docker/docker-compose.yaml
+          ${{ secrets.DOCKER_COMPOSE }}
+          EOF
+
+          if [ ! -f docker/docker-compose.yaml ]; then
+            exit 1
+          fi
+
+      - name: Create network
+        run: \
+          sudo docker network create \
+            --driver overlay \
+            --attachable gova_network
+
+      - name: Deploy stack
+        run: |
+          sudo docker stack deploy \
+            -c docker/docker-compose.yaml \
+            gova_stack
