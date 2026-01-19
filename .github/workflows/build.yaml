@@ -32,12 +32,15 @@ jobs:
 
       - name: Build Image
         run: |
+          TAG=$(openssl rand -hex 16)
           sudo docker build \
             -f docker/Dockerfile \
+            -t wifimemes/gova-backend:$TAG \
             -t wifimemes/gova-backend:latest \
             --no-cache \
             .
           sudo docker push wifimemes/gova-backend:latest
+          sudo docker push wifimemes/gova-backend:$TAG
 
       - name: Create network
         run: |
