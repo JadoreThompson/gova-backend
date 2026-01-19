@@ -51,8 +51,6 @@ services:
 
   redis:
     image: redis:8
-    ports:
-      - ${REDIS_PORT}:6379
     networks:
       - gova_network
     volumes:
@@ -69,14 +67,15 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.backend.rule=Host(`api.gova.chat`)"
-        - "traefik.http.routers.backend.service=gova_stack_backend"
-        - "traefik.http.services.gova_stack_backend.loadbalancer.server.port=8000"
+        - "traefik.http.routers.http_server.rule=Host(`api.gova.chat`)"
+        - "traefik.http.routers.http_server.service=gova_stack_http_server"
+        - "traefik.http.routers.http_server.entrypoints=web"
+        - "traefik.http.services.gova_stack_http_server.loadbalancer.server.port=8000"
       update_config:
         parallelism: 1
-        delay: 10s
+        delay: 3s
         failure_action: rollback
-        monitor: 1m
+        monitor: 10s
         order: start-first
 
   moderator_orchestrator:
