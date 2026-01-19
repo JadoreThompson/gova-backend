@@ -37,8 +37,8 @@ jobs:
 
       - name: Create network
         run: |
-          if ! docker network inspect gova_network >/dev/null 2>&1; then
-            docker network create \
+          if ! sudo docker network inspect gova_network >/dev/null 2>&1; then
+            sudo docker network create \
               --driver overlay \
               --attachable gova_network
           fi
