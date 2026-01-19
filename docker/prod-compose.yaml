@@ -23,6 +23,8 @@ services:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    ports:
+      - 5432:5432
     networks:
       - gova_network
     volumes:
@@ -51,6 +53,8 @@ services:
 
   redis:
     image: redis:8
+    ports:
+      - 6379:6379
     networks:
       - gova_network
     volumes:

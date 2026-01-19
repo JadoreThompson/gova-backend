@@ -127,13 +127,14 @@ async def get_me(
     )
 
 
-@router.get("/discord/oauth")
+@router.get("/discord/oauth", status_code=204)
 async def discord_oauth_callback(
     code: str,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     payload = await DiscordService.fetch_discord_oauth_payload(code)
+    print('Discord oauth payload:', payload)
 
     payload["created_at"] = get_datetime().timestamp()
     payload["expires_at"] = payload["created_at"] + payload["expires_in"]
@@ -145,7 +146,8 @@ async def discord_oauth_callback(
     )
     await db_sess.commit()
 
-    return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
+    # return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
+    return
 
 
 @router.get("/discord/oauth/bot")
