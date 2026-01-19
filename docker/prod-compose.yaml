@@ -91,6 +91,12 @@ services:
       - gova_network
     command: event_handler run
 
+  db_upgrade:
+    image: wifimemes/gova-backend
+    networks:
+      - gova_network
+    command: db upgrade
+
 volumes:
   postgres:
   redis:

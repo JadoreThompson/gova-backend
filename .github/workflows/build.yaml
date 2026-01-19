@@ -37,17 +37,14 @@ jobs:
 
       - name: Create network
         run: |
-          sudo docker network create \
-          --driver overlay \
-          --attachable gova_network
+          if ! docker network inspect gova_network >/dev/null 2>&1; then
+            docker network create \
+              --driver overlay \
+              --attachable gova_network
+          fi
 
-      - name: Apply DB Migrations
-        run: |
-          sudo docker run \
-            --rm \
-            --name gova-db-migrations \
-            --network gova_network \
-            wifimemes/gova-backend:latest db upgrade
+      - name: Initialise swarm manager
+        run: sudo docker swarm init || 0
 
       - name: Create docker compose
         run: |
