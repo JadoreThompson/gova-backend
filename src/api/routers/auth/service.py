@@ -35,6 +35,10 @@ class AuthService:
         if res is not None:
             raise HTTPException(status_code=400, detail="Email already exists.")
 
+        res = await db_sess.scalar(select(Users).where(Users.username == body.username))
+        if res is not None:
+            raise HTTPException(status_code=400, detail="Username already exists.")
+
         hashed_pw = cls._pw_hasher.hash(body.password, salt=PW_HASH_SALT.encode())
 
         user_data = body.model_dump()
