@@ -145,9 +145,6 @@ async def discord_oauth_callback(
     )
     await db_sess.commit()
 
-    # return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
-    return
-
 
 @router.get("/discord/oauth/bot")
 async def discord_oauth_bot_callback(
@@ -163,7 +160,7 @@ async def discord_oauth_bot_callback(
             detail=f"Discord OAuth error: {payload.get('error_description', payload['error'])}"
         )
 
-    return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
+    # return RedirectResponse(url=f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}/connections")
 
 
 @router.post("/change-username", status_code=202)
