@@ -59,13 +59,13 @@ DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 DISCORD_REDIRECT_URI = (
-    "https://symphonious-cheesecake-8fe5e1.netlify.app/auth/discord/oauth?type=user"
+    "https://gova-chat.netlify.app/auth/discord/oauth?type=user"
     if IS_PRODUCTION
     else "http://localhost:5173/auth/discord/oauth?type=user"
 )
 
 DISCORD_BOT_REDIRECT_URI = (
-    "https://symphonious-cheesecake-8fe5e1.netlify.app/auth/discord/oauth?type=bot"
+    "https://gova-chat.netlify.app/auth/discord/oauth?type=bot"
     if IS_PRODUCTION
     else "http://localhost:5173/auth/discord/oauth/bot?type=bot"
 )
@@ -99,7 +99,7 @@ if IS_PRODUCTION:
     SCHEME = "https"
     # SUB_DOMAIN = "www."
     # DOMAIN = "gova.chat"
-    SUB_DOMAIN = "symphonious-cheesecake-8fe5e1."
+    SUB_DOMAIN = "gova-chat."
     DOMAIN = "netlify.app"
 else:
     SCHEME = "http"
