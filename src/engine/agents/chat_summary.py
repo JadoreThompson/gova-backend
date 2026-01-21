@@ -19,7 +19,7 @@ class ChatSummaryAgent(BaseAgent):
     each sub conversation.
     """
 
-    _USER_PROMPT_TMPL = """
+    _USER_PROMPT_TEMPLATE = """
     Below is a summary of the discord server you're currently moderating.
     This'll help you understand type of conversations expected within the chat.
     
@@ -49,10 +49,18 @@ class ChatSummaryAgent(BaseAgent):
         messages: list[DiscordMessageContext],
         chat_summary: str | None = None,
     ):
+        # import json
+        # print(json.dumps([msg.model_dump(mode='json') for msg in messages], indent=4))
+
         cls = self.__class__
-        return cls._USER_PROMPT_TMPL.format(
+        return cls._USER_PROMPT_TEMPLATE.format(
             server_summary=server_summary,
             chat_summary=chat_summary,
             n=len(messages),
             messages=messages,
         )
+    
+    async def run(self, *args, **kw):
+        res = await super().run(*args, **kw)
+        print(res.output)
+        return res

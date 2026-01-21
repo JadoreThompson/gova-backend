@@ -12,9 +12,8 @@ class DiscordDefaultParamsTimeout(BaseModel):
 class DiscordPerformedActionParamsTimeout(BaseModel):
     duration: int
     user_id: int
-    reason: str | None = None
 
 
 class DiscordPerformedActionParamsKick(BaseModel):
     user_id: int
-    reason: str | None = None
+

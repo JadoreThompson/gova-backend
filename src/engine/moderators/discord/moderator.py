@@ -34,14 +34,20 @@ class DiscordModerator:
         DiscordActionType.REPLY: {
             "type": DiscordActionType.REPLY,
             "params": DiscordPerformedActionParamsReply.model_fields,
+            "summary": "This action allows you to send a message in the channel."
         },
         DiscordActionType.TIMEOUT: {
             "type": DiscordActionType.TIMEOUT,
             "params": DiscordPerformedActionParamsTimeout.model_fields,
+            "summary": """\
+This action allows you to block the user from sending messages \
+for `duration` seconds.
+            """
         },
         DiscordActionType.KICK: {
             "type": DiscordActionType.KICK,
             "params": DiscordPerformedActionParamsKick.model_fields,
+            "summary": "This action allows you to kick the user from the server."
         },
     }
 
@@ -49,6 +55,7 @@ class DiscordModerator:
         self,
         moderator_id: uuid.UUID,
         config: DiscordModeratorConfig,
+        client_id: int,
         action_handler: DiscordActionHandler,
         kafka_producer: AsyncKafkaProducer | None = None,
         max_channel_msgs: int = 100,
@@ -62,6 +69,7 @@ class DiscordModerator:
             max_channel_msgs: Maximum number of messages to keep in memory per channel            
         """
         self._moderator_id = moderator_id
+        self._client_id = client_id
         self._config = config
         self._action_handler = action_handler
         self._kafka_producer = kafka_producer
@@ -155,6 +163,7 @@ class DiscordModerator:
 
             # Fetching review
             user_prompt = self._review_agent.build_user_prompt(
+                user_id=self._client_id,
                 server_summary=server_summary,
                 channel_summary=channel_summary,
                 guidelines=self._config.guidelines,
@@ -162,10 +171,8 @@ class DiscordModerator:
                 action_params=self._action_params,
             )
             res = await self._review_agent.run(user_prompt)
-            self._logger.info(f"\nReview Agent\n{res.output}")
             review_output = res.output
 
-            
         eval_event = EvaluationCreatedModeratorEvent(
             moderator_id=self._moderator_id,
             user_id=str(ctx.user_id),
@@ -205,6 +212,7 @@ class DiscordModerator:
                 status = ActionStatus.FAILED
                 error_msg = str(e)
 
+        print(error_msg)
         performed_action = PerformedActionRegistry.build(
             planned_action=review_output.action,
             defined_action=defined_action,

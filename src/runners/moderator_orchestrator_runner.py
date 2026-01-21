@@ -131,6 +131,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
         mod = DiscordModerator(
             moderator_id,
             DiscordModeratorConfig(**db_mod.conf),
+            self._client.user.id,
             self._action_handler,
             self._kafka_producer,
             max_channel_msgs=100,

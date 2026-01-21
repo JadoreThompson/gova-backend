@@ -44,9 +44,8 @@ class DiscordMessageStream:
 
         @self._client.event
         async def on_message(msg: discord.Message):
-            self._logger.info(msg)
-            if msg.author.id == self._client.user.id:
-                return
+            # if msg.author.id == self._client.user.id:
+            #     return
             await self._queue.put(msg)
 
     async def __aiter__(self) -> AsyncGenerator[DiscordMessageContext, None]:
@@ -68,7 +67,9 @@ class DiscordMessageStream:
                         channel_id=ref.channel.id,
                         channel_name=ref.channel.name,
                         user_id=ref.author.id,
+                        username=ref.author.name,
                         content=msg.content,
+                        roles=[role.name for role in msg.author.roles]
                     )
 
             yield DiscordMessageContext(
@@ -76,7 +77,9 @@ class DiscordMessageStream:
                 channel_id=msg.channel.id,
                 channel_name=msg.channel.name,
                 user_id=msg.author.id,
+                username=msg.author.name,
                 content=msg.content,
+                roles=[role.name for role in msg.author.roles],
                 reply_to=reply_to,
             )
 

@@ -46,7 +46,7 @@ class ReviewAgent(BaseAgent):
     taking that action.
     """
 
-    _USER_PROMPT_TMPL = """
+    _USER_PROMPT_TEMPLATE = """
     Below is a summary of the discord server you're currently moderating.
     This'll help you understand type of conversations expected within the chat.
 
@@ -60,11 +60,12 @@ class ReviewAgent(BaseAgent):
     {guidelines}
     </ServerGuidelines>
 
-    Here is the most recent message sent alont with it's metadata.
+    Here is the most recent message sent alont with it's metadata. Your
+    user_id is {user_id}.
 
-    <Message>
+    <Messages>
     {message}
-    </Message>
+    </Messages>
 
     Here's the current summary of the messages sent within the channel.
     
@@ -73,8 +74,11 @@ class ReviewAgent(BaseAgent):
     </ChannelSummary>
 
     Below are the definitions of the actions you've granted power to use. Remember
-    that it isn't compulsary to take an action. You're to use it sparingly like a
-    wildcard.
+    that it isn't compulsary to take an action but the action you choose to take must
+    be the optimal action for that scenario. For example if the guidelines say no swearing
+    and you've already warned the individual then it only makes sense to move to the next
+    step which is timing out and progressively getting going higher and higher up the action
+    chain.
 
     <ActionDefinitions>
     {action_params}
@@ -87,6 +91,7 @@ class ReviewAgent(BaseAgent):
 
     def build_user_prompt(
         self,
+        user_id: str,
         server_summary: str,
         channel_summary: str,
         guidelines: str,
@@ -94,7 +99,9 @@ class ReviewAgent(BaseAgent):
         action_params: list[dict],
     ):
         cls = self.__class__
-        return cls._USER_PROMPT_TMPL.format(
+        # print("\nAction Params:", action_params)
+        return cls._USER_PROMPT_TEMPLATE.format(
+            user_id=user_id,
             server_summary=server_summary,
             channel_summary=channel_summary,
             guidelines=guidelines,

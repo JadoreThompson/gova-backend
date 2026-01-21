@@ -11,5 +11,7 @@ class DiscordMessageContext(CustomBaseModel):
     channel_id: int
     channel_name: str
     user_id: int
+    username: str
     content: str
+    roles: list[str]
     reply_to: DiscordMessageContext | None = None

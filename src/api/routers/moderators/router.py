@@ -20,14 +20,14 @@ from api.types import JWTPayload
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PricingTierLimits
 from db_models import Moderators, EvaluationEvents, ActionEvents, Users
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
-from services.discord import DiscordService
 from events.moderator import (
     StartModeratorEvent,
     StopModeratorEvent,
     UpdateConfigModeratorEvent,
 )
 from infra.kafka import AsyncKafkaProducer
-from services.encryption.service import EncryptionService
+from services.discord import DiscordService
+from services.encryption import EncryptionService
 from utils import get_datetime
 from .controller import validate_config
 from .models import (
@@ -41,7 +41,6 @@ from .models import (
 
 
 router = APIRouter(prefix="/moderators", tags=["Moderators"])
-kafka_producer = AsyncKafkaProducer()
 
 
 @router.post("/", response_model=ModeratorResponse)
@@ -306,6 +305,7 @@ async def list_moderator_actions(
             context=act.context,
             status=ActionStatus(act.status),
             reason=act.reason,
+            error_msg=act.error_msg,
             created_at=act.created_at,
             updated_at=act.updated_at,
             executed_at=act.executed_at,
@@ -327,6 +327,7 @@ async def update_moderator(
     body: ModeratorUpdate,
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
+    kafka_producer: AsyncKafkaProducer = Depends(depends_kafka_producer),
 ):
     """Update a moderator's name, description, or configuration."""
     moderator = await db_sess.scalar(
@@ -393,7 +394,7 @@ async def delete_moderator(
     if moderator.status != ModeratorStatus.OFFLINE.value:
         raise HTTPException(
             status_code=400,
-            detail="Cannot delete moderator that is not offline. Stop the moderator first."
+            detail="Cannot delete moderator that is not offline. Stop the moderator first.",
         )
 
     await db_sess.delete(moderator)
@@ -473,7 +474,9 @@ async def stop_moderator(
     return {"message": "Moderator stop request sent"}
 
 
-@router.get("/{moderator_id}/scores", response_model=PaginatedResponse[BehaviorScoreResponse])
+@router.get(
+    "/{moderator_id}/scores", response_model=PaginatedResponse[BehaviorScoreResponse]
+)
 async def list_behavior_scores(
     moderator_id: UUID,
     skip: int = Query(0, ge=0),
@@ -492,13 +495,13 @@ async def list_behavior_scores(
     if not moderator:
         raise HTTPException(status_code=404, detail="Moderator not found")
 
-    user = await db_sess.scalar(
-        select(Users).where(Users.user_id == jwt.sub)
-    )
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
     if not user or not user.discord_oauth_payload:
         raise HTTPException(status_code=400, detail="Discord OAuth not configured")
-    
-    oauth_payload = EncryptionService.decrypt(user.discord_oauth_payload, str(user.user_id))
+
+    oauth_payload = EncryptionService.decrypt(
+        user.discord_oauth_payload, str(user.user_id)
+    )
     refreshed_payload = await DiscordService.refresh_token(oauth_payload)
 
     if refreshed_payload != oauth_payload:
@@ -512,7 +515,7 @@ async def list_behavior_scores(
     subquery = (
         select(
             EvaluationEvents.platform_user_id,
-            func.max(EvaluationEvents.created_at).label("latest_created_at")
+            func.max(EvaluationEvents.created_at).label("latest_created_at"),
         )
         .where(EvaluationEvents.moderator_id == moderator_id)
         .group_by(EvaluationEvents.platform_user_id)
@@ -520,14 +523,11 @@ async def list_behavior_scores(
     )
 
     query = (
-        select(
-            EvaluationEvents.platform_user_id,
-            EvaluationEvents.behaviour_score
-        )
+        select(EvaluationEvents.platform_user_id, EvaluationEvents.behaviour_score)
         .join(
             subquery,
-            (EvaluationEvents.platform_user_id == subquery.c.platform_user_id) &
-            (EvaluationEvents.created_at == subquery.c.latest_created_at)
+            (EvaluationEvents.platform_user_id == subquery.c.platform_user_id)
+            & (EvaluationEvents.created_at == subquery.c.latest_created_at),
         )
         .where(EvaluationEvents.moderator_id == moderator_id)
     )
@@ -551,8 +551,7 @@ async def list_behavior_scores(
 
         if moderator.platform == MessagePlatform.DISCORD.value:
             member_data = await DiscordService.fetch_guild_member_by_bot(
-                moderator.platform_server_id,
-                score.platform_user_id
+                moderator.platform_server_id, score.platform_user_id
             )
             if member_data and "user" in member_data:
                 username = member_data["user"].get("username", "Unknown")
@@ -590,13 +589,13 @@ async def get_user_behavior_score(
     if not moderator:
         raise HTTPException(status_code=404, detail="Moderator not found")
 
-    user = await db_sess.scalar(
-        select(Users).where(Users.user_id == jwt.sub)
-    )
+    user = await db_sess.scalar(select(Users).where(Users.user_id == jwt.sub))
     if not user or not user.discord_oauth_payload:
         raise HTTPException(status_code=400, detail="Discord OAuth not configured")
 
-    oauth_payload = EncryptionService.decrypt(user.discord_oauth_payload, str(user.user_id))
+    oauth_payload = EncryptionService.decrypt(
+        user.discord_oauth_payload, str(user.user_id)
+    )
     refreshed_payload = await DiscordService.refresh_token(oauth_payload)
 
     if refreshed_payload != oauth_payload:
@@ -624,8 +623,7 @@ async def get_user_behavior_score(
 
     if moderator.platform == MessagePlatform.DISCORD.value:
         member_data = await DiscordService.fetch_guild_member_by_bot(
-            moderator.platform_server_id,
-            user_id
+            moderator.platform_server_id, user_id
         )
         if member_data and "user" in member_data:
             username = member_data["user"].get("username", "Unknown")

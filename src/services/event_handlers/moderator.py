@@ -158,6 +158,7 @@ class ModeratorEventHandler:
                     context=ctx,
                     status=action["status"],
                     reason=action["reason"],
+                    error_msg=action['error_msg'],
                     created_at=created_at,
                     executed_at=(
                         created_at

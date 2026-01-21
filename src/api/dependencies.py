@@ -6,7 +6,7 @@ from fastapi import Depends, Request
 from config import COOKIE_ALIAS
 from infra.db import smaker
 from services.jwt import JWTService, JWTError
-from services.kafka import KafkaManager
+from services.kafka import KafkaProducerManager
 from .types import JWTPayload
 
 
@@ -46,7 +46,7 @@ def depends_jwt(is_verified: bool = True):
 
 
 async def depends_kafka_producer() -> AsyncGenerator[AIOKafkaProducer, None]:
-    return KafkaManager.get_producer()
+    return KafkaProducerManager.get_producer()
 
 
 def CSVQuery(name: str, Typ: Type[T]):

@@ -16,17 +16,17 @@ from config import DOMAIN, SCHEME, SUB_DOMAIN
 from services.discord import DiscordService
 from services.encryption import EncryptionError
 from services.jwt import JWTError
-from services.kafka import KafkaManager
+from services.kafka import KafkaProducerManager
 
 
 async def lifespan(app: FastAPI):
     DiscordService.start()
-    await asyncio.gather(KafkaManager.start())
+    await asyncio.gather(KafkaProducerManager.start())
 
     yield
 
     result = await asyncio.gather(
-        DiscordService.stop(), KafkaManager.stop(), return_exceptions=True
+        DiscordService.stop(), KafkaProducerManager.stop(), return_exceptions=True
     )
     excs = [r for r in result if isinstance(r, Exception)]
     if excs:

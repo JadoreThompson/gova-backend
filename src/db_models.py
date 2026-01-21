@@ -139,6 +139,7 @@ class ActionEvents(Base):
     action_params: Mapped[dict] = mapped_column(JSONB, nullable=True)
     context: Mapped[dict] = mapped_column(JSONB, nullable=False)
     status: Mapped[ActionStatus] = mapped_column(String, nullable=False)
+    error_msg: Mapped[str] = mapped_column(String, nullable=True)
     reason: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = datetime_tz()
     updated_at: Mapped[datetime] = mapped_column(

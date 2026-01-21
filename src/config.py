@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from datetime import timedelta
 from typing import NamedTuple
 
 import stripe
@@ -13,8 +12,6 @@ from enums import PricingTier
 # Paths & Environment
 BASE_PATH = os.path.dirname(__file__)
 PROJECT_PATH = os.path.dirname(BASE_PATH)
-RESOURCES_PATH = os.path.join(BASE_PATH, "resources")
-PROMPTS_PATH = os.path.join(RESOURCES_PATH, "prompts")
 
 load_dotenv(os.path.join(PROJECT_PATH, ".env"))
 
@@ -161,12 +158,13 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setFormatter(logging.Formatter(LOG_FORMAT))
 root_logger.addHandler(stdout_handler)
 
+logging.getLogger("aiokafka").setLevel(logging.CRITICAL)
 logging.getLogger("kafka").setLevel(logging.CRITICAL)
 logging.getLogger("stripe").setLevel(logging.CRITICAL)
 
 root_logger.info(
     "MODE=%s",
-    "PRODUCTION" if IS_PRODUCTION else "DEV",
+    "PRODUCTION" if IS_PRODUCTION else "DEVELOPMENT",
 )
 
 del root_logger

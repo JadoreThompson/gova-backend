@@ -1,3 +1,3 @@
-from .manager import KafkaManager
+from .producer_manager import KafkaProducerManager
 
-__all__ = ["KafkaManager"]
+__all__ = ["KafkaProducerManager"]

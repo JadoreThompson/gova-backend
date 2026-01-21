@@ -17,6 +17,7 @@ class ActionResponse(CustomBaseModel):
     context: dict[str, Any]
     status: ActionStatus
     reason: str | None
+    error_msg: str | None
     created_at: datetime
     updated_at: datetime
     executed_at: datetime | None
