@@ -44,8 +44,6 @@ class DiscordMessageStream:
 
         @self._client.event
         async def on_message(msg: discord.Message):
-            # if msg.author.id == self._client.user.id:
-            #     return
             await self._queue.put(msg)
 
     async def __aiter__(self) -> AsyncGenerator[DiscordMessageContext, None]:

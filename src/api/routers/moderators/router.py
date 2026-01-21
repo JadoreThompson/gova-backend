@@ -56,6 +56,17 @@ async def create_moderator(
     if count >= PricingTierLimits.get(jwt.pricing_tier).max_moderators:
         raise HTTPException(status_code=400, detail="Max moderators reached.")
 
+    existing = await db_sess.scalar(
+        select(Moderators.moderator_id).where(
+            Moderators.platform_server_id == body.platform_server_id
+        )
+    )
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Moderator already configured for platform server {body.platform_server_id}",
+        )
+
     try:
         validate_config(body.platform, body.conf)
     except ValueError as e:

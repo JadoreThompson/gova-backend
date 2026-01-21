@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC
 from engine.action_handlers.discord.exceptions import DiscordActionHandlerError
-from engine.actions.discord import DiscordActionType
+from engine.actions.discord import BaseDiscordPerformedAction, DiscordActionType
 from engine.actions.registry import PerformedActionRegistry
 from engine.action_handlers.discord import DiscordActionHandler
 from engine.agents.chat_summary import ChatSummaryAgent
@@ -34,7 +34,7 @@ class DiscordModerator:
         DiscordActionType.REPLY: {
             "type": DiscordActionType.REPLY,
             "params": DiscordPerformedActionParamsReply.model_fields,
-            "summary": "This action allows you to send a message in the channel."
+            "summary": "This action allows you to send a message in the channel.",
         },
         DiscordActionType.TIMEOUT: {
             "type": DiscordActionType.TIMEOUT,
@@ -42,12 +42,12 @@ class DiscordModerator:
             "summary": """\
 This action allows you to block the user from sending messages \
 for `duration` seconds.
-            """
+            """,
         },
         DiscordActionType.KICK: {
             "type": DiscordActionType.KICK,
             "params": DiscordPerformedActionParamsKick.model_fields,
-            "summary": "This action allows you to kick the user from the server."
+            "summary": "This action allows you to kick the user from the server.",
         },
     }
 
@@ -66,7 +66,7 @@ for `duration` seconds.
             moderator_id: Unique identifier for the moderator.
             config: Configuration object containing guild, channels, and actions.
             action_handler: Interface used to perform the actions
-            max_channel_msgs: Maximum number of messages to keep in memory per channel            
+            max_channel_msgs: Maximum number of messages to keep in memory per channel
         """
         self._moderator_id = moderator_id
         self._client_id = client_id
@@ -90,6 +90,7 @@ for `duration` seconds.
         self._type_2_defined_action = {
             action.type: action for action in self._config.actions
         }
+        self._prev_actions: list[BaseDiscordPerformedAction] = deque(maxlen=10_000)
 
         self._review_agent = ReviewAgent(output_type=DiscordReviewAgentOutput)
         self._chat_summary_agent = ChatSummaryAgent()
@@ -169,6 +170,10 @@ for `duration` seconds.
                 guidelines=self._config.guidelines,
                 message=ctx,
                 action_params=self._action_params,
+                prev_actions=[
+                    act.model_dump(mode="json") for act in self._prev_actions
+                ],
+                instructions=self._config.instructions,
             )
             res = await self._review_agent.run(user_prompt)
             review_output = res.output
@@ -183,7 +188,7 @@ for `duration` seconds.
 
         if review_output.action is None:
             return
-        
+
         # Performing action
         action_type = review_output.action.type
         if action_type == DiscordActionType.REPLY:
@@ -212,7 +217,6 @@ for `duration` seconds.
                 status = ActionStatus.FAILED
                 error_msg = str(e)
 
-        print(error_msg)
         performed_action = PerformedActionRegistry.build(
             planned_action=review_output.action,
             defined_action=defined_action,
@@ -220,9 +224,13 @@ for `duration` seconds.
             status=status,
         )
         performed_action.error_msg = error_msg
+        self._prev_actions.append(performed_action)
 
         action_event = ActionPerformedModeratorEvent(
-            moderator_id=self._moderator_id, action=performed_action, ctx=ctx, evaluation_id=eval_event.id
+            moderator_id=self._moderator_id,
+            action=performed_action,
+            ctx=ctx,
+            evaluation_id=eval_event.id,
         )
         await self._emit_event(action_event)
 

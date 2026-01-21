@@ -128,7 +128,7 @@ class TierLimit(NamedTuple):
 class PricingTierLimits:
     _TIER_LIMITS = {
         PricingTier.FREE: TierLimit(
-            max_messages=1000, max_moderators=3, max_concurrent=1
+            max_messages=1000, max_moderators=30, max_concurrent=30
         ),
         PricingTier.PRO: TierLimit(
             max_messages=1000, max_moderators=3, max_concurrent=1

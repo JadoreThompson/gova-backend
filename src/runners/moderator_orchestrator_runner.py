@@ -43,7 +43,10 @@ class ModeratorOrchestratorRunner(BaseRunner):
 
         self._logger = logging.getLogger(type(self).__name__)
 
-    def _setup(self):
+    def run(self):
+        asyncio.run(self._run())
+
+    async def _setup(self):
         # Configuring discord client
         intents = discord.Intents.default()
         intents.message_content = True
@@ -55,15 +58,11 @@ class ModeratorOrchestratorRunner(BaseRunner):
         self._action_handler = DiscordActionHandler(self._client)
         self._orchestrator = DiscordModeratorOrchestrator(self._stream)
 
-        self._client_task = asyncio.create_task(
-            self._client.start(token=DISCORD_BOT_TOKEN)
-        )
-
-    def run(self):
-        asyncio.run(self._run())
+        await self._client.login(DISCORD_BOT_TOKEN)
+        self._client_task = asyncio.create_task(self._client.connect(reconnect=True))
 
     async def _run(self):
-        self._setup()
+        await self._setup()
         consumer = AsyncKafkaConsumer(KAFKA_MODERATOR_EVENTS_TOPIC)
         self._kafka_producer = AsyncKafkaProducer()
 
