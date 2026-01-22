@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,10 +45,12 @@ class DeadModeratorEvent(BaseEvent):
     reason: str | None = None
 
 
-class UpdateConfigModeratorEvent(BaseEvent, Generic[C]):
+class UpdateConfigModeratorEvent(BaseEvent):
     type: Literal[ModeratorEventType.UPDATE_CONFIG] = ModeratorEventType.UPDATE_CONFIG
     moderator_id: uuid.UUID
-    config: C
+    # NOTE: Ensure the config is validated prior
+    # to being passed.
+    config: dict[str, Any]
 
 
 class ConfigUpdatedModeratorEvent(BaseEvent, Generic[C]):

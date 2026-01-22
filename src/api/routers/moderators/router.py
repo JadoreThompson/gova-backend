@@ -4,7 +4,8 @@ from uuid import UUID
 from typing import Literal
 
 from aiokafka import AIOKafkaProducer
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,7 @@ from api.routers.actions.models import ActionResponse
 from api.types import JWTPayload
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PricingTierLimits
 from db_models import Moderators, EvaluationEvents, ActionEvents, Users
+from engine.configs.discord import DiscordModeratorConfig
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import (
     StartModeratorEvent,
@@ -28,8 +30,7 @@ from events.moderator import (
 from infra.kafka import AsyncKafkaProducer
 from services.discord import DiscordService
 from services.encryption import EncryptionService
-from utils import get_datetime
-from .controller import validate_config
+from utils import build_config, get_datetime
 from .models import (
     ModeratorCreate,
     ModeratorResponse,
@@ -68,9 +69,9 @@ async def create_moderator(
         )
 
     try:
-        validate_config(body.platform, body.conf)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        build_config(body.platform, body.conf)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     moderator = Moderators(
         user_id=jwt.sub,
@@ -350,17 +351,20 @@ async def update_moderator(
     if not moderator:
         raise HTTPException(status_code=404, detail="Moderator not found")
 
+    status_code = 200
     event = None
     if body.conf is not None:
-        if moderator.status != ModeratorStatus.OFFLINE:
-            try:
-                validated_config = validate_config(moderator.platform, body.conf)
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+        try:
+            validated_config = build_config(moderator.platform, body.conf)
+        except NotImplementedError as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
+        if moderator.status != ModeratorStatus.OFFLINE:
+            dumped_config = validated_config.model_dump(mode="json")
             event = UpdateConfigModeratorEvent(
-                moderator_id=moderator_id, config=validated_config
-            )
+                moderator_id=moderator_id, config=dumped_config
+            ).model_dump(mode="json")
+            status_code = 202
         else:
             moderator.conf = body.conf
 
@@ -372,17 +376,22 @@ async def update_moderator(
     await db_sess.commit()
 
     if event is not None:
-        await kafka_producer.send(KAFKA_MODERATOR_EVENTS_TOPIC, event.model_dump_json())
+        await kafka_producer.send(
+            KAFKA_MODERATOR_EVENTS_TOPIC, json.dumps(event).encode()
+        )
 
-    return ModeratorResponse(
-        moderator_id=moderator.moderator_id,
-        name=moderator.name,
-        description=moderator.description,
-        platform=MessagePlatform(moderator.platform),
-        platform_server_id=moderator.platform_server_id,
-        conf=moderator.conf,
-        status=ModeratorStatus(moderator.status),
-        created_at=moderator.created_at,
+    return JSONResponse(
+        status_code=status_code,
+        content=ModeratorResponse(
+            moderator_id=moderator.moderator_id,
+            name=moderator.name,
+            description=moderator.description,
+            platform=MessagePlatform(moderator.platform),
+            platform_server_id=moderator.platform_server_id,
+            conf=moderator.conf,
+            status=ModeratorStatus(moderator.status),
+            created_at=moderator.created_at,
+        ).model_dump(mode="json"),
     )
 
 

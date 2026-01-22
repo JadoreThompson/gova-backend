@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Generic, Literal, TypeVar
 
 from engine.actions.base import BaseAction, BasePerformedAction
 from engine.params.discord import (
@@ -9,6 +9,11 @@ from engine.params.discord import (
     DiscordPerformedActionParamsTimeout,
 )
 from enums import MessagePlatform
+from pydantic import BaseModel
+
+
+DP = TypeVar("DP", bound=BaseModel)
+P = TypeVar("P", bound=BaseModel)
 
 
 class DiscordActionType(str, Enum):
@@ -17,12 +22,12 @@ class DiscordActionType(str, Enum):
     TIMEOUT = "timeout"
 
 
-class BaseDiscordAction(BaseAction):
+class BaseDiscordAction(BaseAction[DP], Generic[DP]):
     type: DiscordActionType
     platform: Literal[MessagePlatform.DISCORD] = MessagePlatform.DISCORD
 
 
-class BaseDiscordPerformedAction(BasePerformedAction):
+class BaseDiscordPerformedAction(BasePerformedAction[P], Generic[P]):
     type: DiscordActionType
     platform: Literal[MessagePlatform.DISCORD] = MessagePlatform.DISCORD
 
@@ -47,11 +52,11 @@ class DiscordPerformedActionTimeout(
     type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
 
 
-class DiscordActionKick(BaseDiscordAction):
-    type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
+class DiscordActionKick(BaseDiscordAction[None]):
+    type: Literal[DiscordActionType.KICK] = DiscordActionType.KICK
 
 
 class DiscordPerformedActionKick(
     BaseDiscordPerformedAction[DiscordPerformedActionParamsKick]
 ):
-    type: Literal[DiscordActionType.TIMEOUT] = DiscordActionType.TIMEOUT
+    type: Literal[DiscordActionType.KICK] = DiscordActionType.KICK

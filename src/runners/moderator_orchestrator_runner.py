@@ -22,6 +22,7 @@ from events.moderator import (
 )
 from infra.db import get_db_sess
 from infra.kafka import AsyncKafkaConsumer, AsyncKafkaProducer
+from utils import build_config
 from .base_runner import BaseRunner
 
 
@@ -82,11 +83,20 @@ class ModeratorOrchestratorRunner(BaseRunner):
                         await self._handle_stop_moderator(event_data)
                     elif event_type == ModeratorEventType.UPDATE_CONFIG:
                         moderator_id = event_data["moderator_id"]
-                        await self._handle_stop_moderator(event_data)
-                        await self._handle_start_moderator(moderator_id)
-                        event = ConfigUpdatedModeratorEvent(
-                            moderator_id=moderator_id, config=event_data["config"]
+
+                        await self._handle_stop_moderator(
+                            {
+                                "moderator_id": moderator_id,
+                                "reason": "Update config requested",
+                            }
                         )
+                        await self._handle_start_moderator(moderator_id)
+
+                        config = build_config(MessagePlatform.DISCORD, event_data["config"])
+                        event = ConfigUpdatedModeratorEvent[DiscordModeratorConfig](
+                            moderator_id=moderator_id, config=config
+                        )
+
                         await self._kafka_producer.send(
                             KAFKA_MODERATOR_EVENTS_TOPIC,
                             event.model_dump_json().encode(),
@@ -112,6 +122,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
                 except asyncio.CancelledError:
                     pass
 
+
     async def _ensure_platform(self, moderator_id: uuid.UUID):
         async with get_db_sess() as db_sess:
             mod = await db_sess.get(Moderators, moderator_id)
@@ -127,9 +138,10 @@ class ModeratorOrchestratorRunner(BaseRunner):
         if not db_mod:
             return
 
+        config = build_config(MessagePlatform.DISCORD, db_mod.conf)
         mod = DiscordModerator(
             moderator_id,
-            DiscordModeratorConfig(**db_mod.conf),
+            config,
             self._client.user.id,
             self._action_handler,
             self._kafka_producer,
