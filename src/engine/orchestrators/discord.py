@@ -49,7 +49,7 @@ class DiscordModeratorOrchestrator:
                 await mod.process_message(msg)
             except Exception:
                 error_msg = (
-                    "An error occured whilst processing message "
+                    f"An error occured whilst processing message {msg}"
                     f"for moderator '{mod.moderator_id}'"
                 )
                 self._logger.error(error_msg, exc_info=True)

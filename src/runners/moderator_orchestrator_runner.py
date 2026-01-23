@@ -83,6 +83,7 @@ class ModeratorOrchestratorRunner(BaseRunner):
                         await self._handle_stop_moderator(event_data)
                     elif event_type == ModeratorEventType.UPDATE_CONFIG:
                         moderator_id = event_data["moderator_id"]
+                        config = build_config(MessagePlatform.DISCORD, event_data["config"])
 
                         await self._handle_stop_moderator(
                             {
@@ -90,9 +91,8 @@ class ModeratorOrchestratorRunner(BaseRunner):
                                 "reason": "Update config requested",
                             }
                         )
-                        await self._handle_start_moderator(moderator_id)
+                        await self._handle_start_moderator(moderator_id, config)
 
-                        config = build_config(MessagePlatform.DISCORD, event_data["config"])
                         event = ConfigUpdatedModeratorEvent[DiscordModeratorConfig](
                             moderator_id=moderator_id, config=config
                         )
@@ -133,12 +133,12 @@ class ModeratorOrchestratorRunner(BaseRunner):
             mod = await db_sess.get(Moderators, moderator_id)
             return mod
 
-    async def _handle_start_moderator(self, moderator_id: uuid.UUID):
+    async def _handle_start_moderator(self, moderator_id: uuid.UUID, config: DiscordModeratorConfig | None = None) -> None:
         db_mod = await self._get_moderator(moderator_id)
         if not db_mod:
             return
 
-        config = build_config(MessagePlatform.DISCORD, db_mod.conf)
+        config = config or build_config(MessagePlatform.DISCORD, db_mod.conf)
         mod = DiscordModerator(
             moderator_id,
             config,
@@ -150,10 +150,10 @@ class ModeratorOrchestratorRunner(BaseRunner):
         success = self._orchestrator.add(mod)
         if success:
             self._moderators[moderator_id] = mod
-        self._logger.info(f"Moderator id={moderator_id} added")
 
         event = AliveModeratorEvent(moderator_id=moderator_id)
         await self._emit_event(event)
+        self._logger.info(f"Moderator moderator_id={moderator_id} added")
 
     async def _handle_stop_moderator(self, event):
         moderator_id = event["moderator_id"]
