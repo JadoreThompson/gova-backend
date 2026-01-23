@@ -11,15 +11,15 @@ Gova is your AI powered moderator for your social community, able to perform hig
 A distributed event driven architecture comprised of 3 components.
 
 - Unified API Layer
-    - Moderator Management: Create, Delete, Start and Stop your moderator
-    - Actions Management: Retrieve, Approve and Reject actions
-    - Connections: Manage connections to social platforms e.g. Discord
+  - Moderator Management: Create, Delete, Start and Stop your moderator
+  - Actions Management: Retrieve, Approve and Reject actions
+  - Connections: Manage connections to social platforms e.g. Discord
 - Moderator Orchestrator
-    - Orchestration: Orchestrates instances of moderators grouped by the platform type
-    - Event Consumption: Listen for Start, Stop, UpdateConfig events and applies them to the rightful moderator
-    - Event Emitting: Emits event to signal ActionPerformed, DeadModerator downstream
+  - Orchestration: Orchestrates instances of moderators grouped by the platform type
+  - Event Consumption: Listen for Start, Stop, UpdateConfig events and applies them to the rightful moderator
+  - Event Emitting: Emits event to signal ActionPerformed, DeadModerator, ConfigUpdated downstream
 - Event Handler
-    - Event consumption: Listens to events from the moderator orchestrator and performs DB operations and calculations
+  - Event consumption: Listens to events from the moderator orchestrator and performs DB operations and calculations
 
 ## Initialisation
 
