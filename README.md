@@ -1,12 +1,14 @@
+# Overview
+
 Gova is your AI powered moderator for your social community, able to perform high order actions to review your chat, ban, kick, timeout the bad actors.
 
-## Features
+# Features
 
 - Synthesis: The moderator will synthesis the stream of messages and summarise the current threads of conversation
 - Autonomous actions: Your agent will perform high order actions such as replying, timing out or kicking users.
 - Human in the loop: Choose to have the actions reviewed by your first will full context available
 
-## Architecture
+# Architecture
 
 A distributed event driven architecture comprised of 3 components.
 
@@ -21,7 +23,7 @@ A distributed event driven architecture comprised of 3 components.
 - Event Handler
   - Event consumption: Listens to events from the moderator orchestrator and performs DB operations and calculations
 
-## Initialisation
+# Initialisation
 
 ```jsx
 git clone https://github.com/JadoreThompson/gova-backend
