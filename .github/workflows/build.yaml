@@ -42,6 +42,9 @@ jobs:
           sudo docker push wifimemes/gova-backend:latest
           sudo docker push wifimemes/gova-backend:$TAG
 
+      - name: Initialise swarm manager
+        run: sudo docker swarm init || true
+
       - name: Create network
         run: |
           if ! sudo docker network inspect gova_network >/dev/null 2>&1; then
@@ -49,9 +52,6 @@ jobs:
               --driver overlay \
               --attachable gova_network
           fi
-
-      - name: Initialise swarm manager
-        run: sudo docker swarm init || true
 
       - name: Create docker compose
         run: |
