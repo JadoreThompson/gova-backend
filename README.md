@@ -32,6 +32,7 @@ cd gova-backend
 
 cp .env.example .env
 
+# Set up infrastructure
 docker compose -f docker/dev-compose.yaml --env-file .env up -d postgres kafka redis
 
 # Run the HTTP API
