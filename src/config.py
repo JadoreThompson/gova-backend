@@ -94,10 +94,10 @@ PAGE_SIZE = 10
 
 if IS_PRODUCTION:
     SCHEME = "https"
-    # SUB_DOMAIN = "www."
-    # DOMAIN = "gova.chat"
-    SUB_DOMAIN = "gova-chat."
-    DOMAIN = "netlify.app"
+    SUB_DOMAIN = "www."
+    DOMAIN = "gova.chat"
+    # SUB_DOMAIN = "gova-chat."
+    # DOMAIN = "netlify.app"
 else:
     SCHEME = "http"
     SUB_DOMAIN = ""
