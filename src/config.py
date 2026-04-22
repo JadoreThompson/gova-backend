@@ -15,7 +15,7 @@ PROJECT_PATH = os.path.dirname(BASE_PATH)
 
 load_dotenv(os.path.join(PROJECT_PATH, ".env"))
 
-IS_PRODUCTION = bool(int(os.getenv("IS_PRODUCTION", "0")))
+IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false") == "true"
 
 
 # Database
@@ -54,18 +54,8 @@ REDIS_TTL_SECS = int(os.getenv("REDIS_TTL_SECS"))
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-
-DISCORD_REDIRECT_URI = (
-    "https://www.gova.chat/auth/discord/oauth?type=user"
-    if IS_PRODUCTION
-    else "http://localhost:5173/auth/discord/oauth?type=user"
-)
-
-DISCORD_BOT_REDIRECT_URI = (
-    "https://www.gova.chat/auth/discord/oauth?type=bot"
-    if IS_PRODUCTION
-    else "http://localhost:5173/auth/discord/oauth/bot?type=bot"
-)
+DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
+DISCORD_BOT_REDIRECT_URI = os.getenv("DISCORD_BOT_REDIRECT_URI")
 
 
 # Stripe
@@ -92,14 +82,9 @@ CUSTOMER_SUPPORT_EMAIL = os.getenv("CUSTOMER_SUPPORT_EMAIL")
 # Server
 PAGE_SIZE = 10
 
-if IS_PRODUCTION:
-    SCHEME = "https"
-    SUB_DOMAIN = "www."
-    DOMAIN = "gova.chat"
-else:
-    SCHEME = "http"
-    SUB_DOMAIN = ""
-    DOMAIN = "localhost:5173"
+SCHEME = os.getenv("SCHEME")
+SUB_DOMAIN = os.getenv("SUB_DOMAIN")
+DOMAIN = os.getenv("DOMAIN")
 
 BASE_URL = f"{SCHEME}://{SUB_DOMAIN}{DOMAIN}"
 
