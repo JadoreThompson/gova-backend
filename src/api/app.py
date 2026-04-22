@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from api.middlewares import RateLimitMiddleware
 from api.routers.actions.router import router as action_router
+from api.routers.auth.exceptions import AuthError
 from api.routers.auth.router import router as auth_router
 from api.routers.connections.router import router as connections_router
 from api.routers.moderators.router import router as moderators_router
@@ -87,3 +88,8 @@ async def handle_request_validation_error(req: Request, exc: RequestValidationEr
         )
 
     return JSONResponse(status_code=422, content={"error": str(error_msg)})
+
+
+@app.exception_handler(AuthError)
+async def handle_auth_error(req: Request, exc: AuthError):
+    return JSONResponse(status_code=400, content={"error": str(exc)})

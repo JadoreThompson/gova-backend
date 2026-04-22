@@ -19,7 +19,7 @@ from utils import get_datetime
 from services.email import BrevoEmailService
 from services.jwt import JWTService
 from .controller import gen_verification_code
-from .exceptions import MaxEmailVerificationAttemptsException
+from .exceptions import AuthError, MaxEmailVerificationAttemptsException
 from .models import UserCreate, UserLogin, VerifyAction, ForgotPassword, ResetPassword
 
 
@@ -35,7 +35,7 @@ class AuthService:
     @classmethod
     async def register_user(
         cls, body: UserCreate, bg_tasks: BackgroundTasks, db_sess: AsyncSession
-    ):
+    ) -> Users:
         res = await db_sess.scalar(select(Users).where(Users.email == body.email))
         if res is not None:
             raise HTTPException(status_code=400, detail="Email already exists.")
@@ -50,9 +50,15 @@ class AuthService:
         user_data["password"] = hashed_pw
 
         user = await db_sess.scalar(insert(Users).values(**user_data).returning(Users))
+        await cls._send_email_verification_email(user.user_id, user.email, bg_tasks)
+        return user
 
+    @classmethod
+    async def _send_email_verification_email(
+        cls, user_id: str, email: str, bg_tasks: BackgroundTasks
+    ):
         code = gen_verification_code()
-        key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{str(user.user_id)}"
+        key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{user_id}"
         await REDIS_CLIENT.delete(key)
         ts = int(get_datetime().timestamp())
         await REDIS_CLIENT.set(
@@ -65,36 +71,24 @@ class AuthService:
 
         bg_tasks.add_task(
             cls._em_service.send_email,
-            body.email,
+            email,
             "Verify your email",
             f"Your verification code is: {code}",
         )
 
-        rsp = await JWTService.set_persistant_jwt_cookie(user, db_sess)
-        rsp.status_code = 202
-        return rsp
-
     @classmethod
-    async def login_user(cls, body: UserLogin, db_sess: AsyncSession):
-        query = select(Users)
-        if body.username is not None:
-            query = query.where(Users.username == body.username)
-        if body.email is not None:
-            query = query.where(Users.email == body.email)
-
+    async def verify_credentials(cls, body: UserLogin, db_sess: AsyncSession) -> Users:
+        query = select(Users).where(Users.email == body.email)
         user = await db_sess.scalar(query)
         if user is None:
-            raise HTTPException(status_code=400, detail="User doesn't exist.")
+            raise AuthError("User doesn't exist.")
 
         try:
             cls._pw_hasher.verify(user.password, body.password)
         except Argon2Error:
-            raise HTTPException(status_code=400, detail="Invalid password.")
+            raise AuthError("Invalid password.")
 
-        rsp = await JWTService.set_persistant_jwt_cookie(user, db_sess)
-        if user.verified_at is None:
-            rsp.status_code = 403
-        return rsp
+        return user
 
     @classmethod
     async def request_email_verification(
@@ -141,20 +135,22 @@ class AuthService:
         )
 
     @classmethod
-    async def verify_email(cls, user_id: str, code: str, db_sess: AsyncSession):
+    async def verify_email(
+        cls, user_id: str, code: str, db_sess: AsyncSession
+    ) -> Users:
         key = f"{REDIS_EMAIL_VERIFICATION_KEY_PREFIX}{user_id}"
         payload = await REDIS_CLIENT.get(key)
 
         if payload is None:
-            raise HTTPException(status_code=400, detail="Expired verification code.")
+            raise AuthError("Expired verification code.")
 
         if json.loads(payload).get("code") != code:
-            raise HTTPException(status_code=400, detail="Invalid verification code.")
+            raise AuthError("Invalid verification code.")
 
         await REDIS_CLIENT.delete(key)
         user = await db_sess.scalar(select(Users).where(Users.user_id == user_id))
         user.verified_at = get_datetime()
-        return await JWTService.set_persistant_jwt_cookie(user, db_sess)
+        return user
 
     @classmethod
     async def initiate_change_action(
@@ -172,22 +168,28 @@ class AuthService:
             )
             if existing_user:
                 raise HTTPException(status_code=400, detail="Username already exists.")
-            subject = "Confirm Your Username Change"
-            target_email = email
-        elif action == "change_email":
-            existing_user = await db_sess.scalar(
-                select(Users).where(Users.email == new_value)
-            )
-            if existing_user:
-                raise HTTPException(status_code=400, detail="Email already exists.")
-            subject = "Confirm Your Email Change"
-            target_email = new_value
-        elif action == "change_password":
-            subject = "Confirm Your Password Change"
-            target_email = email
-        else:
-            raise HTTPException(status_code=400, detail="Invalid action.")
 
+        await cls.send_verification_for_change_action(
+            user_id=user_id,
+            email=email,
+            action=action,
+            new_value=new_value,
+            bg_tasks=bg_tasks,
+        )
+
+        return {
+            "message": f"A verification code has been sent to your {'new ' if action == 'change_email' else ''}email."
+        }
+
+    @classmethod
+    async def send_verification_for_change_action(
+        cls,
+        user_id: str,
+        email: str,
+        action: str,
+        new_value: str,
+        bg_tasks: BackgroundTasks,
+    ) -> None:
         prefix = f"{action}:{user_id}:"
         async for key in REDIS_CLIENT.scan_iter(f"{prefix}*"):
             await REDIS_CLIENT.delete(key)
@@ -203,16 +205,14 @@ class AuthService:
         redis_key = f"{prefix}{verification_code}"
         await REDIS_CLIENT.set(redis_key, payload, ex=cls._REDIS_EXPIRY_SECS)
 
+        subject = f"Confirm Your {'Username' if action == 'change_username' else 'Password'} Change"
+
         bg_tasks.add_task(
             cls._em_service.send_email,
-            target_email,
+            email,
             subject,
             f"Your verification code is: {verification_code}",
         )
-
-        return {
-            "message": f"A verification code has been sent to your {'new ' if action == 'change_email' else ''}email."
-        }
 
     @classmethod
     async def verify_and_execute_action(
@@ -228,19 +228,16 @@ class AuthService:
 
         data = json.loads(data_str)
         if data["user_id"] != str(user_id):
-            raise HTTPException(status_code=401, detail="Unauthorised request.")
+            raise HTTPException(status_code=403, detail="Unauthorised request.")
 
         action = data["action"]
         new_value = data["new_value"]
 
         if action == "change_username":
             return await cls._handle_change_username(user_id, new_value, db_sess)
-        if action == "change_email":
-            return await cls._handle_change_email(user_id, new_value, db_sess)
         elif action == "change_password":
             return await cls._handle_change_password(user_id, new_value, db_sess)
-        else:
-            raise HTTPException(status_code=400, detail="Unknown action specified.")
+        raise AuthError("Unknown action specified.")
 
     @classmethod
     async def _handle_change_username(
@@ -271,7 +268,7 @@ class AuthService:
         await db_sess.execute(
             update(Users).where(Users.user_id == user_id).values(email=new_email)
         )
-        return await JWTService.set_persistant_jwt_cookie(user, db_sess)
+        return user
 
     @classmethod
     async def _handle_change_password(

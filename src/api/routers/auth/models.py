@@ -46,14 +46,8 @@ class UserCreate(PasswordField):
 
 
 class UserLogin(CustomBaseModel):
-    username: str | None = None
-    email: str | None = None
+    email: str
     password: str
-
-    def model_post_init(self, context):
-        if not self.username and not self.email:
-            raise ValueError("Either email or username must be provided.")
-        return self
 
 
 class UserConnection(BaseModel):

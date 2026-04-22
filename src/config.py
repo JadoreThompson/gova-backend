@@ -13,9 +13,11 @@ from enums import PricingTier
 BASE_PATH = os.path.dirname(__file__)
 PROJECT_PATH = os.path.dirname(BASE_PATH)
 
-load_dotenv(os.path.join(PROJECT_PATH, ".env"))
+load_dotenv(os.path.join(
+    PROJECT_PATH, 
+    ".env" if not os.getenv("PYTEST_RUNNING") else ".env.test"))
 
-IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false") == "true"
+IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").strip() == "true"
 
 
 # Database

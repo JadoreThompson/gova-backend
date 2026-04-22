@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,7 @@ from services.discord import DiscordService
 from services.encryption import EncryptionService
 from services.jwt import JWTService
 from utils import get_datetime
-from .controller import handle_fetch_discord_identity
+from .controller import handle_fetch_discord_identity, remove_jwt, set_cookie
 from .exceptions import MaxEmailVerificationAttemptsException
 from .models import (
     UserCreate,
@@ -35,17 +35,16 @@ async def register(
     bg_tasks: BackgroundTasks,
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    rsp = await AuthService.register_user(body, bg_tasks, db_sess)
+    user = await AuthService.register_user(body, bg_tasks, db_sess)
+    rsp = await set_cookie(user, Response(), db_sess)
     await db_sess.commit()
     return rsp
 
 
 @router.post("/login")
-async def login(
-    body: UserLogin,
-    db_sess: AsyncSession = Depends(depends_db_sess),
-):
-    rsp = await AuthService.login_user(body, db_sess)
+async def login(body: UserLogin, db_sess: AsyncSession = Depends(depends_db_sess)):
+    user = await AuthService.verify_credentials(body, db_sess)
+    rsp = await set_cookie(user, Response(), db_sess)
     await db_sess.commit()
     return rsp
 
@@ -61,8 +60,7 @@ async def forgot_password(
 
 @router.post("/reset-password")
 async def reset_password(
-    body: ResetPassword,
-    db_sess: AsyncSession = Depends(depends_db_sess),
+    body: ResetPassword, db_sess: AsyncSession = Depends(depends_db_sess)
 ):
     rsp = await AuthService.reset_password(body, db_sess)
     await db_sess.commit()
@@ -99,8 +97,7 @@ async def verify_email(
         code=body.code,
         db_sess=db_sess,
     )
-    await db_sess.commit()
-    return rsp
+    return await set_cookie(rsp, Response(), db_sess)
 
 
 @router.post("/logout")
@@ -126,13 +123,12 @@ async def get_me(
 
     connections = {}
 
-    if user.discord_oauth_payload:
+    if user.discord_oauth_payload is not None:
         decrypted = EncryptionService.decrypt(
             user.discord_oauth_payload, expected_aad=str(user.user_id)
         )
         identity = await handle_fetch_discord_identity(decrypted, user)
         await db_sess.commit()
-
         if identity.success:
             connections[MessagePlatform.DISCORD] = UserConnection(
                 username=identity.username,
@@ -153,18 +149,22 @@ async def discord_oauth_callback(
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     payload = await DiscordService.fetch_discord_oauth_payload(code)
-
     payload["created_at"] = get_datetime().timestamp()
     payload["expires_at"] = payload["created_at"] + payload["expires_in"]
 
     encrypted = EncryptionService.encrypt(payload, aad=str(jwt.sub))
 
-    await db_sess.execute(
+    user = await db_sess.scalar(
         update(Users)
         .values(discord_oauth_payload=encrypted)
         .where(Users.user_id == jwt.sub)
+        .returning(Users)
     )
+
+    rsp =  Response(status_code=204)
+    rsp = await set_cookie(user, rsp, db_sess)
     await db_sess.commit()
+    return rsp
 
 
 @router.get(
@@ -221,10 +221,13 @@ async def verify_action(
     jwt: JWTPayload = Depends(depends_jwt()),
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
-    rsp = await AuthService.verify_and_execute_action(
-        user_id=str(jwt.sub),
-        body=body,
-        db_sess=db_sess,
+    await AuthService.verify_and_execute_action(
+        user_id=str(jwt.sub), body=body, db_sess=db_sess
     )
     await db_sess.commit()
+
+    rsp = Response(status_code=204)
+    if body.action == "change_password":
+        rsp = remove_jwt(rsp)
+
     return rsp

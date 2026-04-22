@@ -49,9 +49,6 @@ class ChatSummaryAgent(BaseAgent):
         messages: list[DiscordMessageContext],
         chat_summary: str | None = None,
     ):
-        # import json
-        # print(json.dumps([msg.model_dump(mode='json') for msg in messages], indent=4))
-
         cls = self.__class__
         return cls._USER_PROMPT_TEMPLATE.format(
             server_summary=server_summary,
@@ -62,5 +59,4 @@ class ChatSummaryAgent(BaseAgent):
     
     async def run(self, *args, **kw):
         res = await super().run(*args, **kw)
-        print(res.output)
         return res

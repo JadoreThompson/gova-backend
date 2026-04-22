@@ -1,7 +1,7 @@
 import asyncio
-from datetime import timedelta
 import discord
 import logging
+from datetime import timedelta
 from typing import Any
 
 from aiohttp import BasicAuth, ClientError, ClientSession
@@ -147,7 +147,6 @@ class DiscordService:
             )
             rsp.raise_for_status()
             channels = await rsp.json()
-            print("Discord channels", channels)
             return [
                 GuildChannel(id=ch["id"], name=ch["name"])
                 for ch in channels
