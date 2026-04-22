@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from enums import MessagePlatform, PricingTier
 from models import CustomBaseModel
@@ -35,6 +35,14 @@ class PasswordField(BaseModel):
 class UserCreate(PasswordField):
     username: str
     email: str
+
+    @field_validator("username")
+    def username_validator(cls, value: str) -> str:
+        if not value.isalnum():
+            raise ValueError("Username must be alphanumeric.")
+        if not len(value.strip()) >= 3:
+            raise ValueError("Username must be at least 3 characters long.")
+        return value
 
 
 class UserLogin(CustomBaseModel):
