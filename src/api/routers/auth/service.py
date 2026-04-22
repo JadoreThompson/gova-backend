@@ -7,7 +7,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import PW_HASH_SALT, REDIS_EMAIL_VERIFICATION_KEY_PREFIX
+from config import (
+    PW_HASH_SALT,
+    REDIS_EMAIL_VERIFICATION_KEY_PREFIX,
+    REDIS_FORGOT_PASSWORD_KEY_PREFIX,
+    BASE_URL,
+)
 from infra.db.models import Users
 from infra.redis import REDIS_CLIENT
 from utils import get_datetime
@@ -15,7 +20,7 @@ from services.email import BrevoEmailService
 from services.jwt import JWTService
 from .controller import gen_verification_code
 from .exceptions import MaxEmailVerificationAttemptsException
-from .models import UserCreate, UserLogin, VerifyAction
+from .models import UserCreate, UserLogin, VerifyAction, ForgotPassword, ResetPassword
 
 
 class AuthService:
@@ -282,4 +287,56 @@ class AuthService:
         rsp = JSONResponse(
             status_code=200, content={"message": "Password changed successfully."}
         )
-        return JWTService.remove_cookie(rsp)
+        return JWTService.remove_jwt(rsp)
+
+    @classmethod
+    async def forgot_password(
+        cls, body: ForgotPassword, bg_tasks: BackgroundTasks, db_sess: AsyncSession
+    ):
+        user = await db_sess.scalar(select(Users).where(Users.email == body.email))
+
+        if user is None:
+            return {"message": "If the email exists, a reset link has been sent."}
+
+        verification_code = gen_verification_code()
+        key = f"{REDIS_FORGOT_PASSWORD_KEY_PREFIX}{verification_code}"
+        payload = json.dumps({"user_id": str(user.user_id), "email": body.email})
+        await REDIS_CLIENT.set(key, payload, ex=cls._REDIS_EXPIRY_SECS)
+
+        forgot_password_link = f"{BASE_URL}/reset-password?code={verification_code}"
+        bg_tasks.add_task(
+            cls._em_service.send_email,
+            body.email,
+            "Reset Your Password",
+            f"Click the link to reset your password: {forgot_password_link}",
+        )
+
+        return {"message": "If the email exists, a reset link has been sent."}
+
+    @classmethod
+    async def reset_password(cls, body: ResetPassword, db_sess: AsyncSession):
+        key = f"{REDIS_FORGOT_PASSWORD_KEY_PREFIX}{body.code}"
+        payload = await REDIS_CLIENT.get(key)
+
+        if not payload:
+            raise HTTPException(
+                status_code=400, detail="Invalid or expired reset code."
+            )
+
+        await REDIS_CLIENT.delete(key)
+
+        data = json.loads(payload)
+        user_id = data["user_id"]
+
+        user = await db_sess.scalar(select(Users).where(Users.user_id == user_id))
+        if not user:
+            raise HTTPException(status_code=400, detail="User not found.")
+
+        hashed_pw = cls._pw_hasher.hash(body.password, salt=PW_HASH_SALT.encode())
+        await db_sess.execute(
+            update(Users)
+            .where(Users.user_id == user_id)
+            .values(password=hashed_pw, jwt=None)
+        )
+
+        return {"message": "Password reset successfully."}

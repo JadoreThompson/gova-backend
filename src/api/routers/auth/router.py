@@ -21,6 +21,8 @@ from .models import (
     UpdatePassword,
     UserMe,
     UserConnection,
+    ForgotPassword,
+    ResetPassword,
 )
 from .service import AuthService
 
@@ -44,6 +46,25 @@ async def login(
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     rsp = await AuthService.login_user(body, db_sess)
+    await db_sess.commit()
+    return rsp
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPassword,
+    bg_tasks: BackgroundTasks,
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    return await AuthService.forgot_password(body, bg_tasks, db_sess)
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPassword,
+    db_sess: AsyncSession = Depends(depends_db_sess),
+):
+    rsp = await AuthService.reset_password(body, db_sess)
     await db_sess.commit()
     return rsp
 

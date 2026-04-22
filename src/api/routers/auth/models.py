@@ -81,3 +81,12 @@ class VerifyCode(BaseModel):
 
 class VerifyAction(VerifyCode):
     action: Literal["change_username", "change_password"]
+
+
+class ForgotPassword(BaseModel):
+    email: str
+
+
+class ResetPassword(BaseModel):
+    code: str
+    password: str
