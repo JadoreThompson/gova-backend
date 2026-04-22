@@ -8,10 +8,10 @@ from datetime import UTC, datetime
 from sqlalchemy import insert, select, update
 
 from config import KAFKA_MODERATOR_EVENTS_TOPIC
-from db_models import Moderators, ActionEvents, EvaluationEvents
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import ModeratorEventType
 from infra.db import get_db_sess
+from infra.db.models import Moderators, ActionEvents, EvaluationEvents
 from infra.kafka import AsyncKafkaConsumer
 
 

@@ -8,7 +8,7 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import PW_HASH_SALT, REDIS_EMAIL_VERIFICATION_KEY_PREFIX
-from db_models import Users
+from infra.db.models import Users
 from infra.redis import REDIS_CLIENT
 from utils import get_datetime
 from services.email import BrevoEmailService

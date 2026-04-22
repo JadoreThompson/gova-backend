@@ -19,7 +19,6 @@ from api.models import PaginatedResponse
 from api.routers.actions.models import ActionResponse
 from api.types import JWTPayload
 from config import KAFKA_MODERATOR_EVENTS_TOPIC, PAGE_SIZE, PricingTierLimits
-from db_models import Moderators, EvaluationEvents, ActionEvents, Users
 from engine.configs.discord import DiscordModeratorConfig
 from enums import ActionStatus, MessagePlatform, ModeratorStatus
 from events.moderator import (
@@ -27,6 +26,7 @@ from events.moderator import (
     StopModeratorEvent,
     UpdateConfigModeratorEvent,
 )
+from infra.db.models import Moderators, EvaluationEvents, ActionEvents, Users
 from infra.kafka import AsyncKafkaProducer
 from services.discord import DiscordService
 from services.encryption import EncryptionService

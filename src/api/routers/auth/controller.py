@@ -2,7 +2,7 @@ import random
 import string
 from typing import Any
 
-from db_models import Users
+from infra.db.models import Users
 
 from api.types import Identity 
 from services.discord import DiscordService

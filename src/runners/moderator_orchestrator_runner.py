@@ -7,7 +7,6 @@ import discord
 from pydantic import BaseModel
 
 from config import DISCORD_BOT_TOKEN, KAFKA_MODERATOR_EVENTS_TOPIC
-from db_models import Moderators
 from engine.action_handlers.discord import DiscordActionHandler
 from engine.configs.discord import DiscordModeratorConfig
 from engine.message_streams.discord import DiscordMessageStream
@@ -21,6 +20,7 @@ from events.moderator import (
     ModeratorEventType,
 )
 from infra.db import get_db_sess
+from infra.db.models import Moderators
 from infra.kafka import AsyncKafkaConsumer, AsyncKafkaProducer
 from utils import build_config
 from .base_runner import BaseRunner

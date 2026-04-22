@@ -14,10 +14,10 @@ from config import (
     REDIS_USER_MODERATOR_MESSAGES_PREFIX,
     STRIPE_PRICING_PRO_WEBHOOK_SECRET,
 )
-from db_models import Moderators, Users
 from enums import ModeratorStatus, PricingTier
 from events.moderator import StopModeratorEvent
 from infra.db import get_db_sess
+from infra.db.models import Moderators, Users
 from infra.redis import REDIS_CLIENT
 from services.email import BrevoEmailService
 from .exceptions import (

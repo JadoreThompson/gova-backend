@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.dependencies import depends_db_sess, depends_jwt
 from api.types import JWTPayload
 from config import DOMAIN, SCHEME, STRIPE_PRICING_PRO_PRICE_ID, SUB_DOMAIN
-from db_models import Users
 from enums import PricingTier
+from infra.db.models import Users
 from services.event_handlers import StripeEventHandler
 from services.event_handlers.exceptions import VerificationError
 from utils import get_datetime

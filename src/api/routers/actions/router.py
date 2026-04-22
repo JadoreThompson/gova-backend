@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import depends_db_sess, depends_jwt
 from api.types import JWTPayload
-from db_models import ActionEvents, Moderators
 from engine.actions.discord import DiscordActionType
 from engine.contexts.discord import DiscordMessageContext
 from engine.params.discord import (
@@ -15,6 +14,7 @@ from engine.params.discord import (
     DiscordPerformedActionParamsKick,
 )
 from enums import ActionStatus, MessagePlatform
+from infra.db.models import ActionEvents, Moderators
 from utils import get_datetime
 from .models import ActionResponse
 from .controller import get_discord_handler
