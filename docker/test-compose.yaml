@@ -1,5 +1,5 @@
 services:
-  postgres:
+  test_postgres:
     image: postgres:18
     container_name: gova_test_postgres
     restart: always
@@ -9,11 +9,11 @@ services:
     ports:
       - ${DB_PORT}:5432
     volumes:
-      - postgres:/var/lib/postgresql
+      - test_postgres:/var/lib/postgresql
     networks:
       - gova_network_test
 
-  kafka:
+  test_kafka:
     image: apache/kafka:4.0.1
     hostname: broker
     container_name: gova_test_kafka
@@ -38,37 +38,21 @@ services:
     networks:
       - gova_network_test
 
-  redis:
+  test_redis:
     image: redis:7
     container_name: gova_test_redis
     restart: always
     ports:
       - ${REDIS_PORT}:6379
     volumes:
-      - redis:/data
+      - test_redis:/data
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     networks:
       - gova_network_test
 
-  orchestrator:
-    image: gova-backend-dev
-    build:
-      dockerfile: docker/Dockerfile
-      context: ..
-    container_name: gova_test_backend
-    depends_on:
-      - postgres
-      - kafka
-      - redis
-    ports:
-      - 8000:8000
-    networks:
-      - gova_network_test
-    command: orchestrator run
-
 volumes:
-  postgres:
-  redis:
+  test_postgres:
+  test_redis:
 
 networks:
   gova_network_test:

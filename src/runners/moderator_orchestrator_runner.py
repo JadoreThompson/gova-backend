@@ -61,6 +61,8 @@ class ModeratorOrchestratorRunner(BaseRunner):
 
         await self._client.login(DISCORD_BOT_TOKEN)
         self._client_task = asyncio.create_task(self._client.connect(reconnect=True))
+        self._logger = logging.getLogger(type(self).__name__)
+        self._logger.level = logging.DEBUG
 
     async def _run(self):
         await self._setup()
@@ -73,6 +75,9 @@ class ModeratorOrchestratorRunner(BaseRunner):
             self._orchestrator.start()
 
             async for msg in consumer:
+                self._logger.debug(
+                    f"Received moderator event message: {msg.value.decode()}"
+                )
                 try:
                     event_data = json.loads(msg.value.decode())
                     event_type = event_data["type"]
@@ -83,7 +88,9 @@ class ModeratorOrchestratorRunner(BaseRunner):
                         await self._handle_stop_moderator(event_data)
                     elif event_type == ModeratorEventType.UPDATE_CONFIG:
                         moderator_id = event_data["moderator_id"]
-                        config = build_config(MessagePlatform.DISCORD, event_data["config"])
+                        config = build_config(
+                            MessagePlatform.DISCORD, event_data["config"]
+                        )
 
                         await self._handle_stop_moderator(
                             {
@@ -122,7 +129,6 @@ class ModeratorOrchestratorRunner(BaseRunner):
                 except asyncio.CancelledError:
                     pass
 
-
     async def _ensure_platform(self, moderator_id: uuid.UUID):
         async with get_db_sess() as db_sess:
             mod = await db_sess.get(Moderators, moderator_id)
@@ -133,7 +139,9 @@ class ModeratorOrchestratorRunner(BaseRunner):
             mod = await db_sess.get(Moderators, moderator_id)
             return mod
 
-    async def _handle_start_moderator(self, moderator_id: uuid.UUID, config: DiscordModeratorConfig | None = None) -> None:
+    async def _handle_start_moderator(
+        self, moderator_id: uuid.UUID, config: DiscordModeratorConfig | None = None
+    ) -> None:
         db_mod = await self._get_moderator(moderator_id)
         if not db_mod:
             return

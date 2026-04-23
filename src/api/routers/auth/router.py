@@ -36,7 +36,7 @@ async def register(
     db_sess: AsyncSession = Depends(depends_db_sess),
 ):
     user = await AuthService.register_user(body, bg_tasks, db_sess)
-    rsp = await set_cookie(user, Response(), db_sess)
+    rsp = await set_cookie(user, Response(status_code=201), db_sess)
     await db_sess.commit()
     return rsp
 

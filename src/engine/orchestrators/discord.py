@@ -41,6 +41,9 @@ class DiscordModeratorOrchestrator:
 
     async def _run(self) -> None:
         async for msg in self._msg_stream:
+            self._logger.debug(
+                f"Received message: {msg.content} in guild: {msg.guild_id}, channel: {msg.channel_id}"
+            )
             mod = self._guild_2_moderator.get(msg.guild_id)
             if mod is None:
                 continue

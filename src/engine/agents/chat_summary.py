@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic_ai.agent import AgentRunResult
 
 from engine.contexts.discord import DiscordMessageContext
 from .base import BaseAgent
@@ -8,7 +9,7 @@ class ChatSummaryAgentOutput(BaseModel):
     summary: str
 
 
-class ChatSummaryAgent(BaseAgent):
+class ChatSummaryAgent(BaseAgent[ChatSummaryAgentOutput]):
     _SYSTEM_PROMPT = """
     You're going to be presented with the last n messages sent within
     a discord server and metadata for each. Your task is to summarise the batch
@@ -57,6 +58,3 @@ class ChatSummaryAgent(BaseAgent):
             messages=messages,
         )
     
-    async def run(self, *args, **kw):
-        res = await super().run(*args, **kw)
-        return res

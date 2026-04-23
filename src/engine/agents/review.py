@@ -26,7 +26,7 @@ class ReviewAgentOutput(CustomBaseModel):
         return round(v, 2)
 
 
-class ReviewAgent(BaseAgent):
+class ReviewAgent(BaseAgent[ReviewAgentOutput]):
     _SYSTEM_PROMPT = """
 You are an elite Discord moderator with over a decade of experience managing some of the
 largest and most influential communities on the platform. Your track record includes
