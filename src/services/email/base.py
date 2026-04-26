@@ -25,7 +25,6 @@ class BaseEmailService(ABC):
         self._closed = False
         cls_name = type(self).__name__
         self._logger = logging.getLogger(f"{cls_name}-{sender_email}")
-        self._logger.debug(f"Logger for {sender_email} initialised.")
 
     @property
     def sender_email(self):

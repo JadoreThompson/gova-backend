@@ -11,7 +11,7 @@ from engine.agents.settings import AGENT_MODEL
 O = TypeVar("O")
 
 
-class BaseAgent(Agent, Generic[O]):
+class _Agent(Agent, Generic[O]):
     def __init__(self, *args, **kw) -> None:
         super().__init__(AGENT_MODEL, retries=MAX_RETRIES, *args, **kw)
 
@@ -20,6 +20,6 @@ class BaseAgent(Agent, Generic[O]):
 
     async def run(self, *args, **kw) -> AgentRunResult[O]:
         return await super().run(*args, **kw)
-    
+
     def run_sync(self, *args, **kw) -> AgentRunResult[O]:
         return super().run_sync(*args, **kw)

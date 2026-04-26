@@ -19,7 +19,7 @@ def test_manager_creates_new_conversation():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[0, 1],
+            indices=[0, 1],
             command=NewConversationCommand(topic="Greeting chat"),
         )
     ]
@@ -53,7 +53,7 @@ def test_manager_adds_messages_to_existing_conversation():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[0, 1],
+            indices=[0, 1],
             command=AddToConversationCommand(conversation_id=existing.conversation_id),
         )
     ]
@@ -77,15 +77,15 @@ def test_manager_creates_multiple_new_conversations():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[0],
+            indices=[0],
             command=NewConversationCommand(topic="Topic A"),
         ),
         ConversationThreadGroup(
-            indicies=[1],
+            indices=[1],
             command=NewConversationCommand(topic="Topic B"),
         ),
         ConversationThreadGroup(
-            indicies=[2],
+            indices=[2],
             command=NewConversationCommand(topic="Topic C"),
         ),
     ]
@@ -107,11 +107,11 @@ def test_manager_handles_non_overlapping_indices_correctly():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[0, 1],
+            indices=[0, 1],
             command=NewConversationCommand(topic="Group 1"),
         ),
         ConversationThreadGroup(
-            indicies=[2],
+            indices=[2],
             command=NewConversationCommand(topic="Group 2"),
         ),
     ]
@@ -134,7 +134,7 @@ def test_manager_add_to_missing_conversation_is_safe():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[0],
+            indices=[0],
             command=AddToConversationCommand(conversation_id=uuid.uuid4()),
         )
     ]
@@ -152,7 +152,7 @@ def test_manager_invalid_index_raises():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[999],
+            indices=[999],
             command=NewConversationCommand(topic="bad group"),
         )
     ]
@@ -174,7 +174,7 @@ def test_manager_preserves_message_order():
 
     groups = [
         ConversationThreadGroup(
-            indicies=[2, 0, 1],
+            indices=[2, 0, 1],
             command=NewConversationCommand(topic="order test"),
         )
     ]

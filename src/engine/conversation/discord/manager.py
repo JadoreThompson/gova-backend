@@ -1,4 +1,6 @@
+import uuid
 from engine.contexts.discord import DiscordMessageContext
+from engine.conversation.exception import ConversationDoesNotExistException
 from .conversation import DiscordConversation
 from engine.agents.conversation_thread import (
     ConversationThreadGroup,
@@ -6,16 +8,23 @@ from engine.agents.conversation_thread import (
     NewConversationCommand,
     AddToConversationCommand,
 )
-import uuid
 
 
 class DiscordConversationManager:
     def __init__(self):
-        self.conversations: dict[str, DiscordConversation] = {}
+        self._conversations: dict[str, DiscordConversation] = {}
         self.auto_prune = True
 
+    @property
+    def conversations(self) -> dict[str, DiscordConversation]:
+        return self._conversations
+
     def get_conversation(self, conversation_id: str) -> DiscordConversation | None:
-        return self.conversations.get(conversation_id)
+        if conversation_id in self.conversations:
+            return self.conversations[conversation_id]
+        raise ConversationDoesNotExistException(
+            f"Conversation with id '{conversation_id}' does not exist."
+        )
 
     def add_conversation(self, conversation: DiscordConversation) -> None:
         self.conversations[conversation.conversation_id] = conversation
@@ -33,30 +42,28 @@ class DiscordConversationManager:
         Applies agent output to conversation state.
 
         Returns:
-            list[UUID]: list of created conversation_ids
+            list[UUID]: list of interacted conversation_ids
         """
         conversation_ids: list[uuid.UUID] = []
 
         for group in groups:
-            indices = group.indicies
+            indices = group.indices
             command = group.command
             messages = [message_contexts[i] for i in indices]
 
             if command.type == ConversationCommandType.NEW_CONVERSATION:
                 cmd: NewConversationCommand = command
                 conversation = DiscordConversation(
-                    topic=cmd.topic,
-                    channel_id=messages[0].channel_id,
-                    messages=messages,
+                    topic=cmd.topic, channel_id=messages[0].channel_id
                 )
-
-                self.add_conversation(conversation)
+                conversation.messages.extend(messages)
                 conversation_ids.append(conversation.conversation_id)
+                self.add_conversation(conversation)
             elif command.type == ConversationCommandType.ADD_TO_CONVERSATION:
                 cmd: AddToConversationCommand = command
                 conversation = self.get_conversation(cmd.conversation_id)
-                if conversation is not None:
-                    conversation.messages.extend(messages)
+                conversation.messages.extend(messages)
+                conversation_ids.append(conversation.conversation_id)
             else:
                 raise ValueError(f"Unknown command type: {command.type}")
 

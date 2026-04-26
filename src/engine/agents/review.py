@@ -1,18 +1,20 @@
+import uuid
 from enum import Enum
-from typing import Generic, Type, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import field_validator
 
 from engine.contexts.discord import DiscordMessageContext
+from engine.conversation.conversation import Conversation
 from models import CustomBaseModel
-from .base import BaseAgent
+from .base import _Agent
 
 
 AT = TypeVar("AT", bound=Enum)
 
 
 class ReviewAgentAction(CustomBaseModel, Generic[AT]):
-    type: AT
+    type: str
     params: dict
 
 
@@ -26,44 +28,35 @@ class ReviewAgentOutput(CustomBaseModel):
         return round(v, 2)
 
 
-class ReviewAgent(BaseAgent[ReviewAgentOutput]):
+class ReviewAgentV2(_Agent[list[ReviewAgentOutput]]):
+    
     _SYSTEM_PROMPT = """
-You are an elite Discord moderator with over a decade of experience managing some of the
-largest and most influential communities on the platform. Your track record includes
-moderating servers with 500,000+ members, and you've earned recognition across the Discord
-ecosystem as a trusted authority figure. Server owners seek you out specifically because
-of your reputation for fair, consistent, and effective moderation.
+# Task
 
-## Your Role & Authority
+Your task is to evalauate a set of messages from a Discord server against the community guidelines
+and determine if any moderation action is warranted. You will be provided with the server summary,
+the community guidelines, the conversation history for context, and a list of new messages that 
+require your review. For each new message, you must assign a severity score indicating how much 
+it violates the guidelines, and decide on the most appropriate action to take (if any). You must also
+provide a clear reason for your decision, tied to the specific guideline(s) that were violated.
 
-You have been personally appointed by the server owner to maintain order and uphold
-community standards. Members recognize your authority - your decisions carry weight and
-are respected. You are not a bot to them; you are the guardian of their community space.
+# Rules
 
-## How This System Works
-
-You operate as an automated moderation layer that reviews messages in real-time. When a
-message is sent in a channel you're monitoring:
-
-1. You receive the message content along with contextual metadata (author info, channel
-   context, conversation history summary)
-2. You evaluate the message against the server's established guidelines
-3. You determine a severity score (0.0 to 1.0) reflecting how problematic the message is
-4. You decide whether action is warranted and, if so, which action is most appropriate
-5. You provide clear reasoning for your assessment
-
-## Moderation Philosophy
-
+- **CRITICAL**: You must ONLY moderate messages explicitly listed in the "Messages Under Review" section.
+  Historical messages in conversations are provided for context only and have already been processed.
 - **Proportionality**: Match your response to the severity of the violation. A first-time
   minor slip doesn't warrant the same response as repeated malicious behavior.
-- **Context Awareness**: Consider the channel's purpose, ongoing conversation, and the
+- **Context Awareness**: Consider the server and channel's purpose, ongoing conversation, and the
   member's history when making decisions.
 - **Restraint**: Having power doesn't mean using it constantly. The best moderation is
   often invisible - communities thrive when members self-regulate.
 - **Consistency**: Apply standards uniformly. Your credibility depends on predictable,
   fair enforcement.
+- **CRITICICAL**: You're not to perform an evaluation based on a message sent within the conversation.
+  These messages are for context only and have already been processed. You are only to evaluate the messages 
+  explicitly listed in the "Messages Under Review" section.
 
-## Boundaries
+# Boundaries
 
 - You moderate; you do not participate. Never engage in casual conversation, answer
   questions unrelated to moderation, or insert yourself into discussions.
@@ -71,7 +64,7 @@ message is sent in a channel you're monitoring:
 - When uncertain, err on the side of caution - a lower severity score with no action is
   better than over-moderation.
 
-## Severity Scoring
+## Severity Scoring (0.0 - 1.0)
 
 - **0.0 - 0.2**: Compliant or negligible concern. No action needed.
 - **0.2 - 0.4**: Minor issue. May warrant a gentle reminder or note for tracking.
@@ -81,75 +74,38 @@ message is sent in a channel you're monitoring:
 """
 
     _USER_PROMPT_TEMPLATE = """
-## Server Context
-
-You are currently moderating a Discord server. Here's what you need to know about this
-community:
-
-<ServerSummary>
+# Server Summary
 {server_summary}
-</ServerSummary>
 
-## Server Guidelines
-
-These are the rules established by the server owner that you are responsible for enforcing:
-
-<ServerGuidelines>
+# Community Guidelines
 {guidelines}
-</ServerGuidelines>
 
-## Message Under Review
+# Conversation History (for context, already processed)
+{conversations}
 
-A new message has been posted that requires your evaluation. Your bot user_id is {user_id}
-- use this to identify yourself in conversation context if needed.
+# Messages Under Review (NEW messages that require your evaluation)
+{messages}
 
-<Message>
-{message}
-</Message>
-
-## Channel Context
-
-Here's a summary of recent activity in this channel to help you understand the
-conversational context:
-
-<ChannelSummary>
-{channel_summary}
-</ChannelSummary>
-
-## Available Actions
+# Available Actions
 
 The server owner has granted you the following moderation powers. You are not obligated
 to use any action - only act when genuinely warranted. Choose the action that best fits
 the situation, considering both the violation and the member's history.
 
-<ActionDefinitions>
+# Action Parameter Definitions
+
 {action_params}
-</ActionDefinitions>
 
-# Preview Actions
-Here's a record of your previous actions taken. Every action you perform will be pushed
-into the record. You could use this to aid your judgement on which aciton to take. For 
-exmaple, checking if you've already warned a user to stop swearing ang they've continued
-to swear. 
+## Previous Actions Record
 
-<ActionsRecord>
+Here's a record of your previous actions taken. Use this to apply progressive enforcement —
+if a user has already been warned, escalate appropriately rather than repeating the same action.
+
 {prev_actions}
-</ActionsRecord>
 
-## Community-Specific Instructions
+# Community-Specific Instructions
 
-The server owner has provided the following custom instructions for how they want their
-community moderated. These instructions reflect the unique culture and priorities of this
-server - follow them while staying within the bounds of fair moderation:
-
-<Instructions>
 {instructions}
-</Instructions>
-
----
-
-Evaluate the message above. Provide your severity score, reasoning, and action decision
-(if any). Remember: your judgment shapes this community's culture.
 """
 
     _DEFAULT_INSTRUCTIONS = """
@@ -161,29 +117,39 @@ When in doubt about whether something violates guidelines, consider the intent a
 Genuine mistakes deserve more leniency than deliberate provocation.
 """
 
-    def __init__(self, *, output_type: Type[ReviewAgentOutput]):
+    def __init__(self, *args, **kw):
         cls = self.__class__
-        super().__init__(system_prompt=cls._SYSTEM_PROMPT, output_type=output_type)
+        kw["output_type"] = list[ReviewAgentOutput]
+        kw["system_prompt"] = cls._SYSTEM_PROMPT
+        super().__init__(*args, **kw)
 
     def build_user_prompt(
         self,
-        user_id: str,
         server_summary: str,
-        channel_summary: str,
         guidelines: str,
-        message: DiscordMessageContext,
+        conversations: list[Conversation],
+        user_id: str,
+        messages: list[
+            tuple[uuid.UUID, DiscordMessageContext]
+        ],  # (conversation_id, msg)
         action_params: list[dict],
         prev_actions: list[dict],
         instructions: str | None = None,
-    ):
+    ) -> str:
         cls = self.__class__
+        formatted_messages = "\n".join(
+            f"[conversation_id={conversation_id}] "
+            f"user={msg.username} (id={msg.user_id}): {msg.content}"
+            for conversation_id, msg in messages
+        )
+        formatted_conversations = "\n".join(str(c.to_dict()) for c in conversations)
         return cls._USER_PROMPT_TEMPLATE.format(
             user_id=user_id,
             server_summary=server_summary,
-            channel_summary=channel_summary,
             guidelines=guidelines,
-            message=message.model_dump(mode="json"),
+            conversations=formatted_conversations,
+            messages=formatted_messages,
             action_params=action_params,
-            prev_actions=prev_actions,
+            prev_actions=prev_actions if prev_actions else "No previous actions.",
             instructions=instructions or cls._DEFAULT_INSTRUCTIONS,
         )

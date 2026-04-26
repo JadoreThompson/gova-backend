@@ -75,9 +75,6 @@ class ModeratorOrchestratorRunner(BaseRunner):
             self._orchestrator.start()
 
             async for msg in consumer:
-                self._logger.debug(
-                    f"Received moderator event message: {msg.value.decode()}"
-                )
                 try:
                     event_data = json.loads(msg.value.decode())
                     event_type = event_data["type"]
@@ -153,7 +150,6 @@ class ModeratorOrchestratorRunner(BaseRunner):
             self._client.user.id,
             self._action_handler,
             self._kafka_producer,
-            max_channel_msgs=100,
         )
         success = self._orchestrator.add(mod)
         if success:

@@ -31,9 +31,7 @@ class DiscordActionHandler:
         await channel.send(params.content)
 
     async def handle_timeout(
-        self,
-        params: DiscordPerformedActionParamsTimeout,
-        ctx: DiscordMessageContext,
+        self, params: DiscordPerformedActionParamsTimeout, ctx: DiscordMessageContext
     ) -> None:
         """Temporarily mute a user in a Discord guild."""
         try:

@@ -2,200 +2,37 @@ import uuid
 from enum import Enum
 
 from pydantic import BaseModel
-from pydantic_ai import Agent, AgentRunResult
 
-from engine.agents.base import BaseAgent
+from engine.agents.base import _Agent
 
 
 class ConversationCommandType(str, Enum):
-  NEW_CONVERSATION = "NEW_CONVERSATION"
-  ADD_TO_CONVERSATION = "ADD_TO_CONVERSATION"
+    NEW_CONVERSATION = "NEW_CONVERSATION"
+    ADD_TO_CONVERSATION = "ADD_TO_CONVERSATION"
 
 
 class ConversationCommand(BaseModel):
-  type: ConversationCommandType
+    type: ConversationCommandType
 
 
 class NewConversationCommand(ConversationCommand):
-  type: ConversationCommandType = ConversationCommandType.NEW_CONVERSATION
-  topic: str
+    type: ConversationCommandType = ConversationCommandType.NEW_CONVERSATION
+    topic: str
 
 
 class AddToConversationCommand(ConversationCommand):
-  type: ConversationCommandType = ConversationCommandType.ADD_TO_CONVERSATION
-  conversation_id: uuid.UUID
-
-
-class ConversationThreadAgentOutput(BaseModel):
-  message_id: uuid.UUID
-  command: NewConversationCommand | AddToConversationCommand
+    type: ConversationCommandType = ConversationCommandType.ADD_TO_CONVERSATION
+    conversation_id: uuid.UUID
 
 
 class ConversationThreadGroup(BaseModel):
-  indicies: list[int]
-  command: NewConversationCommand | AddToConversationCommand
+    indices: list[int]
+    command: NewConversationCommand | AddToConversationCommand
 
 
-class ConversationThreadAgent(BaseAgent[list[ConversationThreadGroup]]):
-  _EXAMPLES = """
-Example 1 — All messages form one new conversation
+class ConversationThreadAgent(_Agent[list[ConversationThreadGroup]]):
 
-Input:
-
-MessageContexts:
-0: alice: "Anyone used SQLAlchemy async?"
-1: bob: "Yeah it's solid with FastAPI."
-2: charlie: "Agreed, migrations are nice too."
-
-ConversationThreads:
-[]
-
-Output:
-[
-  {
-    "indicies": [0,1,2],
-    "command": {
-      "type": "NEW_CONVERSATION",
-      "topic": "SQLAlchemy and Python ORM discussion"
-    }
-  }
-]
-
-
-Example 2 — Messages add to an existing conversation
-
-Input:
-
-MessageContexts:
-0: alice: "Verstappen looks dominant this weekend."
-1: bob: "Red Bull race pace is ridiculous."
-
-ConversationThreads:
-[
-  {
-    "conversation_id": "f1_thread_123",
-    "topic": "Formula 1",
-    "messages": [
-      "Ferrari may struggle in qualifying"
-    ]
-  }
-]
-
-Output:
-[
-  {
-    "indicies": [0,1],
-    "command": {
-      "type": "ADD_TO_CONVERSATION",
-      "conversation_id": "f1_thread_123"
-    }
-  }
-]
-
-
-Example 3 — Existing conversations unrelated -> create new thread
-
-Input:
-
-MessageContexts:
-0: alice: "Has anyone tried Rust for backend work?"
-1: bob: "Ownership is painful at first."
-
-ConversationThreads:
-[
-  {
-    "conversation_id": "dogs_77",
-    "topic": "Dogs",
-    "messages": [
-      "Golden retrievers are great"
-    ]
-  }
-]
-
-Output:
-[
-  {
-    "indicies": [0,1],
-    "command": {
-      "type": "NEW_CONVERSATION",
-      "topic": "Rust backend discussion"
-    }
-  }
-]
-
-
-Example 4 — Multiple simultaneous groups
-
-Input:
-
-MessageContexts:
-0: alice: "Anyone use PostgreSQL logical replication?"
-1: bob: "Yeah wal2json is useful."
-
-2: mike: "Did you watch qualifying today?"
-3: sara: "Verstappen pole again."
-
-ConversationThreads:
-[
-  {
-    "conversation_id":"f1_thread_456",
-    "topic":"Formula 1",
-    "messages":[
-      "Who has the strongest midfield?"
-    ]
-  }
-]
-
-Output:
-[
-  {
-    "indicies":[0,1],
-    "command":{
-      "type":"NEW_CONVERSATION",
-      "topic":"PostgreSQL replication"
-    }
-  },
-  {
-    "indicies":[2,3],
-    "command":{
-      "type":"ADD_TO_CONVERSATION",
-      "conversation_id":"f1_thread_456"
-    }
-  }
-]
-
-
-Example 5 — Unrelated messages should not be over-grouped
-
-Input:
-
-MessageContexts:
-0: alice: "Anyone know a good monitor arm?"
-1: bob: "Liverpool looked awful yesterday."
-
-ConversationThreads:
-[]
-
-Output:
-[
-  {
-    "indicies":[0],
-    "command":{
-      "type":"NEW_CONVERSATION",
-      "topic":"Monitor arm recommendations"
-    }
-  },
-  {
-    "indicies":[1],
-    "command":{
-      "type":"NEW_CONVERSATION",
-      "topic":"Football discussion"
-    }
-  }
-]
-"""
-
-  _SYSYTEM_PROMPT = """
+    _SYSYTEM_PROMPT = """
 You're moderating a Discord server and determining conversation threads occurring in chat.
 
 You will be given:
@@ -214,7 +51,7 @@ IMPORTANT:
 
 For each conversation group, output:
 
-- indicies:
+- indices:
   A list of zero-based message indices from the provided message contexts that belong to that group.
 
 - command:
@@ -235,15 +72,94 @@ Rules:
 - Prefer the fewest groups consistent with the conversation structure.
 - If all messages belong to one discussion, return one group containing all indices.
 - If several separate discussions are occurring, return multiple groups.
+- Conversation id must not be the id of a message. Instead the id of an existing conversation
+  thread
 
 Return ONLY structured output matching the schema.
 Do not return explanations or commentary.
 
 Examples (follow these patterns exactly):
-{examples}
+
+Example 1 — All messages form one new conversation
+
+Input:
+
+MessageContexts:
+0: Context(
+     id="550e8400-e29b-41d4-a716-446655440001",
+     username="alice",
+     content="Anyone used SQLAlchemy async?"
+   )
+1: Context(
+     id="550e8400-e29b-41d4-a716-446655440002",
+     username="bob",
+     content="Yeah it's solid with FastAPI."
+   )
+2: Context(
+     id="550e8400-e29b-41d4-a716-446655440003",
+     username="charlie",
+     content="Agreed, migrations are nice too."
+   )
+
+ConversationThreads:
+[]
+
+Output:
+[
+  {
+    "indices": [0,1,2],
+    "command": {
+      "type": "NEW_CONVERSATION",
+      "topic": "SQLAlchemy and Python ORM discussion"
+    }
+  }
+]
+
+
+Example 2 — Messages add to an existing conversation
+
+Input:
+
+MessageContexts:
+0: Context(
+     id="550e8400-e29b-41d4-a716-446655440004",
+     username="alice",
+     content="Verstappen looks dominant this weekend."
+   )
+1: Context(
+     id="550e8400-e29b-41d4-a716-446655440005",
+     username="bob",
+     content="Red Bull race pace is ridiculous."
+   )
+
+ConversationThreads:
+[
+  {
+    "conversation_id": "550e8400-e29b-41d4-a716-446655440100",
+    "topic": "Formula 1",
+    "messages": [
+      Context(
+        id="550e8400-e29b-41d4-a716-446655440006",
+        username="dan",
+        content="Ferrari may struggle in qualifying"
+      )
+    ]
+  }
+]
+
+Output:
+[
+  {
+    "indices": [0,1],
+    "command": {
+      "type": "ADD_TO_CONVERSATION",
+      "conversation_id": "550e8400-e29b-41d4-a716-446655440100"
+    }
+  }
+]
 """
 
-  _USER_PROMPT_TEMPLATE = """
+    _USER_PROMPT_TEMPLATE = """
 Here are the message contexts for the last {n} messages sent within the server and the current conversation
 threads.
 
@@ -256,18 +172,18 @@ threads.
 </ConversationThreads>
 """
 
-  def __init__(self):
-      super().__init__(
-          output_type=list[ConversationThreadGroup],
-          system_prompt=self._SYSYTEM_PROMPT.format(examples=self._EXAMPLES),
-      )
+    def __init__(self):
+        super().__init__(
+            output_type=list[ConversationThreadGroup],
+            system_prompt=self._SYSYTEM_PROMPT,
+        )
 
-  def build_user_prompt(
-      self, message_contexts: list, conversation_threads: list
-  ) -> str:
-      cls = self.__class__
-      return cls._USER_PROMPT_TEMPLATE.format(
-          n=len(message_contexts),
-          message_contexts=[f"{i}: {ctx}" for i, ctx in enumerate(message_contexts)],
-          conversation_threads=conversation_threads,
-      )
+    def build_user_prompt(
+        self, message_contexts: list, conversation_threads: list
+    ) -> str:
+        cls = self.__class__
+        return cls._USER_PROMPT_TEMPLATE.format(
+            n=len(message_contexts),
+            message_contexts=[f"{i}: {ctx}" for i, ctx in enumerate(message_contexts)],
+            conversation_threads=conversation_threads,
+        )
