@@ -47,7 +47,7 @@ def test_thread_group_creation_all_messages_new_conversation():
     assert len(output) == 1
 
     group = output[0]
-    assert group.indicies == [0, 1, 2]
+    assert group.indices == [0, 1, 2]
     assert group.command.type == ConversationCommandType.NEW_CONVERSATION
     assert group.command.topic
 
@@ -92,7 +92,7 @@ def test_thread_group_creates_new_conversation_when_existing_threads_are_unrelat
     group = output[0]
 
     assert len(output) == 1
-    assert group.indicies == [0, 1, 2]
+    assert group.indices == [0, 1, 2]
     assert group.command.type == ConversationCommandType.NEW_CONVERSATION
     assert group.command.topic
 
@@ -162,7 +162,7 @@ def test_thread_group_adds_messages_to_related_existing_conversation():
     group = output[0]
 
     assert len(output) == 1
-    assert group.indicies == [0, 1]
+    assert group.indices == [0, 1]
     assert group.command.type == ConversationCommandType.ADD_TO_CONVERSATION
     assert group.command.conversation_id == "f1_thread_123"
 
@@ -208,6 +208,6 @@ def test_thread_group_adds_to_related_conversation_and_ignores_unrelated_convers
     group = output[0]
 
     assert len(output) == 1
-    assert group.indicies == [0, 1]
+    assert group.indices == [0, 1]
     assert group.command.type == ConversationCommandType.ADD_TO_CONVERSATION
     assert group.command.conversation_id == "f1_thread_456"
